@@ -978,16 +978,22 @@ document.getElementById('report-content').innerHTML = `
   <div style="max-width:1100px;margin:0 auto;">
     <div class="report-ready" id="report-ready-box" style="padding:20px 20px 28px;margin-bottom:16px;">
       <div class="rr-icon">${latestReport ? '📄' : allDone ? '🎯' : '📋'}</div>
-      <div class="rr-title">
-        ${latestReport ? 'Último informe disponible' : allDone ? 'Listo para generar el informe' : 'Diagnóstico en progreso'}
-      </div>
+<div class="rr-title">
+  ${latestReport
+    ? (reportOutdated ? 'Informe desactualizado' : 'Último informe disponible')
+    : allDone
+      ? 'Listo para generar el informe'
+      : 'Diagnóstico en progreso'}
+</div>
       <div class="rr-sub">
-        ${latestReport
-          ? 'Se muestra automáticamente la última versión guardada del informe DIOP para este cliente.'
-          : allDone
-            ? 'Las tres sesiones están completadas. La IA analizará todas las respuestas y generará el informe DIOP completo.'
-            : 'Completa las tres sesiones para poder generar el informe DIOP final.'}
-      </div>
+  ${latestReport
+    ? (reportOutdated
+        ? 'Se detectaron cambios en las respuestas después del último informe. Conviene actualizarlo para reflejar la información más reciente.'
+        : 'Se muestra automáticamente la última versión guardada del informe DIOP para este cliente.')
+    : allDone
+      ? 'Las tres sesiones están completadas. La IA analizará todas las respuestas y generará el informe DIOP completo.'
+      : 'Completa las tres sesiones para poder generar el informe DIOP final.'}
+</div>
       ${
         allDone
           ? `<button class="gen-btn" id="gen-btn" onclick="generateReport()">${latestReport ? 'Regenerar informe →' : 'Generar Informe DIOP →'}</button>`
@@ -1761,13 +1767,31 @@ function exportPDF() {
 }
 function getProgress(client) {
   const sessions = {};
+
   SESSION_ORDER.forEach(sid => {
     const completed = client.answers?.find(a => a.session === sid && a.question_id === '_completed');
     const answered = client.answers?.filter(a => a.session === sid && a.question_id !== '_completed').length || 0;
     sessions[sid] = completed ? 'done' : answered > 0 ? 'active' : 'pending';
   });
+
   const done = Object.values(sessions).filter(v => v === 'done').length;
-  return { sessions, pct: Math.round((done / SESSION_ORDER.length) * 100) };
+
+  const latestAnswerAt = (client.answers || [])
+    .map(a => a.updated_at ? new Date(a.updated_at).getTime() : 0)
+    .filter(Boolean)
+    .sort((a, b) => b - a)[0] || 0;
+
+  const latestReportAt = (client.reports || []).length
+    ? new Date(client.reports[0].created_at).getTime()
+    : 0;
+
+  const reportOutdated = latestAnswerAt > latestReportAt;
+
+  return {
+    sessions,
+    pct: Math.round((done / SESSION_ORDER.length) * 100),
+    reportOutdated
+  };
 }
 
 function openClient(clientId) {
@@ -1794,6 +1818,7 @@ function openClient(clientId) {
 
   const prog = getProgress(currentClient);
   const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
+  const reportOutdated = prog.reportOutdated;
   const nextSess = SESSION_ORDER.find(s => prog.sessions[s] !== 'done') || 'ceo';
 
   if (allDone) openReport();
