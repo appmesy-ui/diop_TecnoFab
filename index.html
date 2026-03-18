@@ -996,10 +996,19 @@ document.getElementById('report-content').innerHTML = `
       : 'Completa las tres sesiones para poder generar el informe DIOP final.'}
 </div>
       ${
-        allDone
-          ? `<button class="gen-btn" id="gen-btn" onclick="generateReport()">${latestReport ? 'Regenerar informe →' : 'Generar Informe DIOP →'}</button>`
-          : ''
-      }
+  allDone
+    ? `<button
+         class="gen-btn"
+         id="gen-btn"
+         onclick="generateReport()"
+         style="${reportOutdated ? 'background:linear-gradient(135deg,var(--amber),#d38a1f);color:#fff;' : ''}"
+       >${
+         latestReport
+           ? (reportOutdated ? 'Actualizar informe →' : 'Regenerar informe →')
+           : 'Generar Informe DIOP →'
+       }</button>`
+    : ''
+}
     </div>
     <div class="report-content" id="report-body"></div>
   </div>`;
