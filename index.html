@@ -516,42 +516,107 @@ async function init() {
   await loadClients();
 }
 
-
+<script>
 async function loadClients() {
-  const {data,error} = await sb.from('diop_clients').select('*').order('created_at',{ascending:false});
-  if(error){showToast('Error al cargar clientes');return;}
+  const { data, error } = await sb
+    .from('diop_clients')
+    .select(`
+      *,
+      reports:diop_reports (
+        id,
+        created_at,
+        report_json
+      )
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error(error);
+    showToast('Error al cargar clientes');
+    return;
+  }
+
   clients = data || [];
   renderHome();
 }
 
 function renderHome() {
-  document.getElementById('home-count').textContent = `${clients.length} diagnóstico${clients.length!==1?'s':''} activo${clients.length!==1?'s':''}`;
-  document.getElementById('sidebar-stats').textContent = `${clients.length} cliente${clients.length!==1?'s':''}`;
+  document.getElementById('home-count').textContent =
+    `${clients.length} diagnóstico${clients.length !== 1 ? 's' : ''} activo${clients.length !== 1 ? 's' : ''}`;
+
+  document.getElementById('sidebar-stats').textContent =
+    `${clients.length} cliente${clients.length !== 1 ? 's' : ''}`;
+
   const grid = document.getElementById('client-grid');
-  if(!clients.length){
+
+  if (!clients.length) {
     grid.innerHTML = '<div class="empty"><p>No hay diagnósticos todavía.</p></div>';
     return;
   }
+
   grid.innerHTML = clients.map(c => {
+    const lastReportRow = c.reports?.[0] || null;
+    const lastReport = lastReportRow?.report_json || null;
+
+    const lastImpact = lastReport?.kpis?.impacto_total_estimado || null;
+    const lastMaturity = lastReport?.madurez_digital?.puntuacion || null;
+
+    let lastActivity = 'Sin actividad';
+
+    if (lastReportRow?.created_at) {
+      const diff = Date.now() - new Date(lastReportRow.created_at).getTime();
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+      if (days === 0) lastActivity = 'Hoy';
+      else if (days === 1) lastActivity = 'Hace 1 día';
+      else lastActivity = `Hace ${days} días`;
+    }
+
     const prog = getProgress(c);
     const pct = prog.pct;
-    return `<div class="cc" onclick="openClient(${c.id})">
-      <div class="cc-top"><div class="cc-name">${c.name}</div><div class="cc-sector">${c.sector||'Sin sector'}</div></div>
-      <div class="cc-prog-row">
-        <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
-        <div class="prog-pct">${pct}% completado</div>
+
+    return `
+      <div class="cc" onclick="openClient(${c.id})">
+        <div class="cc-top">
+          <div>
+            <div class="cc-name">${c.name}</div>
+            <div class="cc-last" style="font-size:11px;color:var(--text3);margin-top:4px;">
+              Última actividad: ${lastActivity}
+            </div>
+          </div>
+          <div class="cc-sector">${c.sector || 'Sin sector'}</div>
+        </div>
+
+        <div class="cc-prog-row">
+          <div class="prog-track">
+            <div class="prog-fill" style="width:${pct}%"></div>
+          </div>
+          <div class="prog-pct">${pct}% completado</div>
+        </div>
+
+        <div class="cc-last-report" style="margin-top:8px;margin-bottom:10px;font-size:12px;color:var(--text2);">
+          ${
+            lastReport
+              ? `Impacto: ${lastImpact || '—'} · Madurez: ${lastMaturity != null ? `${lastMaturity}/10` : '—'}`
+              : 'Sin informe aún'
+          }
+        </div>
+
+        <div class="cc-sessions">
+          ${SESSION_ORDER.map(s => {
+            const st = prog.sessions[s];
+            const cls = st === 'done' ? 'csd-done' : st === 'active' ? 'csd-active' : 'csd-pending';
+            return `<div class="cs-dot ${cls}"><div class="csd-icon"></div>${SESSION_LABELS[s]}</div>`;
+          }).join('')}
+          <div class="cs-dot ${prog.report === 'done' ? 'csd-done' : prog.report === 'active' ? 'csd-active' : 'csd-pending'}">
+            <div class="csd-icon"></div>Informe
+          </div>
+        </div>
       </div>
-      <div class="cc-sessions">
-        ${SESSION_ORDER.map(s=>{
-          const st = prog.sessions[s];
-          const cls = st==='done'?'csd-done':st==='active'?'csd-active':'csd-pending';
-          return `<div class="cs-dot ${cls}"><div class="csd-icon"></div>${SESSION_LABELS[s]}</div>`;
-        }).join('')}
-        <div class="cs-dot ${prog.report==='done'?'csd-done':prog.report==='active'?'csd-active':'csd-pending'}"><div class="csd-icon"></div>Informe</div>
-      </div>
-    </div>`;
+    `;
   }).join('');
 }
+</script>
 
 function getProgress(client) {
   const sessions = {};
