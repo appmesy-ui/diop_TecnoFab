@@ -519,14 +519,7 @@ async function init() {
 async function loadClients() {
   const { data: clientsData, error: clientsError } = await sb
     .from('diop_clients')
-    .select(`
-      *,
-      reports:diop_reports (
-        id,
-        created_at,
-        report_json
-      )
-    `)
+    .select('*')
     .order('created_at', { ascending: false });
 
   if (clientsError) {
@@ -546,7 +539,6 @@ async function loadClients() {
   }
 
   const answersByClient = {};
-
   (answersData || []).forEach(a => {
     if (!answersByClient[a.client_id]) answersByClient[a.client_id] = [];
     answersByClient[a.client_id].push(a);
