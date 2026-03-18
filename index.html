@@ -517,39 +517,103 @@ async function init() {
 }
 
 async function loadClients() {
-  const { data: clientsData, error: clientsError } = await sb
-    .from('diop_clients')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    document.getElementById('home-count').textContent = 'Cargando...';
+    document.getElementById('client-grid').innerHTML = '<div class="empty"><p>Cargando clientes...</p></div>';
 
-  if (clientsError) {
-    console.error('Error cargando clientes:', clientsError);
+    const { data: clientsData, error: clientsError } = await sb
+      .from('diop_clients')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (clientsError) {
+      console.error('Error cargando clientes:', JSON.stringify(clientsError, null, 2));
+      throw clientsError;
+    }
+
+    const { data: answersData, error: answersError } = await sb
+      .from('diop_answers')
+      .select('client_id, session, question_id, answer, updated_at');
+
+    if (answersError) {
+      console.error('Error cargando respuestas:', JSON.stringify(answersError, null, 2));
+      throw answersError;
+    }
+
+    const { data: reportsData, error: reportsError } = await sb
+      .from('diop_reports')
+      .select('id, client_id, created_at, report_json, created_by')
+      .order('created_at', { ascending: false });
+
+    if (reportsError) {
+      console.error('Error cargando informes:', JSON.stringify(reportsError, null, 2));
+      throw reportsError;
+    }
+
+    allAnswers = {};
+    (answersData || []).forEach(a => {
+      allAnswers[`${a.client_id}_${a.session}_${a.question_id}`] = a.answer || '';
+    });
+
+    const answersByClient = {};
+    (answersData || []).forEach(a => {
+      if (!answersByClient[a.client_id]) answersByClient[a.client_id] = [];
+      answersByClient[a.client_id].push(a);
+    });
+
+    const reportsByClient = {};
+    (reportsData || []).forEach(r => {
+      if (!reportsByClient[r.client_id]) reportsByClient[r.client_id] = [];
+      reportsByClient[r.client_id].push(r);
+    });
+
+    clients = (clientsData || []).map(c => {
+      const clientAnswers = answersByClient[c.id] || [];
+      const clientReports = reportsByClient[c.id] || [];
+
+      const lastAnswerAt = clientAnswers.length
+        ? clientAnswers
+            .map(a => a.updated_at ? new Date(a.updated_at).getTime() : 0)
+            .filter(Boolean)
+            .sort((a, b) => b - a)[0]
+        : null;
+
+      const lastReportAt = clientReports.length
+        ? new Date(clientReports[0].created_at).getTime()
+        : null;
+
+      const createdAt = c.created_at ? new Date(c.created_at).getTime() : 0;
+
+      const lastActivityAt = [createdAt, lastAnswerAt, lastReportAt]
+        .filter(Boolean)
+        .sort((a, b) => b - a)[0] || createdAt;
+
+      return {
+        ...c,
+        answers: clientAnswers,
+        reports: clientReports,
+        last_activity_at: lastActivityAt ? new Date(lastActivityAt).toISOString() : null,
+        last_report_at: lastReportAt ? new Date(lastReportAt).toISOString() : null
+      };
+    });
+
+    clients.sort((a, b) => {
+      const da = a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0;
+      const db = b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0;
+      return db - da;
+    });
+
+    renderHome();
+  } catch (err) {
+    console.error('Fallo en loadClients:', err);
     showToast('Error al cargar clientes');
-    return;
+    document.getElementById('home-count').textContent = 'Error';
+    document.getElementById('client-grid').innerHTML = `
+      <div class="empty">
+        <p>No se pudieron cargar los diagnósticos.</p>
+      </div>
+    `;
   }
-
-  const { data: answersData, error: answersError } = await sb
-    .from('diop_answers')
-    .select('client_id, session, question_id, answer');
-
-  if (answersError) {
-    console.error('Error cargando respuestas:', answersError);
-    showToast('Error al cargar respuestas');
-    return;
-  }
-
-  const answersByClient = {};
-  (answersData || []).forEach(a => {
-    if (!answersByClient[a.client_id]) answersByClient[a.client_id] = [];
-    answersByClient[a.client_id].push(a);
-  });
-
-  clients = (clientsData || []).map(c => ({
-    ...c,
-    answers: answersByClient[c.id] || []
-  }));
-
-  renderHome();
 }
 
 function openSession(sessionId) {
