@@ -1547,49 +1547,12 @@ function exportPDF() {
 </body>
 </html>`;
 
-  const btn = document.querySelector('[onclick="exportPDF()"]');
-  if(btn) { btn.textContent = 'Generando PDF...'; btn.disabled = true; }
-
-  // Create visible overlay container
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(6,11,18,0.85);z-index:999;display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = '<div style="background:#0a1220;border:0.5px solid rgba(0,173,181,0.3);border-radius:10px;padding:24px 32px;text-align:center;color:#e8f4f5;"><div style="font-size:14px;font-weight:500;margin-bottom:6px;">Generando informe PDF...</div><div style="font-size:12px;color:#3a7a82;">Esto puede tardar unos segundos</div></div>';
-  document.body.appendChild(overlay);
-
-  const container = document.createElement('div');
-  container.style.cssText = 'position:absolute;left:0;top:0;width:794px;background:#fff;z-index:-1;opacity:0;pointer-events:none;';
-  container.innerHTML = html;
-  document.body.appendChild(container);
-
-  // Wait for content to render
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(html);
+  win.document.close();
   setTimeout(() => {
-    const opt = {
-      margin: 0,
-      filename: 'DIOP_' + client.name.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().getFullYear() + '.pdf',
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { 
-        scale: 1.5, 
-        useCORS: true, 
-        logging: false,
-        windowWidth: 794,
-        backgroundColor: '#ffffff'
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: 'css', before: '.page-break' }
-    };
-
-    html2pdf().set(opt).from(container).save().then(() => {
-      document.body.removeChild(container);
-      document.body.removeChild(overlay);
-      if(btn) { btn.textContent = '↓ Exportar PDF'; btn.disabled = false; }
-      showToast('PDF descargado ✓');
-    }).catch(err => {
-      document.body.removeChild(container);
-      document.body.removeChild(overlay);
-      if(btn) { btn.textContent = '↓ Exportar PDF'; btn.disabled = false; }
-      showToast('Error al generar PDF');
-      console.error(err);
-    });
-  }, 500);
+    win.focus();
+    win.print();
+  }, 1000);
 }
 </script>
