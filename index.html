@@ -990,23 +990,31 @@ function openReport() {
     </div>
     <div class="report-content" id="report-body"></div>`;
 }
-
 async function generateReport() {
   const btn = document.getElementById('gen-btn');
-  btn.disabled = true; btn.textContent = 'Analizando...';
+  btn.disabled = true;
+  btn.textContent = 'Analizando...';
+
   document.getElementById('report-body').innerHTML = `
     <div class="report-header">
-      <div class="rh-body"><div class="ai-thinking"><div class="ait-dot"></div><div class="ait-dot"></div><div class="ait-dot"></div><span>La IA está analizando todas las respuestas del diagnóstico...</span></div></div>
+      <div class="rh-body">
+        <div class="ai-thinking">
+          <div class="ait-dot"></div>
+          <div class="ait-dot"></div>
+          <div class="ait-dot"></div>
+          <span>La IA está analizando todas las respuestas del diagnóstico...</span>
+        </div>
+      </div>
     </div>`;
 
-  // Build context from answers
-  let ctx = `CLIENTE: ${currentClient.name}\nSECTOR: ${currentClient.sector||'No indicado'}\n\n`;
-  SESSION_ORDER.forEach(sid=>{
+  let ctx = `CLIENTE: ${currentClient.name}\nSECTOR: ${currentClient.sector || 'No indicado'}\n\n`;
+
+  SESSION_ORDER.forEach(sid => {
     ctx += `\n=== ${SESSIONS[sid].label.toUpperCase()} ===\n`;
-    SESSIONS[sid].blocks.forEach(b=>{
-      b.questions.forEach(q=>{
+    SESSIONS[sid].blocks.forEach(b => {
+      b.questions.forEach(q => {
         const ans = allAnswers[`${currentClient.id}_${sid}_${q.id}`];
-        if(ans) ctx += `${q.text}: ${ans}\n`;
+        if (ans) ctx += `${q.text}: ${ans}\n`;
       });
     });
   });
@@ -1032,15 +1040,10 @@ REGLAS DE ANÁLISIS (CRÍTICO):
 - El impacto_total_estimado debe dividirse implícitamente en:
   (a) quick wins (impacto inmediato)
   (b) oportunidades estructurales (no incluidas en quick wins)
-
 - La suma de los quick_wins debe representar entre 20% y 50% del impacto_total_estimado.
-
 - El ahorro_estimado_anual debe ser coherente con los quick_wins (no inferior sin explicación).
-
 - Si el impacto_total_estimado es alto pero los quick wins no capturan todo, debe quedar implícito que existe un potencial adicional no capturado en el corto plazo.
-
 - No utilices cifras redondas sin lógica. Prioriza rangos si hay incertidumbre.
-
 - Si no hay suficiente información para estimar con precisión, usa rangos y deja claro que es una estimación orientativa.
 
 2. USO DE DATOS:
@@ -1067,6 +1070,7 @@ REGLAS DE ANÁLISIS (CRÍTICO):
 - Escribe como consultor senior.
 - Sé claro, directo y profesional.
 - Si hay incertidumbre, exprésala de forma controlada (no afirmes con seguridad lo que no sabes).
+
 7. EXPLICACIÓN DEL IMPACTO (CRÍTICO):
 - El impacto_total_estimado debe estar implícitamente desglosado en causas principales.
 - Identifica qué áreas generan mayor pérdida (ej: cambios de formato, mermas, falta de datos).
@@ -1111,7 +1115,6 @@ REGLAS DE ANÁLISIS (CRÍTICO):
 - Priorizar herramientas ligeras, modulares y rápidas de implementar.
 - Las herramientas deben ser creíbles para una empresa de 10-50 empleados.
 - Si hay duda, prioriza soluciones SaaS o modulares frente a ERPs completos.
-
 
 Analiza todo y devuelve un diagnóstico completo en JSON con este formato exacto:
 {
@@ -1171,60 +1174,91 @@ Para herramientas_mercado incluye exactamente 3 herramientas reales existentes e
 Devuelve SOLO el JSON, sin texto adicional.`;
 
   try {
-const res = await fetch('/api/generate-report', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ prompt })
-});
+    const res = await fetch('/api/generate-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
 
-const data = await res.json();
+    const data = await res.json();
 
-if (!res.ok) {
-  throw new Error(data?.error || 'Error al generar informe');
-}
+    if (!res.ok) {
+      throw new Error(data?.error || 'Error al generar informe');
+    }
 
-const text = (data.content || '').replace(/```json|```/g, '').trim();
-const r = JSON.parse(text);
+    const text = (data.content || '').replace(/```json|```/g, '').trim();
+    const r = JSON.parse(text);
 
-// 🔹 Guardar en Supabase
-await sb.from('diop_reports').insert([
-  {
-    client_id: currentClient.id,
-    report_json: r,
-    context_text: ctx,
-    created_by: 'marti'
-  }
-]);
-const { data: reports, error } = await sb
-  .from('diop_reports')
-  .select('id, created_at, report_json')
-  .eq('client_id', currentClient.id)
-  .order('created_at', { ascending: false });
+    await sb.from('diop_reports').insert([
+      {
+        client_id: currentClient.id,
+        report_json: r,
+        context_text: ctx,
+        created_by: 'marti'
+      }
+    ]);
 
-if (error) {
-  console.error('Error cargando histórico:', error);
-} else {
-  console.log('Histórico:', reports);
-}
-renderReport(r, reportsHistoryHtml);
-  } catch(err) {
-    document.getElementById('report-body').innerHTML = `<div style="padding:20px;font-size:13px;color:var(--text2);">Error al generar el informe. Inténtalo de nuevo.</div>`;
-    if(btn){btn.disabled=false;btn.textContent='Reintentar →';}
+    const { data: reports, error } = await sb
+      .from('diop_reports')
+      .select('id, created_at, report_json')
+      .eq('client_id', currentClient.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error cargando histórico:', error);
+    } else {
+      console.log('Histórico:', reports);
+    }
+
+    const reportsHistoryHtml = (reports || []).map(rep => {
+      const report = rep.report_json || {};
+      const impacto = report.kpis?.impacto_total_estimado || '—';
+      const madurez = report.madurez_digital?.puntuacion != null
+        ? `${report.madurez_digital.puntuacion}/10`
+        : '—';
+      const fecha = new Date(rep.created_at).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      return `
+        <div style="background:var(--s2);border:0.5px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:12px;color:var(--text);font-weight:500;">${fecha}</div>
+            <div style="font-size:11px;color:var(--text2);">Impacto: <strong style="color:var(--teal-l);">${impacto}</strong></div>
+            <div style="font-size:11px;color:var(--text2);">Madurez: <strong style="color:var(--teal-l);">${madurez}</strong></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    renderReport(r, reportsHistoryHtml);
+  } catch (err) {
+    console.error(err);
+    document.getElementById('report-body').innerHTML = `
+      <div style="padding:20px;font-size:13px;color:var(--text2);">
+        Error al generar el informe. Inténtalo de nuevo.
+      </div>`;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Reintentar →';
+    }
   }
 }
 
 function renderReport(r, reportsHistoryHtml = '') {
   window._lastReport = r;
-  const urgColor = r.urgencia==='alta'?'var(--red)':r.urgencia==='media'?'var(--amber)':'var(--green)';
-  const scoreColor = r.madurez_digital?.puntuacion<=3?'var(--red)':r.madurez_digital?.puntuacion<=6?'var(--amber)':'var(--green)';
-  const scorePct = ((r.madurez_digital?.puntuacion||0)/10)*100;
-  const qws = r.quick_wins||[];
-  const tools = r.herramientas_mercado||[];
-  const roi = r.roi||{};
-  const bench = r.benchmark_sectorial||{};
-  const kpis = r.kpis||{};
-  const mad = r.madurez_digital||{};
-  const today = new Date().toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'});
+  const urgColor = r.urgencia === 'alta' ? 'var(--red)' : r.urgencia === 'media' ? 'var(--amber)' : 'var(--green)';
+  const scoreColor = r.madurez_digital?.puntuacion <= 3 ? 'var(--red)' : r.madurez_digital?.puntuacion <= 6 ? 'var(--amber)' : 'var(--green)';
+  const scorePct = ((r.madurez_digital?.puntuacion || 0) / 10) * 100;
+  const qws = r.quick_wins || [];
+  const tools = r.herramientas_mercado || [];
+  const roi = r.roi || {};
+  const bench = r.benchmark_sectorial || {};
+  const kpis = r.kpis || {};
+  const mad = r.madurez_digital || {};
+  const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const reportHtml = `
   <div class="report-content">
@@ -1235,20 +1269,21 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="rh-company">${currentClient.name}</div>
           <div class="rh-meta">Informe DIOP · Tecno-Fab · ${today}</div>
         </div>
-        <div style="margin-left:auto;font-size:11px;padding:4px 10px;border-radius:4px;border:0.5px solid ${urgColor};color:${urgColor};background:rgba(226,75,74,0.06);">Urgencia ${r.urgencia||'—'}</div>
+        <div style="margin-left:auto;font-size:11px;padding:4px 10px;border-radius:4px;border:0.5px solid ${urgColor};color:${urgColor};background:rgba(226,75,74,0.06);">Urgencia ${r.urgencia || '—'}</div>
       </div>
+
       <div class="rh-body">
         <div class="r-section">
           <div class="r-label">Resumen ejecutivo</div>
-          <div class="r-summary"><p>${r.resumen_ejecutivo||'—'}</p></div>
+          <div class="r-summary"><p>${r.resumen_ejecutivo || '—'}</p></div>
         </div>
 
         <div class="r-section">
           <div class="r-label">KPIs identificados</div>
           <div class="kpi-grid">
-            <div class="kpi-card"><div class="kpi-lbl">OEE estimado</div><div class="kpi-val kv-r">${kpis.oee_estimado||'—'}</div></div>
-            <div class="kpi-card"><div class="kpi-lbl">Merma estimada</div><div class="kpi-val kv-a">${kpis.merma_pct||'—'}</div></div>
-            <div class="kpi-card"><div class="kpi-lbl">Impacto total estimado</div><div class="kpi-val kv-t">${kpis.impacto_total_estimado||'—'}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">OEE estimado</div><div class="kpi-val kv-r">${kpis.oee_estimado || '—'}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Merma estimada</div><div class="kpi-val kv-a">${kpis.merma_pct || '—'}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Impacto total estimado</div><div class="kpi-val kv-t">${kpis.impacto_total_estimado || '—'}</div></div>
           </div>
         </div>
 
@@ -1256,40 +1291,40 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="r-label">Madurez digital</div>
           <div class="madurez-bar-wrap">
             <div class="madurez-row">
-              <div class="madurez-score" style="color:${scoreColor}">${mad.puntuacion||'—'}<span style="font-size:13px;color:var(--text3);font-weight:400;">/10</span></div>
-              <div class="madurez-nivel" style="color:${scoreColor}">${mad.nivel||'—'}</div>
+              <div class="madurez-score" style="color:${scoreColor}">${mad.puntuacion || '—'}<span style="font-size:13px;color:var(--text3);font-weight:400;">/10</span></div>
+              <div class="madurez-nivel" style="color:${scoreColor}">${mad.nivel || '—'}</div>
             </div>
             <div class="madurez-track"><div class="madurez-fill" style="width:${scorePct}%;background:${scoreColor}"></div></div>
-            <div class="madurez-desc">${mad.descripcion||''}</div>
-            <div class="madurez-next">Para subir de nivel: ${mad.siguiente_nivel||''}</div>
+            <div class="madurez-desc">${mad.descripcion || ''}</div>
+            <div class="madurez-next">Para subir de nivel: ${mad.siguiente_nivel || ''}</div>
           </div>
         </div>
 
         <div class="r-section">
-          <div class="r-label">Benchmark sectorial · ${bench.kpi_referencia||''}</div>
+          <div class="r-label">Benchmark sectorial · ${bench.kpi_referencia || ''}</div>
           <div class="bench-grid">
             <div class="bench-card" style="border:0.5px solid rgba(226,75,74,0.3);">
               <div class="bench-lbl">Tu empresa</div>
-              <div class="bench-val kv-r">${bench.valor_cliente||'—'}</div>
+              <div class="bench-val kv-r">${bench.valor_cliente || '—'}</div>
             </div>
             <div class="bench-card" style="border:0.5px solid rgba(186,117,23,0.3);">
               <div class="bench-lbl">Media sector</div>
-              <div class="bench-val kv-a">${bench.valor_sector_medio||'—'}</div>
+              <div class="bench-val kv-a">${bench.valor_sector_medio || '—'}</div>
             </div>
             <div class="bench-card" style="border:0.5px solid rgba(29,158,117,0.3);">
               <div class="bench-lbl">Top sector</div>
-              <div class="bench-val kv-g">${bench.valor_sector_top||'—'}</div>
+              <div class="bench-val kv-g">${bench.valor_sector_top || '—'}</div>
             </div>
           </div>
-          ${bench.gap_euros?`<div style="margin-top:8px;font-size:12px;color:var(--text2);">Gap económico vs media del sector: <strong style="color:var(--teal-l);">${bench.gap_euros}</strong></div>`:''}
+          ${bench.gap_euros ? `<div style="margin-top:8px;font-size:12px;color:var(--text2);">Gap económico vs media del sector: <strong style="color:var(--teal-l);">${bench.gap_euros}</strong></div>` : ''}
         </div>
 
         <div class="r-section">
           <div class="r-label">Quick Wins priorizados por impacto económico</div>
           <div class="qw-list">
-            ${qws.map((qw,i)=>`
+            ${qws.map((qw, i) => `
               <div class="qw-item">
-                <span class="qw-badge ${['qwb-1','qwb-2','qwb-3'][i]||'qwb-3'}">${qw.impacto_euros} · ${qw.plazo_dias} días</span>
+                <span class="qw-badge ${['qwb-1','qwb-2','qwb-3'][i] || 'qwb-3'}">${qw.impacto_euros} · ${qw.plazo_dias} días</span>
                 <div class="qw-text"><strong style="color:var(--text)">${qw.titulo}</strong> — ${qw.descripcion}</div>
               </div>`).join('')}
           </div>
@@ -1298,24 +1333,24 @@ function renderReport(r, reportsHistoryHtml = '') {
         <div class="r-section">
           <div class="r-label">ROI estimado del proyecto</div>
           <div class="roi-grid">
-            <div class="roi-card"><div class="roi-lbl">Presupuesto herramienta</div><div class="roi-val" style="color:var(--teal-l)">${roi.presupuesto_herramienta||'—'}</div></div>
-            <div class="roi-card"><div class="roi-lbl">Ahorro anual estimado</div><div class="roi-val kv-g">${roi.ahorro_estimado_anual||'—'}</div></div>
-            <div class="roi-card"><div class="roi-lbl">Plazo de retorno</div><div class="roi-val">${roi.plazo_retorno_meses||'—'} meses</div></div>
+            <div class="roi-card"><div class="roi-lbl">Presupuesto herramienta</div><div class="roi-val" style="color:var(--teal-l)">${roi.presupuesto_herramienta || '—'}</div></div>
+            <div class="roi-card"><div class="roi-lbl">Ahorro anual estimado</div><div class="roi-val kv-g">${roi.ahorro_estimado_anual || '—'}</div></div>
+            <div class="roi-card"><div class="roi-lbl">Plazo de retorno</div><div class="roi-val">${roi.plazo_retorno_meses || '—'} meses</div></div>
           </div>
-          <div class="roi-note">${roi.base_calculo||''}</div>
+          <div class="roi-note">${roi.base_calculo || ''}</div>
         </div>
 
         <div class="r-section">
           <div class="r-label">Herramientas del mercado recomendadas</div>
           <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Ajustadas al sector y presupuesto disponible. Primera = opción más económica.</div>
           <div class="tool-list">
-            ${tools.map(t=>`
+            ${tools.map(t => `
               <div class="tool-item">
                 <div class="tool-top"><div class="tool-name">${t.nombre}</div><div class="tool-type">${t.tipo}</div></div>
                 <div class="tool-desc">${t.para_que}</div>
                 <div class="tool-foot">
                   <div class="tool-price">${t.precio_aproximado}</div>
-                  ${t.url?`<a class="tool-link" href="${t.url}" target="_blank">Ver herramienta →</a>`:''}
+                  ${t.url ? `<a class="tool-link" href="${t.url}" target="_blank">Ver herramienta →</a>` : ''}
                 </div>
               </div>`).join('')}
           </div>
@@ -1324,30 +1359,30 @@ function renderReport(r, reportsHistoryHtml = '') {
         <div class="r-section">
           <div class="next-q-box">
             <div class="nqb-lbl">Siguiente pregunta al CEO</div>
-            <div class="nqb-text">"${r.siguiente_pregunta_ceo||'—'}"</div>
+            <div class="nqb-text">"${r.siguiente_pregunta_ceo || '—'}"</div>
           </div>
         </div>
       </div>
 
-      <div style="margin-top:20px;">
+      <div style="margin-top:20px;padding:0 20px 20px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">
           Histórico de informes
         </div>
-        ${reportsHistoryHtml}
+        ${reportsHistoryHtml || '<div style="font-size:12px;color:var(--text3);">No hay informes previos.</div>'}
       </div>
-
     </div>
   </div>`;
 
   document.getElementById('report-body').innerHTML = reportHtml;
   const rr = document.querySelector('.report-ready');
-  if(rr) rr.style.display='none';
-  // Add export button
+  if (rr) rr.style.display = 'none';
+
   const exportBar = document.createElement('div');
   exportBar.style.cssText = 'display:flex;justify-content:flex-end;padding:16px 0 32px;';
   exportBar.innerHTML = '<button onclick="exportPDF()" style="display:flex;align-items:center;gap:8px;padding:10px 22px;background:rgba(0,173,181,0.1);border:0.5px solid rgba(0,173,181,0.35);border-radius:6px;color:#00dee8;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);">↓ Exportar PDF</button>';
   document.getElementById('report-body').appendChild(exportBar);
 }
+
 
 // ── NAV ──
 function showScreen(name) {
