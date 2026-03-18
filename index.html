@@ -1705,7 +1705,7 @@ function renderHome() {
       const cls = state === 'done' ? 'csd-done' : state === 'active' ? 'csd-active' : 'csd-pending';
       return `<div class="cs-dot ${cls}"><div class="csd-icon"></div>${SESSION_LABELS[sid]}</div>`;
     }).join('');
-    return `<div class="cc" onclick="openClient('${c.id}')">
+    return `<div class="cc" data-client-id="${c.id}">
       <div class="cc-top">
         <div class="cc-name">${c.name}</div>
         <div class="cc-sector">${c.sector || '—'}</div>
@@ -1718,5 +1718,10 @@ function renderHome() {
     </div>`;
   }).join('');
   document.getElementById('client-grid').innerHTML = html;
-}  
+
+  document.getElementById('client-grid').addEventListener('click', function(e) {
+    const card = e.target.closest('.cc[data-client-id]');
+    if (card) openClient(card.dataset.clientId);
+  });
+} 
 </script>
