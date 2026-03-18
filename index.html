@@ -397,7 +397,6 @@ select.fi{cursor:pointer;}
 <script>
 const SB_URL = 'https://ihqrqcgswgvtmzddoquf.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlocXJxY2dzd2d2dG16ZGRvcXVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2ODYyMzQsImV4cCI6MjA4OTI2MjIzNH0.b5EPYLXVJxQ53QW-ceBb-vdVzl2zubwefTnp7B94X8U';
-const OAI_KEY = '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';
 let sb = null;
 
 let currentClient = null;
@@ -1083,13 +1082,19 @@ Para herramientas_mercado incluye exactamente 3 herramientas reales existentes e
 Devuelve SOLO el JSON, sin texto adicional.`;
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${OAI_KEY}`},
-      body:JSON.stringify({model:'gpt-4o',max_tokens:2000,messages:[{role:'user',content:prompt}]})
-    });
-    const data = await res.json();
-    const text = (data.choices[0].message.content||'').replace(/```json|```/g,'').trim();
+const res = await fetch('/api/generate-report', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ prompt })
+});
+
+const data = await res.json();
+
+if (!res.ok) {
+  throw new Error(data?.error || 'Error al generar informe');
+}
+
+const text = (data.content || '').replace(/```json|```/g, '').trim();
     const r = JSON.parse(text);
     renderReport(r);
   } catch(err) {
