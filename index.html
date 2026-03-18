@@ -967,17 +967,60 @@ function openReport() {
   document.getElementById('main-content').scrollTop = 0;
   currentSession = 'report';
   renderSidebarRoadmap();
+
   const prog = getProgress(currentClient);
-  const allDone = SESSION_ORDER.every(s=>prog.sessions[s]==='done');
+  const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
+  const reports = currentClient?.reports || [];
+  const latestReportRow = reports.length ? reports[0] : null;
+  const latestReport = latestReportRow?.report_json || null;
 
   document.getElementById('report-content').innerHTML = `
-    <div class="report-ready">
-      <div class="rr-icon">${allDone?'🎯':'📋'}</div>
-      <div class="rr-title">${allDone?'Listo para generar el informe':'Diagnóstico en progreso'}</div>
-      <div class="rr-sub">${allDone?'Las tres sesiones están completadas. La IA analizará todas las respuestas y generará el informe DIOP completo.':'Completa las tres sesiones para poder generar el informe DIOP final.'}</div>
-      ${allDone?`<button class="gen-btn" id="gen-btn" onclick="generateReport()">Generar Informe DIOP →</button>`:''}
+    <div class="report-ready" id="report-ready-box">
+      <div class="rr-icon">${latestReport ? '📄' : allDone ? '🎯' : '📋'}</div>
+      <div class="rr-title">
+        ${latestReport ? 'Último informe disponible' : allDone ? 'Listo para generar el informe' : 'Diagnóstico en progreso'}
+      </div>
+      <div class="rr-sub">
+        ${latestReport
+          ? 'Se muestra automáticamente la última versión guardada del informe DIOP para este cliente.'
+          : allDone
+            ? 'Las tres sesiones están completadas. La IA analizará todas las respuestas y generará el informe DIOP completo.'
+            : 'Completa las tres sesiones para poder generar el informe DIOP final.'}
+      </div>
+      ${
+        allDone
+          ? `<button class="gen-btn" id="gen-btn" onclick="generateReport()">${latestReport ? 'Regenerar informe →' : 'Generar Informe DIOP →'}</button>`
+          : ''
+      }
     </div>
     <div class="report-content" id="report-body"></div>`;
+
+  if (latestReport) {
+    const reportsHistoryHtml = reports.map(rep => {
+      const report = rep.report_json || {};
+      const impacto = report.kpis?.impacto_total_estimado || '—';
+      const madurez = report.madurez_digital?.puntuacion != null
+        ? `${report.madurez_digital.puntuacion}/10`
+        : '—';
+      const fecha = new Date(rep.created_at).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      return `
+        <div style="background:var(--s2);border:0.5px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:12px;color:var(--text);font-weight:500;">${fecha}</div>
+            <div style="font-size:11px;color:var(--text2);">Impacto: <strong style="color:var(--teal-l);">${impacto}</strong></div>
+            <div style="font-size:11px;color:var(--text2);">Madurez: <strong style="color:var(--teal-l);">${madurez}</strong></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    renderReport(latestReport, reportsHistoryHtml);
+  }
 }
 async function generateReport() {
   const btn = document.getElementById('gen-btn');
