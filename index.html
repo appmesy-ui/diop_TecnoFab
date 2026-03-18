@@ -516,12 +516,16 @@ async function init() {
   await loadClients();
 }
 
-<script>
 async function loadClients() {
   const { data, error } = await sb
     .from('diop_clients')
     .select(`
       *,
+      answers:diop_answers (
+        session,
+        question_id,
+        answer
+      ),
       reports:diop_reports (
         id,
         created_at,
@@ -540,6 +544,52 @@ async function loadClients() {
   renderHome();
 }
 
+function getProgress(client) {
+  const answersMap = {};
+  const clientAnswers = client.answers || [];
+
+  clientAnswers.forEach(a => {
+    answersMap[`${client.id}_${a.session}_${a.question_id}`] = a.answer;
+  });
+
+  const sessions = {};
+  let totalQ = 0;
+  let answeredQ = 0;
+
+  SESSION_ORDER.forEach(sid => {
+    const completed = answersMap[`${client.id}_${sid}__completed`];
+    const sess = SESSIONS[sid];
+    let sTotal = 0;
+    let sAnswered = 0;
+
+    sess.blocks.forEach(b => {
+      b.questions.forEach(q => {
+        sTotal++;
+        totalQ++;
+        const ans = answersMap[`${client.id}_${sid}_${q.id}`];
+        if (ans && ans.trim() !== '') {
+          sAnswered++;
+          answeredQ++;
+        }
+      });
+    });
+
+    if (completed === 'true') {
+      sessions[sid] = 'done';
+    } else {
+      sessions[sid] = sAnswered === sTotal ? 'done' : sAnswered > 0 ? 'active' : 'pending';
+    }
+  });
+
+  const allSessDone = SESSION_ORDER.every(s => sessions[s] === 'done');
+
+  return {
+    pct: totalQ > 0 ? Math.round((answeredQ / totalQ) * 100) : 0,
+    sessions,
+    report: allSessDone ? 'active' : 'pending'
+  };
+}
+
 function renderHome() {
   document.getElementById('home-count').textContent =
     `${clients.length} diagnóstico${clients.length !== 1 ? 's' : ''} activo${clients.length !== 1 ? 's' : ''}`;
@@ -555,11 +605,15 @@ function renderHome() {
   }
 
   grid.innerHTML = clients.map(c => {
-    const lastReportRow = c.reports?.[0] || null;
+    const sortedReports = [...(c.reports || [])].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    const lastReportRow = sortedReports[0] || null;
     const lastReport = lastReportRow?.report_json || null;
 
     const lastImpact = lastReport?.kpis?.impacto_total_estimado || null;
-    const lastMaturity = lastReport?.madurez_digital?.puntuacion || null;
+    const lastMaturity = lastReport?.madurez_digital?.puntuacion ?? null;
 
     let lastActivity = 'Sin actividad';
 
@@ -597,7 +651,7 @@ function renderHome() {
         <div class="cc-last-report" style="margin-top:8px;margin-bottom:10px;font-size:12px;color:var(--text2);">
           ${
             lastReport
-              ? `Impacto: ${lastImpact || '—'} · Madurez: ${lastMaturity != null ? `${lastMaturity}/10` : '—'}`
+              ? `Impacto: ${lastImpact || '—'} · Madurez: ${lastMaturity !== null ? `${lastMaturity}/10` : '—'}`
               : 'Sin informe aún'
           }
         </div>
@@ -616,8 +670,6 @@ function renderHome() {
     `;
   }).join('');
 }
-</script>
-
 function getProgress(client) {
   const sessions = {};
   let totalQ = 0, answeredQ = 0;
