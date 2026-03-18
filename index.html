@@ -974,8 +974,9 @@ function openReport() {
   const latestReportRow = reports.length ? reports[0] : null;
   const latestReport = latestReportRow?.report_json || null;
 
-  document.getElementById('report-content').innerHTML = `
-    <div class="report-ready" id="report-ready-box">
+document.getElementById('report-content').innerHTML = `
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="report-ready" id="report-ready-box" style="padding:20px 20px 28px;margin-bottom:16px;">
       <div class="rr-icon">${latestReport ? '📄' : allDone ? '🎯' : '📋'}</div>
       <div class="rr-title">
         ${latestReport ? 'Último informe disponible' : allDone ? 'Listo para generar el informe' : 'Diagnóstico en progreso'}
@@ -993,7 +994,8 @@ function openReport() {
           : ''
       }
     </div>
-    <div class="report-content" id="report-body"></div>`;
+    <div class="report-content" id="report-body"></div>
+  </div>`;
 
   if (latestReport) {
     const reportsHistoryHtml = reports.map(rep => {
