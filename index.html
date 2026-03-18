@@ -1206,14 +1206,14 @@ if (error) {
 } else {
   console.log('Histórico:', reports);
 }
-renderReport(r);
+renderReport(r, reportsHistoryHtml);
   } catch(err) {
     document.getElementById('report-body').innerHTML = `<div style="padding:20px;font-size:13px;color:var(--text2);">Error al generar el informe. Inténtalo de nuevo.</div>`;
     if(btn){btn.disabled=false;btn.textContent='Reintentar →';}
   }
 }
 
-function renderReport(r) {
+function renderReport(r, reportsHistoryHtml = '') {
   window._lastReport = r;
   const urgColor = r.urgencia==='alta'?'var(--red)':r.urgencia==='media'?'var(--amber)':'var(--green)';
   const scoreColor = r.madurez_digital?.puntuacion<=3?'var(--red)':r.madurez_digital?.puntuacion<=6?'var(--amber)':'var(--green)';
@@ -1328,6 +1328,14 @@ function renderReport(r) {
           </div>
         </div>
       </div>
+
+      <div style="margin-top:20px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">
+          Histórico de informes
+        </div>
+        ${reportsHistoryHtml}
+      </div>
+
     </div>
   </div>`;
 
