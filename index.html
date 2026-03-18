@@ -1195,7 +1195,17 @@ await sb.from('diop_reports').insert([
     created_by: 'marti'
   }
 ]);
+const { data: reports, error } = await sb
+  .from('diop_reports')
+  .select('id, created_at, report_json')
+  .eq('client_id', currentClient.id)
+  .order('created_at', { ascending: false });
 
+if (error) {
+  console.error('Error cargando histórico:', error);
+} else {
+  console.log('Histórico:', reports);
+}
 renderReport(r);
   } catch(err) {
     document.getElementById('report-body').innerHTML = `<div style="padding:20px;font-size:13px;color:var(--text2);">Error al generar el informe. Inténtalo de nuevo.</div>`;
