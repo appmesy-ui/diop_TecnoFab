@@ -517,15 +517,10 @@ async function init() {
 }
 
 async function loadClients() {
-  const { data, error } = await sb
+  const { data: clientsData, error: clientsError } = await sb
     .from('diop_clients')
     .select(`
       *,
-      answers:diop_answers (
-        session,
-        question_id,
-        answer
-      ),
       reports:diop_reports (
         id,
         created_at,
@@ -534,214 +529,35 @@ async function loadClients() {
     `)
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error(error);
+  if (clientsError) {
+    console.error('Error cargando clientes:', clientsError);
     showToast('Error al cargar clientes');
     return;
   }
 
-  clients = data || [];
-  renderHome();
-}
+  const { data: answersData, error: answersError } = await sb
+    .from('diop_answers')
+    .select('client_id, session, question_id, answer');
 
-function getProgress(client) {
-  const answersMap = {};
-  const clientAnswers = client.answers || [];
-
-  clientAnswers.forEach(a => {
-    answersMap[`${client.id}_${a.session}_${a.question_id}`] = a.answer;
-  });
-
-  const sessions = {};
-  let totalQ = 0;
-  let answeredQ = 0;
-
-  SESSION_ORDER.forEach(sid => {
-    const completed = answersMap[`${client.id}_${sid}__completed`];
-    const sess = SESSIONS[sid];
-    let sTotal = 0;
-    let sAnswered = 0;
-
-    sess.blocks.forEach(b => {
-      b.questions.forEach(q => {
-        sTotal++;
-        totalQ++;
-        const ans = answersMap[`${client.id}_${sid}_${q.id}`];
-        if (ans && ans.trim() !== '') {
-          sAnswered++;
-          answeredQ++;
-        }
-      });
-    });
-
-    if (completed === 'true') {
-      sessions[sid] = 'done';
-    } else {
-      sessions[sid] = sAnswered === sTotal ? 'done' : sAnswered > 0 ? 'active' : 'pending';
-    }
-  });
-
-  const allSessDone = SESSION_ORDER.every(s => sessions[s] === 'done');
-
-  return {
-    pct: totalQ > 0 ? Math.round((answeredQ / totalQ) * 100) : 0,
-    sessions,
-    report: allSessDone ? 'active' : 'pending'
-  };
-}
-
-function renderHome() {
-  document.getElementById('home-count').textContent =
-    `${clients.length} diagnóstico${clients.length !== 1 ? 's' : ''} activo${clients.length !== 1 ? 's' : ''}`;
-
-  document.getElementById('sidebar-stats').textContent =
-    `${clients.length} cliente${clients.length !== 1 ? 's' : ''}`;
-
-  const grid = document.getElementById('client-grid');
-
-  if (!clients.length) {
-    grid.innerHTML = '<div class="empty"><p>No hay diagnósticos todavía.</p></div>';
+  if (answersError) {
+    console.error('Error cargando respuestas:', answersError);
+    showToast('Error al cargar respuestas');
     return;
   }
 
-  grid.innerHTML = clients.map(c => {
-    const sortedReports = [...(c.reports || [])].sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
-    );
+  const answersByClient = {};
 
-    const lastReportRow = sortedReports[0] || null;
-    const lastReport = lastReportRow?.report_json || null;
-
-    const lastImpact = lastReport?.kpis?.impacto_total_estimado || null;
-    const lastMaturity = lastReport?.madurez_digital?.puntuacion ?? null;
-
-    let lastActivity = 'Sin actividad';
-
-    if (lastReportRow?.created_at) {
-      const diff = Date.now() - new Date(lastReportRow.created_at).getTime();
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-      if (days === 0) lastActivity = 'Hoy';
-      else if (days === 1) lastActivity = 'Hace 1 día';
-      else lastActivity = `Hace ${days} días`;
-    }
-
-    const prog = getProgress(c);
-    const pct = prog.pct;
-
-    return `
-      <div class="cc" onclick="openClient(${c.id})">
-        <div class="cc-top">
-          <div>
-            <div class="cc-name">${c.name}</div>
-            <div class="cc-last" style="font-size:11px;color:var(--text3);margin-top:4px;">
-              Última actividad: ${lastActivity}
-            </div>
-          </div>
-          <div class="cc-sector">${c.sector || 'Sin sector'}</div>
-        </div>
-
-        <div class="cc-prog-row">
-          <div class="prog-track">
-            <div class="prog-fill" style="width:${pct}%"></div>
-          </div>
-          <div class="prog-pct">${pct}% completado</div>
-        </div>
-
-        <div class="cc-last-report" style="margin-top:8px;margin-bottom:10px;font-size:12px;color:var(--text2);">
-          ${
-            lastReport
-              ? `Impacto: ${lastImpact || '—'} · Madurez: ${lastMaturity !== null ? `${lastMaturity}/10` : '—'}`
-              : 'Sin informe aún'
-          }
-        </div>
-
-        <div class="cc-sessions">
-          ${SESSION_ORDER.map(s => {
-            const st = prog.sessions[s];
-            const cls = st === 'done' ? 'csd-done' : st === 'active' ? 'csd-active' : 'csd-pending';
-            return `<div class="cs-dot ${cls}"><div class="csd-icon"></div>${SESSION_LABELS[s]}</div>`;
-          }).join('')}
-          <div class="cs-dot ${prog.report === 'done' ? 'csd-done' : prog.report === 'active' ? 'csd-active' : 'csd-pending'}">
-            <div class="csd-icon"></div>Informe
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-function getProgress(client) {
-  const sessions = {};
-  let totalQ = 0, answeredQ = 0;
-  SESSION_ORDER.forEach(sid => {
-    // Check explicit completion flag first
-    const completed = allAnswers[`${client.id}_${sid}__completed`];
-    const sess = SESSIONS[sid];
-    let sTotal = 0, sAnswered = 0;
-    sess.blocks.forEach(b => {
-      b.questions.forEach(q => {
-        sTotal++; totalQ++;
-        const ans = allAnswers[`${client.id}_${sid}_${q.id}`];
-        if(ans && ans.trim()!=='') { sAnswered++; answeredQ++; }
-      });
-    });
-    if(completed === 'true') {
-      sessions[sid] = 'done';
-      answeredQ = answeredQ; // keep real count for pct
-    } else {
-      sessions[sid] = sAnswered === sTotal ? 'done' : sAnswered > 0 ? 'active' : 'pending';
-    }
+  (answersData || []).forEach(a => {
+    if (!answersByClient[a.client_id]) answersByClient[a.client_id] = [];
+    answersByClient[a.client_id].push(a);
   });
-  const allSessDone = SESSION_ORDER.every(s=>sessions[s]==='done');
-  return {
-    pct: totalQ > 0 ? Math.round((answeredQ/totalQ)*100) : 0,
-    sessions,
-    report: allSessDone ? 'active' : 'pending'
-  };
-}
 
-async function openClient(clientId) {
-  const client = clients.find(c=>c.id===clientId);
-  if(!client) return;
-  currentClient = client;
-  // load answers
-  const {data} = await sb.from('diop_answers').select('*').eq('client_id',clientId);
-  allAnswers = {};
-  (data||[]).forEach(a => { allAnswers[`${clientId}_${a.session}_${a.question_id}`] = a.answer; });
-  showClientUI();
-}
+  clients = (clientsData || []).map(c => ({
+    ...c,
+    answers: answersByClient[c.id] || []
+  }));
 
-function showClientUI() {
-  document.getElementById('topbar-client').textContent = currentClient.name;
-  document.getElementById('topbar-back').classList.add('visible');
-  document.getElementById('sidebar-home-content').style.display='none';
-  document.getElementById('sidebar-client-content').style.display='block';
-  document.getElementById('sc-name').textContent = currentClient.name;
-  document.getElementById('sc-meta').textContent = currentClient.sector||'';
-  renderSidebarRoadmap();
-  // find first non-done session
-  const prog = getProgress(currentClient);
-  const nextSess = SESSION_ORDER.find(s=>prog.sessions[s]!=='done') || 'ceo';
-  if(SESSION_ORDER.every(s=>prog.sessions[s]==='done')) {
-    openReport();
-  } else {
-    openSession(nextSess);
-  }
-}
-
-function renderSidebarRoadmap() {
-  const prog = getProgress(currentClient);
-  const steps = [...SESSION_ORDER.map(s=>({id:s,label:SESSION_LABELS[s],status:prog.sessions[s]})),{id:'report',label:'Informe',status:prog.report}];
-  document.getElementById('sidebar-roadmap').innerHTML = steps.map((step,i)=>{
-    const cls = step.status==='done'?'rc-done':step.status==='active'?'rc-active':'rc-pending';
-    const lcls = step.status==='done'?'rld':step.status==='active'?'rla':'';
-    const label = step.status==='done'?'✓':(i+1);
-    const onclick = step.id!=='report' ? `onclick="openSession('${step.id}')"` : `onclick="openReport()"`;
-    return `<div class="rm-item ${step.status==='active'?'rm-active':''}" ${onclick}>
-      <div class="rm-circle ${cls}">${label}</div>
-      <div class="rm-label ${lcls}">${step.label}</div>
-    </div>`;
-  }).join('');
+  renderHome();
 }
 
 function openSession(sessionId) {
