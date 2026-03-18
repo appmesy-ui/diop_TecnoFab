@@ -395,7 +395,6 @@ select.fi{cursor:pointer;}
 <div class="toast" id="toast"></div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
 const SB_URL = 'https://ihqrqcgswgvtmzddoquf.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlocXJxY2dzd2d2dG16ZGRvcXVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2ODYyMzQsImV4cCI6MjA4OTI2MjIzNH0.b5EPYLXVJxQ53QW-ceBb-vdVzl2zubwefTnp7B94X8U';
 const OAI_KEY = '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';
@@ -516,6 +515,14 @@ const SESSION_LABELS = {ceo:'CEO',fab:'Fábrica',sys:'Sistemas'};
 async function init() {
   await loadClients();
 }
+
+window.addEventListener('load', function() {
+  if(typeof supabase !== 'undefined') {
+    init();
+  } else {
+    document.getElementById('client-grid').innerHTML = '<div class="empty"><p>Error cargando librerías. Recarga la página.</p></div>';
+  }
+});
 
 async function loadClients() {
   const {data,error} = await sb.from('diop_clients').select('*').order('created_at',{ascending:false});
@@ -1591,3 +1598,5 @@ function exportPDF() {
     });
   }, 500);
 }
+
+
