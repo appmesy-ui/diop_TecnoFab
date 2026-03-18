@@ -1638,4 +1638,85 @@ function exportPDF() {
     win.print();
   }, 1000);
 }
+function getProgress(client) {
+  const sessions = {};
+  SESSION_ORDER.forEach(sid => {
+    const completed = client.answers?.find(a => a.session === sid && a.question_id === '_completed');
+    const answered = client.answers?.filter(a => a.session === sid && a.question_id !== '_completed').length || 0;
+    sessions[sid] = completed ? 'done' : answered > 0 ? 'active' : 'pending';
+  });
+  const done = Object.values(sessions).filter(v => v === 'done').length;
+  return { sessions, pct: Math.round((done / SESSION_ORDER.length) * 100) };
+}
+
+function openClient(clientId) {
+  currentClient = clients.find(c => c.id === clientId);
+  if (!currentClient) return;
+  allAnswers = {};
+  (currentClient.answers || []).forEach(a => {
+    allAnswers[`${currentClient.id}_${a.session}_${a.question_id}`] = a.answer;
+  });
+  document.getElementById('topbar-client').textContent = currentClient.name;
+  document.getElementById('topbar-back').classList.add('visible');
+  document.getElementById('sidebar-home-content').style.display = 'none';
+  document.getElementById('sidebar-client-content').style.display = 'block';
+  document.getElementById('sc-name').textContent = currentClient.name;
+  document.getElementById('sc-meta').textContent = currentClient.sector || '';
+  renderSidebarRoadmap();
+  const prog = getProgress(currentClient);
+  const nextSess = SESSION_ORDER.find(s => prog.sessions[s] !== 'done') || 'ceo';
+  const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
+  if (allDone) openReport();
+  else openSession(nextSess);
+}
+
+function renderSidebarRoadmap() {
+  const prog = currentClient ? getProgress(currentClient) : null;
+  const html = SESSION_ORDER.map(sid => {
+    const state = prog ? prog.sessions[sid] : 'pending';
+    const circleClass = state === 'done' ? 'rc-done' : state === 'active' ? 'rc-active' : 'rc-pending';
+    const labelClass = state === 'done' ? 'rld' : state === 'active' ? 'rla' : '';
+    const icon = state === 'done' ? '✓' : state === 'active' ? '→' : '○';
+    const isActive = currentSession === sid;
+    return `<div class="rm-item ${isActive ? 'rm-active' : ''}" onclick="openSession('${sid}')">
+      <div class="rm-circle ${circleClass}">${icon}</div>
+      <div class="rm-label ${labelClass}">${SESSIONS[sid].label}</div>
+    </div>`;
+  }).join('');
+  const reportState = prog && SESSION_ORDER.every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
+  document.getElementById('sidebar-roadmap').innerHTML = html +
+    `<div class="rm-item ${currentSession === 'report' ? 'rm-active' : ''}" onclick="openReport()">
+      <div class="rm-circle ${reportState}">📄</div>
+      <div class="rm-label">Informe DIOP</div>
+    </div>`;
+}
+
+function renderHome() {
+  const count = clients.length;
+  document.getElementById('home-count').textContent = `${count} diagnóstico${count !== 1 ? 's' : ''} activo${count !== 1 ? 's' : ''}`;
+  if (count === 0) {
+    document.getElementById('client-grid').innerHTML = `<div class="empty"><p>No hay diagnósticos todavía.</p></div>`;
+    return;
+  }
+  const html = clients.map(c => {
+    const prog = getProgress(c);
+    const sessHtml = SESSION_ORDER.map(sid => {
+      const state = prog.sessions[sid];
+      const cls = state === 'done' ? 'csd-done' : state === 'active' ? 'csd-active' : 'csd-pending';
+      return `<div class="cs-dot ${cls}"><div class="csd-icon"></div>${SESSION_LABELS[sid]}</div>`;
+    }).join('');
+    return `<div class="cc" onclick="openClient('${c.id}')">
+      <div class="cc-top">
+        <div class="cc-name">${c.name}</div>
+        <div class="cc-sector">${c.sector || '—'}</div>
+      </div>
+      <div class="cc-prog-row">
+        <div class="prog-track"><div class="prog-fill" style="width:${prog.pct}%"></div></div>
+        <div class="prog-pct">${prog.pct}%</div>
+      </div>
+      <div class="cc-sessions">${sessHtml}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('client-grid').innerHTML = html;
+}  
 </script>
