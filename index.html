@@ -1650,22 +1650,31 @@ function getProgress(client) {
 }
 
 function openClient(clientId) {
-  currentClient = clients.find(c => c.id === clientId);
-  if (!currentClient) return;
+  currentClient = clients.find(c => String(c.id) === String(clientId));
+  if (!currentClient) {
+    console.error('Cliente no encontrado. clientId:', clientId, 'clients:', clients);
+    showToast('No se pudo abrir el cliente');
+    return;
+  }
+
   allAnswers = {};
   (currentClient.answers || []).forEach(a => {
     allAnswers[`${currentClient.id}_${a.session}_${a.question_id}`] = a.answer;
   });
+
   document.getElementById('topbar-client').textContent = currentClient.name;
   document.getElementById('topbar-back').classList.add('visible');
   document.getElementById('sidebar-home-content').style.display = 'none';
   document.getElementById('sidebar-client-content').style.display = 'block';
   document.getElementById('sc-name').textContent = currentClient.name;
   document.getElementById('sc-meta').textContent = currentClient.sector || '';
+
   renderSidebarRoadmap();
+
   const prog = getProgress(currentClient);
-  const nextSess = SESSION_ORDER.find(s => prog.sessions[s] !== 'done') || 'ceo';
   const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
+  const nextSess = SESSION_ORDER.find(s => prog.sessions[s] !== 'done') || 'ceo';
+
   if (allDone) openReport();
   else openSession(nextSess);
 }
