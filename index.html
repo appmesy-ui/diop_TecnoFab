@@ -968,11 +968,12 @@ function openReport() {
   currentSession = 'report';
   renderSidebarRoadmap();
 
-  const prog = getProgress(currentClient);
-  const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
-  const reports = currentClient?.reports || [];
-  const latestReportRow = reports.length ? reports[0] : null;
-  const latestReport = latestReportRow?.report_json || null;
+const prog = getProgress(currentClient);
+const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
+const reportOutdated = prog.reportOutdated;
+const reports = currentClient?.reports || [];
+const latestReportRow = reports.length ? reports[0] : null;
+const latestReport = latestReportRow?.report_json || null;
 
 document.getElementById('report-content').innerHTML = `
   <div style="max-width:1100px;margin:0 auto;">
