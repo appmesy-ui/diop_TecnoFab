@@ -1400,7 +1400,7 @@ function renderReport(r, reportsHistoryHtml = '') {
 
   document.getElementById('report-body').innerHTML = reportHtml;
   const rr = document.querySelector('.report-ready');
-  if (rr) rr.style.display = 'none';
+  if (rr) rr.style.display = 'block';
 
   const exportBar = document.createElement('div');
   exportBar.style.cssText = 'display:flex;justify-content:flex-end;padding:16px 0 32px;';
