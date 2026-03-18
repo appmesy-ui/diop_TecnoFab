@@ -1095,8 +1095,19 @@ if (!res.ok) {
 }
 
 const text = (data.content || '').replace(/```json|```/g, '').trim();
-    const r = JSON.parse(text);
-    renderReport(r);
+const r = JSON.parse(text);
+
+// 🔹 Guardar en Supabase
+await sb.from('diop_reports').insert([
+  {
+    client_id: currentClient.id,
+    report_json: r,
+    context_text: ctx,
+    created_by: 'marti'
+  }
+]);
+
+renderReport(r);
   } catch(err) {
     document.getElementById('report-body').innerHTML = `<div style="padding:20px;font-size:13px;color:var(--text2);">Error al generar el informe. Inténtalo de nuevo.</div>`;
     if(btn){btn.disabled=false;btn.textContent='Reintentar →';}
