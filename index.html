@@ -294,13 +294,39 @@ select.fi{cursor:pointer;}
 .search-input::placeholder{color:var(--text3);}
 
 /* SECTOR GROUPS */
-.sector-group{margin-bottom:24px;}
-.sector-group-label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--text3);font-family:var(--mono);margin-bottom:8px;padding:0 2px;}
-.sector-group-count{font-size:9px;color:var(--text4);font-family:var(--mono);margin-left:6px;}
+.sector-card{background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;transition:all .2s;}
+.sector-card.open{border-color:var(--border2);}
+.sector-header{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none;}
+.sector-header:hover{background:rgba(0,173,181,0.04);}
+.sector-icon{width:32px;height:32px;border-radius:8px;background:rgba(0,173,181,0.08);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.sector-name{font-size:13px;font-weight:600;color:var(--text);}
+.sector-meta{font-size:11px;color:var(--text3);margin-top:1px;}
+.sector-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.sector-count{font-size:10px;color:var(--text3);background:var(--s2);padding:2px 8px;border-radius:var(--r-xs);border:0.5px solid var(--border);font-family:var(--mono);}
+.sector-chevron{font-size:11px;color:var(--text3);transition:transform .2s;}
+.sector-card.open .sector-chevron{transform:rotate(180deg);}
+.sector-body{display:none;padding:0 12px 12px;}
+.sector-card.open .sector-body{display:block;}
+.sector-mini-prog{display:flex;gap:3px;flex-shrink:0;}
+.smp{width:16px;height:3px;border-radius:2px;}
+.smp-done{background:var(--green);}
+.smp-active{background:var(--teal);}
+.smp-pending{background:var(--s3);}
+
+/* CLIENT ROW */
+.client-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px;cursor:pointer;transition:all .15s;}
+.client-row:hover{border-color:var(--border2);background:var(--s3);}
+.cr-info{flex:1;}
+.cr-name{font-size:13px;font-weight:500;color:var(--text);}
+.cr-date{font-size:11px;color:var(--text3);margin-top:1px;}
+.cr-prog{max-width:100px;width:100px;}
+.cr-track{height:3px;background:var(--s3);border-radius:2px;overflow:hidden;}
+.cr-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--teal-d),var(--teal-l));}
+.cr-pct{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:3px;}
+.cr-dots{display:flex;gap:4px;}
 
 /* ARCHIVE */
-.cc-actions{display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);}
-.btn-archive{font-size:11px;color:var(--text3);background:none;border:0.5px solid var(--border);border-radius:var(--r-xs);padding:3px 10px;cursor:pointer;font-family:var(--font);transition:all .15s;}
+.btn-archive{font-size:10px;color:var(--text3);background:none;border:0.5px solid var(--border);border-radius:var(--r-xs);padding:3px 8px;cursor:pointer;font-family:var(--font);flex-shrink:0;transition:all .15s;}
 .btn-archive:hover{color:var(--red);border-color:rgba(226,75,74,0.4);background:rgba(226,75,74,0.05);}
   
 </style>
@@ -1933,6 +1959,14 @@ function renderHome() {
 }
 
 function renderGrouped(list) {
+const SECTOR_ICONS = {
+  'Alimentación y bebidas':'🥫','Farmacéutico':'💊','Cosmética y cuidado personal':'🧴',
+  'Metal y componentes':'⚙️','Plástico y caucho':'🔧','Papel y cartón':'📦',
+  'Química':'🧪','Electrónica':'💡','Automoción':'🚗','Textil':'🧵','Otro':'🏭'
+};
+let openSectors = {};
+
+function renderGrouped(list) {
   const container = document.getElementById('clients-grouped');
   if (!container) return;
   if (list.length === 0) {
@@ -1946,43 +1980,66 @@ function renderGrouped(list) {
     groups[sector].push(c);
   });
   const html = Object.keys(groups).sort().map(sector => {
-    const cards = groups[sector].map(c => {
+    const isOpen = openSectors[sector] !== false;
+    const icon = SECTOR_ICONS[sector] || '🏭';
+    const clientsHtml = groups[sector].map(c => {
       const prog = getProgress(c);
-      const sessHtml = SESSION_ORDER.map(sid => {
+      const dotsHtml = SESSION_ORDER.map(sid => {
         const state = prog.sessions[sid];
         const cls = state==='done'?'csd-done':state==='active'?'csd-active':'csd-pending';
         return `<div class="cs-dot ${cls}"><div class="csd-icon"></div>${SESSION_LABELS[sid]}</div>`;
       }).join('');
-      return `<div class="cc" data-client-id="${c.id}">
-        <div class="cc-top">
-          <div>
-            <div class="cc-name">${c.name}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:4px;">${formatDateRelative(c.last_activity_at)}</div>
-          </div>
-          <div class="cc-sector">${c.sector||'—'}</div>
+      const miniProg = SESSION_ORDER.map(sid => {
+        const state = prog.sessions[sid];
+        return `<div class="smp smp-${state}"></div>`;
+      }).join('');
+      return `<div class="client-row" data-client-id="${c.id}">
+        <div class="cr-info">
+          <div class="cr-name">${c.name}</div>
+          <div class="cr-date">${formatDateRelative(c.last_activity_at)}</div>
         </div>
-        <div class="cc-prog-row">
-          <div class="prog-track"><div class="prog-fill" style="width:${prog.pct}%"></div></div>
-          <div class="prog-pct">${prog.pct}%</div>
+        <div class="cr-prog">
+          <div class="cr-track"><div class="cr-fill" style="width:${prog.pct}%"></div></div>
+          <div class="cr-pct">${prog.pct}%</div>
         </div>
-        <div class="cc-sessions">${sessHtml}</div>
-        <div class="cc-actions">
-          <button class="btn-archive" onclick="archiveClient(event,'${c.id}','${c.name.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">Archivar</button>
-        </div>
+        <div class="cr-dots">${dotsHtml}</div>
+        <button class="btn-archive" onclick="archiveClient(event,'${c.id}','${c.name.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">Archivar</button>
       </div>`;
     }).join('');
-    return `<div class="sector-group">
-      <div class="sector-group-label">${sector}<span class="sector-group-count">${groups[sector].length}</span></div>
-      ${cards}
+    const firstProg = getProgress(groups[sector][0]);
+    const miniProg = SESSION_ORDER.map(sid => {
+      const state = firstProg.sessions[sid];
+      return `<div class="smp smp-${state}"></div>`;
+    }).join('');
+    return `<div class="sector-card ${isOpen?'open':''}" id="sc-${sector.replace(/\s/g,'_')}">
+      <div class="sector-header" onclick="toggleSector('${sector.replace(/'/g,"\\'")}')">
+        <div class="sector-icon">${icon}</div>
+        <div>
+          <div class="sector-name">${sector}</div>
+          <div class="sector-meta">${groups[sector].length} empresa${groups[sector].length!==1?'s':''}</div>
+        </div>
+        <div class="sector-right">
+          <div class="sector-mini-prog">${miniProg}</div>
+          <div class="sector-count">${groups[sector].length}</div>
+          <div class="sector-chevron">▼</div>
+        </div>
+      </div>
+      <div class="sector-body">${clientsHtml}</div>
     </div>`;
   }).join('');
   container.innerHTML = html;
-  container.querySelectorAll('.cc[data-client-id]').forEach(card => {
-    card.addEventListener('click', function(e) {
+  container.querySelectorAll('.client-row[data-client-id]').forEach(row => {
+    row.addEventListener('click', function(e) {
       if (e.target.closest('.btn-archive')) return;
-      openClient(card.dataset.clientId);
+      openClient(row.dataset.clientId);
     });
   });
+}
+
+function toggleSector(sector) {
+  openSectors[sector] = openSectors[sector] === false ? true : false;
+  const term = document.getElementById('client-search')?.value || '';
+  renderGrouped(term ? clients.filter(c => c.name.toLowerCase().includes(term.toLowerCase())) : clients);
 }
 
 function filterClients() {
