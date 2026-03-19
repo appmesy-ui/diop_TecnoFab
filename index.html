@@ -1958,7 +1958,6 @@ function renderHome() {
   renderGrouped(clients);
 }
 
-function renderGrouped(list) {
 const SECTOR_ICONS = {
   'Alimentación y bebidas':'🥫','Farmacéutico':'💊','Cosmética y cuidado personal':'🧴',
   'Metal y componentes':'⚙️','Plástico y caucho':'🔧','Papel y cartón':'📦',
@@ -1988,10 +1987,6 @@ function renderGrouped(list) {
         const state = prog.sessions[sid];
         const cls = state==='done'?'csd-done':state==='active'?'csd-active':'csd-pending';
         return `<div class="cs-dot ${cls}"><div class="csd-icon"></div>${SESSION_LABELS[sid]}</div>`;
-      }).join('');
-      const miniProg = SESSION_ORDER.map(sid => {
-        const state = prog.sessions[sid];
-        return `<div class="smp smp-${state}"></div>`;
       }).join('');
       return `<div class="client-row" data-client-id="${c.id}">
         <div class="cr-info">
@@ -2045,5 +2040,5 @@ function toggleSector(sector) {
 function filterClients() {
   const term = (document.getElementById('client-search')?.value||'').toLowerCase();
   renderGrouped(term ? clients.filter(c => c.name.toLowerCase().includes(term)) : clients);
-} 
+}
 </script>
