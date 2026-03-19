@@ -762,13 +762,13 @@ function openSession(sessionId) {
       const curVal = allAnswers[`${currentClient.id}_${sessionId}_${q.id}`]||'';
       const isDirtyQ = !!dirtyQuestions[`${sessionId}_${q.id}`];
 
-      html += `<div class="q-card${q.roi?' q-quant':''}${isDirtyQ?' q-dirty':''}">`
-        <div class="q-top">
-          <div class="q-meta">
-            <span class="q-num">P${String(globalIdx).padStart(2,'0')}</span>
-            <span class="q-prio ${pClass}">${pLabel}</span>
-          </div>
-          <div class="q-text">${q.text}</div>`;
+      html += `<div class="q-card${q.roi ? ' q-quant' : ''}${isDirtyQ ? ' q-dirty' : ''}">
+  <div class="q-top">
+    <div class="q-meta">
+      <span class="q-num">P${String(globalIdx).padStart(2,'0')}</span>
+      <span class="q-prio ${pClass}">${pLabel}</span>
+    </div>
+    <div class="q-text">${q.text}</div>`;
 
       if(q.type==='yn') {
         html += `<div class="yn-row" data-sess="${sessionId}" data-qid="${q.id}" data-type="yn">
