@@ -1143,6 +1143,15 @@ async function generateReport() {
 
   let ctx = `CLIENTE: ${currentClient.name}\nSECTOR: ${currentClient.sector || 'No indicado'}\n\n`;
 
+  const notasSecciones = ['general','ceo','fab','sys'];
+  const notasLabels = {general:'General',ceo:'CEO',fab:'Fábrica',sys:'Sistemas'};
+  let notasCtx = '';
+  notasSecciones.forEach(s => {
+    const n = notesCache[s];
+    if (n && n.trim()) notasCtx += `[Notas ${notasLabels[s]}]: ${n.trim()}\n`;
+  });
+  if (notasCtx) ctx += `=== CONTEXTO Y OBSERVACIONES DEL CONSULTOR ===\n${notasCtx}\n`;
+
   SESSION_ORDER.forEach(sid => {
     ctx += `\n=== ${SESSIONS[sid].label.toUpperCase()} ===\n`;
     SESSIONS[sid].blocks.forEach(b => {
