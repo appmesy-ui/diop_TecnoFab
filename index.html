@@ -136,6 +136,27 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .q-card.q-missing{border-color:rgba(226,75,74,0.5);background:rgba(226,75,74,0.04);animation:shake .3s ease;}
 .q-card.q-missing .q-text{color:var(--text);}
 .q-card.q-missing::before{content:'Pendiente';position:absolute;top:10px;right:10px;font-size:9px;color:var(--red);font-weight:600;text-transform:uppercase;letter-spacing:.06em;background:rgba(226,75,74,0.1);padding:2px 7px;border-radius:4px;}
+.q-card.q-dirty{
+  border-color:rgba(186,117,23,0.5);
+  background:rgba(186,117,23,0.05);
+}
+.q-card.q-dirty .q-text{
+  color:var(--text);
+}
+.q-card.q-dirty::before{
+  content:'Modificada';
+  position:absolute;
+  top:10px;
+  right:10px;
+  font-size:9px;
+  color:var(--amber);
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  background:rgba(186,117,23,0.12);
+  padding:2px 7px;
+  border-radius:4px;
+}
 .q-card.q-missing .q-prio{outline:1px solid rgba(226,75,74,0.4);}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
 .missing-banner{background:rgba(226,75,74,0.08);border:0.5px solid rgba(226,75,74,0.3);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:12px;display:none;align-items:center;gap:8px;}
@@ -739,8 +760,9 @@ function openSession(sessionId) {
       const pClass = {c:'qp-c',i:'qp-i',s:'qp-s',qw:'qp-qw'}[q.prio];
       const pLabel = {c:'Crítico',i:'Importante',s:'Secundario',qw:'Quick Win'}[q.prio];
       const curVal = allAnswers[`${currentClient.id}_${sessionId}_${q.id}`]||'';
+      const isDirtyQ = !!dirtyQuestions[`${sessionId}_${q.id}`];
 
-      html += `<div class="q-card${q.roi?' q-quant':''}">
+      html += `<div class="q-card${q.roi?' q-quant':''}${isDirtyQ?' q-dirty':''}">`
         <div class="q-top">
           <div class="q-meta">
             <span class="q-num">P${String(globalIdx).padStart(2,'0')}</span>
