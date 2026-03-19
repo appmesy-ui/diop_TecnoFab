@@ -950,19 +950,50 @@ async function saveAnswerDirect(sessionId, questionId, value) {
 
 async function persistAnswer(sessionId, questionId, value) {
   const key = `${currentClient.id}_${sessionId}_${questionId}`;
+  const now = new Date().toISOString();
+
   allAnswers[key] = value;
 
   dirtySessions[sessionId] = true;
   dirtyQuestions[`${sessionId}_${questionId}`] = true;
 
+  // Sincronizar también el estado local del cliente activo
+  if (!currentClient.answers) currentClient.answers = [];
+
+  const existingAnswer = currentClient.answers.find(a =>
+    a.session === sessionId && a.question_id === questionId
+  );
+
+  if (existingAnswer) {
+    existingAnswer.answer = value;
+    existingAnswer.updated_at = now;
+  } else {
+    currentClient.answers.push({
+      client_id: currentClient.id,
+      session: sessionId,
+      question_id: questionId,
+      answer: value,
+      updated_at: now
+    });
+  }
+
+  // Sincronizar también el array global de clientes
+  const clientIndex = clients.findIndex(c => String(c.id) === String(currentClient.id));
+  if (clientIndex !== -1) {
+    clients[clientIndex].answers = [...currentClient.answers];
+    clients[clientIndex].last_activity_at = now;
+  }
+
   updateSessionProgress(sessionId);
+  renderSidebarRoadmap();
+
   await sb.from('diop_answers').upsert({
     client_id: currentClient.id,
     session: sessionId,
     question_id: questionId,
     answer: value,
-    updated_at: new Date().toISOString()
-  },{onConflict:'client_id,session,question_id'});
+    updated_at: now
+  }, { onConflict: 'client_id,session,question_id' });
 }
 
 async function completeSession(sessionId) {
