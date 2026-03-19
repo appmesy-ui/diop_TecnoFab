@@ -328,7 +328,23 @@ select.fi{cursor:pointer;}
 /* ARCHIVE */
 .btn-archive{font-size:10px;color:var(--text3);background:none;border:0.5px solid var(--border);border-radius:var(--r-xs);padding:3px 8px;cursor:pointer;font-family:var(--font);flex-shrink:0;transition:all .15s;}
 .btn-archive:hover{color:var(--red);border-color:rgba(226,75,74,0.4);background:rgba(226,75,74,0.05);}
-  
+/* NOTES SIDEBAR */
+.sidebar-notes{padding:8px 14px;}
+.notes-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:6px 8px;border-radius:var(--r-sm);transition:all .15s;}
+.notes-toggle:hover{background:rgba(0,173,181,0.06);}
+.notes-toggle-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-family:var(--mono);}
+.notes-toggle-icon{font-size:10px;color:var(--text3);transition:transform .2s;}
+.notes-toggle.open .notes-toggle-icon{transform:rotate(180deg);}
+.notes-body{display:none;margin-top:6px;}
+.notes-toggle.open + .notes-body{display:block;}
+.notes-tab-row{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap;}
+.notes-tab{font-size:10px;padding:3px 8px;border-radius:var(--r-xs);border:0.5px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:var(--font);transition:all .15s;}
+.notes-tab:hover{border-color:var(--border2);color:var(--text2);}
+.notes-tab.active{background:rgba(0,173,181,0.1);border-color:var(--teal);color:var(--teal-l);}
+.notes-area{width:100%;background:var(--s2);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;min-height:90px;resize:none;line-height:1.5;transition:border-color .15s;}
+.notes-area:focus{border-color:var(--border3);}
+.notes-area::placeholder{color:var(--text4);}
+.notes-saved{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:4px;text-align:right;min-height:14px;}  
 </style>
 </head>
 <body onload="init()">
@@ -370,6 +386,23 @@ select.fi{cursor:pointer;}
       <div class="sidebar-divider"></div>
       <div class="rm-list" id="sidebar-roadmap"></div>
     </div>
+   <div class="sidebar-notes" id="sidebar-notes" style="display:none;">
+  <div class="sidebar-divider"></div>
+  <div class="notes-toggle" id="notes-toggle" onclick="toggleNotes()">
+    <span class="notes-toggle-label">📝 Contexto cliente</span>
+    <span class="notes-toggle-icon">▼</span>
+  </div>
+  <div class="notes-body" id="notes-body">
+    <div class="notes-tab-row">
+      <button class="notes-tab active" onclick="switchNotesTab('general',this)">General</button>
+      <button class="notes-tab" onclick="switchNotesTab('ceo',this)">CEO</button>
+      <button class="notes-tab" onclick="switchNotesTab('fab',this)">Fábrica</button>
+      <button class="notes-tab" onclick="switchNotesTab('sys',this)">Sistemas</button>
+    </div>
+    <textarea class="notes-area" id="notes-area" placeholder="Contexto, observaciones, lo que no cabe en las preguntas..." oninput="scheduleNoteSave()"></textarea>
+    <div class="notes-saved" id="notes-saved"></div>
+  </div>
+</div>
     <div class="sidebar-footer">
       <div class="sf-text">DIOP · Tecno-Fab © 2026</div>
     </div>
@@ -1489,6 +1522,7 @@ function goHome() {
   currentSession = null;
   document.getElementById('topbar-client').textContent='';
   document.getElementById('topbar-back').classList.remove('visible');
+  document.getElementById('sidebar-notes').style.display='none';
   document.getElementById('sidebar-home-content').style.display='block';
   document.getElementById('sidebar-client-content').style.display='none';
   showScreen('home');
@@ -1534,7 +1568,60 @@ async function archiveClient(e, clientId, clientName) {
   filterClients();
   showToast(`"${clientName}" archivado`);
 }
-function formatDateRelative(dateStr) {
+let currentNotesTab = 'general';
+let notesCache = {};
+let notesSaveTimer = null;
+
+async function loadNotes(clientId) {
+  const { data, error } = await sb.from('diop_notes').select('*').eq('client_id', clientId);
+  if (error) return;
+  notesCache = {};
+  (data || []).forEach(n => { notesCache[n.session] = n.content || ''; });
+  renderNotesTab();
+}
+
+function renderNotesTab() {
+  const area = document.getElementById('notes-area');
+  if (area) area.value = notesCache[currentNotesTab] || '';
+  document.getElementById('notes-saved').textContent = '';
+}
+
+function switchNotesTab(tab, btn) {
+  currentNotesTab = tab;
+  document.querySelectorAll('.notes-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderNotesTab();
+}
+
+function toggleNotes() {
+  const toggle = document.getElementById('notes-toggle');
+  const body = document.getElementById('notes-body');
+  toggle.classList.toggle('open');
+}
+
+function scheduleNoteSave() {
+  clearTimeout(notesSaveTimer);
+  document.getElementById('notes-saved').textContent = 'Guardando...';
+  notesSaveTimer = setTimeout(saveNote, 800);
+}
+
+async function saveNote() {
+  if (!currentClient) return;
+  const content = document.getElementById('notes-area')?.value || '';
+  notesCache[currentNotesTab] = content;
+  const { error } = await sb.from('diop_notes').upsert({
+    client_id: currentClient.id,
+    session: currentNotesTab,
+    content,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'client_id,session' });
+  document.getElementById('notes-saved').textContent = error ? 'Error al guardar' : 'Guardado ✓';
+  setTimeout(() => {
+    const el = document.getElementById('notes-saved');
+    if (el) el.textContent = '';
+  }, 2000);
+}
+  function formatDateRelative(dateStr) {
   if (!dateStr) return 'Sin actividad';
 
   const now = new Date();
@@ -1884,8 +1971,11 @@ function openClient(clientId) {
   document.getElementById('sc-name').textContent = currentClient.name;
   document.getElementById('sc-meta').textContent = currentClient.sector || '';
 
-  renderSidebarRoadmap();
-
+renderSidebarRoadmap();
+  document.getElementById('sidebar-notes').style.display = 'block';
+  currentNotesTab = 'general';
+  document.querySelectorAll('.notes-tab').forEach((b,i) => b.classList.toggle('active', i===0));
+  loadNotes(currentClient.id);
   const prog = getProgress(currentClient);
   const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
   const reportOutdated = prog.reportOutdated;
