@@ -837,6 +837,8 @@ function markExistingAnswers(sessionId) {
 let saveTimers = {};
 function attachSessionEvents() {
   const sc = document.getElementById('session-content');
+  if (!sc) return;
+  
   if (sessionEventsBound) return;
   sessionEventsBound = true;
 
@@ -849,7 +851,7 @@ function attachSessionEvents() {
     const qid = container.dataset.qid;
     const val = btn.dataset.val;
     const type = container.dataset.type;
-    console.log('CLICK HANDLER DISPARADO', sess, qid, val, type);
+    
 
     if(type === 'yn') {
       container.querySelectorAll('button').forEach(b => b.classList.remove('yn-sel-y','yn-sel-n'));
