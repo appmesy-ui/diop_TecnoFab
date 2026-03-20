@@ -835,8 +835,6 @@ function markExistingAnswers(sessionId) {
 
 let saveTimers = {};
 function attachSessionEvents() {
-  if (sessionEventsBound) return;
-  sessionEventsBound = true;
   const sc = document.getElementById('session-content');
 
   sc.addEventListener('click', async function(e) {
