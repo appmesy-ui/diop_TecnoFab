@@ -1469,6 +1469,9 @@ REGLAS DE ANÁLISIS (CRÍTICO):
 - Deben estar directamente conectados a problemas detectados en las respuestas.
 - Deben ser accionables y específicos, no genéricos.
 - El impacto económico debe tener sentido respecto al total.
+- El campo "proceso_ref" debe contener el nombre EXACTO de uno de los procesos del array "procesos" con categoria="quick_win".
+- El titulo del quick win es lenguaje CEO (impacto de negocio). El proceso_ref es lenguaje operativo (qué ocurre en planta).
+- Nunca inventes un proceso_ref que no exista en el array procesos.
 
 5. HERRAMIENTAS:
 - Solo recomienda herramientas si están claramente alineadas con los problemas detectados.
@@ -1551,13 +1554,14 @@ Analiza todo y devuelve un diagnóstico completo en JSON con este formato exacto
     "valor_sector_top": "top performers del sector",
     "gap_euros": "diferencia económica estimada vs media sector"
   },
-  "quick_wins": [
+"quick_wins": [
     {
-      "titulo": "título corto",
-      "descripcion": "qué hacer y por qué",
+      "titulo": "título corto en lenguaje CEO",
+      "descripcion": "qué hacer y por qué, en lenguaje de negocio",
       "impacto_euros": "ahorro estimado anual",
       "plazo_dias": 30,
-      "prioridad": 1
+      "prioridad": 1,
+      "proceso_ref": "nombre exacto del proceso correspondiente en el array procesos"
     }
   ],
   "roi": {
