@@ -1236,7 +1236,12 @@ function drawMatrixSVG(procesos, CAT) {
   const minR=12,maxR=24;
   const posMap={};
   procesos.forEach((p,i)=>{const k=p.esfuerzo+'_'+p.impacto;if(!posMap[k])posMap[k]=[];posMap[k].push(i);});
-
+  const ORDER = { quick_win:0, big_swing:1, nice_to_have:2, deprioritize:3 };
+const sorted = [...procesos]
+  .map((p,i) => ({...p, _orig:i}))
+  .sort((a,b) => (ORDER[a.categoria]??4)-(ORDER[b.categoria]??4) || b.impacto-a.impacto || a.esfuerzo-b.esfuerzo);
+const rankMap = {};
+sorted.forEach((p,rank) => { rankMap[p._orig] = rank+1; });
   procesos.forEach((p,i)=>{
     const cfg=CAT[p.categoria]||CAT.nice_to_have;
     const r=p.horas_mes?minR+((p.horas_mes/maxH)*(maxR-minR)):(minR+maxR)/2;
@@ -1252,7 +1257,7 @@ function drawMatrixSVG(procesos, CAT) {
     g.appendChild(mEl('circle',{class:'outer-glow',cx,cy,r:r+5,fill:cfg.color,opacity:'0.15'}));
     g.appendChild(mEl('circle',{class:'main-circle',cx,cy,r,fill:cfg.color,'fill-opacity':'0.85',stroke:'#fff','stroke-opacity':'0.25','stroke-width':'1'}));
     const num=mEl('text',{x:cx,y:cy+3.5,'text-anchor':'middle','font-size':r>16?'10':'9','font-family':'DM Mono,monospace','font-weight':'500',fill:'#fff','pointer-events':'none'});
-    num.textContent=String(i+1).padStart(2,'0'); g.appendChild(num);
+    num.textContent=String(rankMap[i]).padStart(2,'0'); g.appendChild(num);
     g.addEventListener('mouseenter',e=>showMatrixTooltip(e,p,cfg));
     g.addEventListener('mousemove',e=>moveMatrixTooltip(e));
     g.addEventListener('mouseleave',hideMatrixTooltip);
