@@ -1283,18 +1283,28 @@ function mEl(tag, attrs) {
 
 function showMatrixTooltip(e, p, cfg) {
   const tt = document.getElementById('tooltip');
-  document.getElementById('tt-name').textContent = p.nombre;
-  const cat = document.getElementById('tt-cat');
-  cat.textContent = cfg.label; cat.style.color = cfg.color;
-  document.getElementById('tt-meta').textContent = 'Impacto: '+p.impacto+'/5  Esfuerzo: '+p.esfuerzo+'/5'+(p.horas_mes?' · '+p.horas_mes+'h/mes':'');
+  if (!tt) return;
+  const ttName = document.getElementById('tt-name');
+  const ttCat = document.getElementById('tt-cat');
+  const ttMeta = document.getElementById('tt-meta');
+  if (!ttName || !ttCat || !ttMeta) return;
+  ttName.textContent = p.nombre;
+  const cat = ttCat;
+cat.textContent = cfg.label; cat.style.color = cfg.color;
+  ttMeta.textContent = 'Impacto: '+p.impacto+'/5  Esfuerzo: '+p.esfuerzo+'/5'+(p.horas_mes?' · '+p.horas_mes+'h/mes':'');
   tt.classList.add('visible');
   moveMatrixTooltip(e);
 }
 function moveMatrixTooltip(e) {
   const tt = document.getElementById('tooltip');
+  if (!tt) return;
   const x = e.clientX+14, y = e.clientY-10;
   tt.style.left=(x+tt.offsetWidth>window.innerWidth?x-tt.offsetWidth-28:x)+'px';
   tt.style.top=(y+tt.offsetHeight>window.innerHeight?y-tt.offsetHeight:y)+'px';
+}
+function hideMatrixTooltip() {
+  const tt = document.getElementById('tooltip');
+  if (tt) tt.classList.remove('visible');
 }
 function hideMatrixTooltip() {
   document.getElementById('tooltip').classList.remove('visible');
@@ -1471,7 +1481,8 @@ REGLAS DE ANÁLISIS (CRÍTICO):
 - El impacto económico debe tener sentido respecto al total.
 - El campo "proceso_ref" debe contener el nombre EXACTO de uno de los procesos del array "procesos" con categoria="quick_win".
 - El titulo del quick win es lenguaje CEO (impacto de negocio). El proceso_ref es lenguaje operativo (qué ocurre en planta).
-- Nunca inventes un proceso_ref que no exista en el array procesos.
+- El campo proceso_ref debe ser una copia LITERAL del campo "nombre" de uno de los objetos del array "procesos" con categoria="quick_win". Copia el texto exacto, sin modificarlo.
+- Nunca inventes un proceso_ref. Si no encuentras un proceso quick_win adecuado, ajusta la categoria del proceso correspondiente a quick_win.
 
 5. HERRAMIENTAS:
 - Solo recomienda herramientas si están claramente alineadas con los problemas detectados.
