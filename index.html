@@ -1306,9 +1306,6 @@ function hideMatrixTooltip() {
   const tt = document.getElementById('tooltip');
   if (tt) tt.classList.remove('visible');
 }
-function hideMatrixTooltip() {
-  document.getElementById('tooltip').classList.remove('visible');
-}
 // ── REPORT ──
 function openReport() {
   showScreen('report');
@@ -1483,6 +1480,7 @@ REGLAS DE ANÁLISIS (CRÍTICO):
 - El titulo del quick win es lenguaje CEO (impacto de negocio). El proceso_ref es lenguaje operativo (qué ocurre en planta).
 - El campo proceso_ref debe ser una copia LITERAL del campo "nombre" de uno de los objetos del array "procesos" con categoria="quick_win". Copia el texto exacto, sin modificarlo.
 - Nunca inventes un proceso_ref. Si no encuentras un proceso quick_win adecuado, ajusta la categoria del proceso correspondiente a quick_win.
+- IMPORTANTE: Los nombres de procesos en proceso_ref deben tomarse EXCLUSIVAMENTE de la lista que aparece en "PROCESOS DE PLANTA IDENTIFICADOS" del contexto. Si esa sección no existe, toma los nombres del array "procesos" generado. Nunca uses nombres genéricos.
 
 5. HERRAMIENTAS:
 - Solo recomienda herramientas si están claramente alineadas con los problemas detectados.
