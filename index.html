@@ -620,7 +620,7 @@ const SESSIONS = {
 
 const SESSION_ORDER = ['ceo','fab','sys'];
 function getProcesesBySector() {
-  const sector = allAnswers[`${currentClient?.id}_ceo_sector`] || currentClient?.sector || '';
+  const sector = currentClient?.sector || allAnswers[`${currentClient?.id}_ceo_sector`] || '';
   const listas = {
     'Alimentación y bebidas': ['Recepción MP','Pesaje y dosificación','Preparación y mezcla','Procesado térmico','Enfriamiento','Llenado y envasado','Etiquetado','Control de calidad','Cambio de formato','Limpieza CIP','Almacenamiento PT','Expedición y paletizado','Planificación de producción','Mantenimiento de líneas','Gestión de mermas'],
     'Farmacéutico': ['Recepción y cuarentena MP','Pesaje y muestreo','Síntesis y formulación','Granulación o mezcla','Compresión y llenado','Recubrimiento','Control de calidad en proceso','Envasado primario','Envasado secundario','Serialización y etiquetado','Liberación de lote','Almacenamiento PT','Expedición','Mantenimiento de equipos','Gestión de residuos'],
