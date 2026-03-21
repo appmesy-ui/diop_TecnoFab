@@ -559,6 +559,9 @@ const SESSIONS = {
         {id:'new_operators_year', text:'¿Cuántos operarios nuevos entran al año de media?', type:'num', prio:'i', roi:'Rotación alta = coste formación + merma por inexperiencia + bajada de OEE durante onboarding'},
         {id:'onboarding_weeks', text:'¿Cuántas semanas tarda un operario nuevo en ser autónomo en la línea?', type:'sel', prio:'i', roi:'Tiempo de onboarding × coste/hora × rotación = coste real de la dependencia de personas', opts:['1 - 2 semanas','2 - 4 semanas','1 - 3 meses','más de 3 meses']},
       ]},
+      { id:'procesos', name:'Procesos de planta identificados', obj:'Mapear los procesos reales observados en la visita', questions:[
+  {id:'procesos_planta', text:'¿Qué procesos de planta has identificado durante la visita? (selecciona todos los que aplican)', type:'multi', prio:'c', opts: getProcesesBySector()},
+]},
       { id:'obs', name:'Observación directa en línea', obj:'Ver con los propios ojos lo que los datos no cuentan', questions:[
         {id:'unnecessary_movement', text:'¿Se observan desplazamientos innecesarios de operarios entre puestos?', type:'yn', prio:'qw'},
         {id:'visible_bottleneck', text:'¿Se identifican cuellos de botella visibles en el flujo de producción?', type:'yn', prio:'c'},
@@ -616,6 +619,22 @@ const SESSIONS = {
 };
 
 const SESSION_ORDER = ['ceo','fab','sys'];
+function getProcesesBySector() {
+  const sector = allAnswers[`${currentClient?.id}_ceo_sector`] || currentClient?.sector || '';
+  const listas = {
+    'Alimentación y bebidas': ['Recepción MP','Pesaje y dosificación','Preparación y mezcla','Procesado térmico','Enfriamiento','Llenado y envasado','Etiquetado','Control de calidad','Cambio de formato','Limpieza CIP','Almacenamiento PT','Expedición y paletizado','Planificación de producción','Mantenimiento de líneas','Gestión de mermas'],
+    'Farmacéutico': ['Recepción y cuarentena MP','Pesaje y muestreo','Síntesis y formulación','Granulación o mezcla','Compresión y llenado','Recubrimiento','Control de calidad en proceso','Envasado primario','Envasado secundario','Serialización y etiquetado','Liberación de lote','Almacenamiento PT','Expedición','Mantenimiento de equipos','Gestión de residuos'],
+    'Cosmética y cuidado personal': ['Recepción MP','Pesaje y dosificación','Emulsión y mezcla','Homogeneización','Control de calidad','Enfriamiento y maduración','Llenado','Envasado y tapado','Etiquetado','Control final','Almacenamiento PT','Expedición','Limpieza de reactores','Planificación','Gestión de mermas'],
+    'Metal y componentes': ['Recepción MP','Inspección entrante de material','Corte y cizallado','Conformado y estampado','Soldadura','Mecanizado','Tratamiento superficial','Control dimensional','Ensamblaje','Control de calidad final','Pintura o recubrimiento','Embalaje','Expedición','Mantenimiento de maquinaria','Gestión de chatarra','Planificación de producción'],
+    'Plástico y caucho': ['Recepción y secado de granulado','Dosificación de aditivos','Inyección / extrusión / soplado','Enfriamiento','Desmoldeo','Rebarbado y acabado','Control dimensional','Ensamblaje o montaje','Control de calidad','Embalaje','Almacenamiento PT','Expedición','Mantenimiento de moldes','Gestión de scrap','Planificación'],
+    'Papel y cartón': ['Recepción de pasta y bobinas','Preparación de pasta','Formación de hoja','Prensado y secado','Calandrado','Bobinado','Corte y transformación','Impresión','Troquelado','Plegado y encolado','Control de calidad','Embalaje','Expedición','Mantenimiento de máquina','Gestión de residuos'],
+    'Química': ['Recepción y análisis MP','Preparación de reactivos','Reacción química','Control de proceso','Separación y purificación','Neutralización','Filtración','Envasado a granel','Control de calidad final','Etiquetado y embalaje','Almacenamiento','Expedición','Gestión de residuos peligrosos','Mantenimiento','Planificación de campañas'],
+    'Electrónica': ['Recepción de componentes','Inspección entrante','Preparación de PCB','Soldadura SMT','Soldadura through-hole','Inspección óptica','Test funcional','Ensamblaje de producto','Test final','Embalaje','Control de calidad','Almacenamiento','Expedición','Mantenimiento de equipos','Gestión de obsoletos'],
+    'Automoción': ['Recepción de piezas','Mecanizado','Control dimensional','Ensamblaje de subconjuntos','Montaje final','Control de calidad','Test funcional','Pintura y recubrimiento','Embalaje y etiquetado','Expedición','Mantenimiento preventivo','Gestión de no conformes','Planificación','Logística interna','Tratamiento térmico'],
+    'Textil': ['Recepción de fibras y tejido','Tintado y acabado','Control de calidad','Corte','Confección y costura','Revisión y repaso','Etiquetado','Embalaje','Almacenamiento PT','Expedición','Mantenimiento de maquinaria','Gestión de retales','Planificación de órdenes','Hilatura','Tejeduría'],
+  };
+  return listas[sector] || ['Recepción de materiales','Preparación','Procesado principal','Control en proceso','Semiterminado','Ensamblaje o acabado','Control de calidad','Envasado o embalaje','Almacenamiento','Expedición','Planificación','Mantenimiento','Gestión de residuos','Logística interna','Documentación y trazabilidad'];
+}
 const SESSION_LABELS = {ceo:'CEO',fab:'Fábrica',sys:'Sistemas'};
 
 // ── INIT ──
@@ -1390,7 +1409,10 @@ async function generateReport() {
     if (n && n.trim()) notasCtx += `[Notas ${notasLabels[s]}]: ${n.trim()}\n`;
   });
   if (notasCtx) ctx += `=== CONTEXTO Y OBSERVACIONES DEL CONSULTOR ===\n${notasCtx}\n`;
-
+  const procesosSeleccionados = allAnswers[`${currentClient.id}_fab_procesos_planta`];
+if (procesosSeleccionados) {
+  ctx += `\n=== PROCESOS DE PLANTA IDENTIFICADOS ===\n${procesosSeleccionados.replace(/\|\|/g, ', ')}\n`;
+}
   SESSION_ORDER.forEach(sid => {
     ctx += `\n=== ${SESSIONS[sid].label.toUpperCase()} ===\n`;
     SESSIONS[sid].blocks.forEach(b => {
