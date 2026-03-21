@@ -1372,7 +1372,27 @@ Analiza todo y devuelve un diagnóstico completo en JSON con este formato exacto
 
 Para quick_wins incluye exactamente 3, ordenados por impacto económico descendente.
 Para herramientas_mercado incluye exactamente 3 herramientas reales existentes en el mercado, ajustadas al sector y presupuesto.
-Devuelve SOLO el JSON, sin texto adicional.`;
+
+15. PROCESOS:
+- Identifica entre 10 y 15 procesos concretos de planta basados en las respuestas.
+- Impacto (1-5): basado en señales activadas y coste económico estimado.
+- Esfuerzo (1-5): basado en madurez_digital detectada y conectividad de líneas.
+- categoria: quick_win (impacto≥3 Y esfuerzo≤2), big_swing (impacto≥4 Y esfuerzo≥3), nice_to_have (impacto≤3 Y esfuerzo≤2), deprioritize (impacto≤2 Y esfuerzo≥3).
+- horas_mes: horas perdidas mensuales estimadas por ese proceso.
+- Nombres concretos. Ej: "Cambio de formato manual" no "ineficiencias productivas".
+
+Añade al JSON este campo adicional:
+"procesos": [
+  {
+    "nombre": "nombre concreto del proceso",
+    "impacto": 4,
+    "esfuerzo": 2,
+    "categoria": "quick_win",
+    "horas_mes": 20
+  }
+]
+
+Devuelve SOLO el JSON, sin texto adicional.
 
   try {
     const res = await fetch('/api/generate-report', {
