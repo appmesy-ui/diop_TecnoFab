@@ -280,6 +280,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .nqb-text{font-size:13px;color:var(--text);font-style:italic;}
 
 .ai-thinking{display:flex;align-items:center;gap:10px;padding:30px;color:var(--text3);font-size:13px;}
+/* REPORT TABS */
+.report-tabs{display:flex;gap:6px;margin-bottom:16px;}
+.rtab{padding:8px 18px;border-radius:var(--r-sm);border:0.5px solid var(--border);background:transparent;color:var(--text3);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);transition:all .15s;}
+.rtab:hover{border-color:var(--border2);color:var(--text2);}
+.rtab.rtab-active{background:rgba(0,173,181,0.1);border-color:var(--teal);color:var(--teal-l);}
+.rtab-panel{display:none;}
+.rtab-panel.rtab-on{display:block;}
 .ait-dot{width:5px;height:5px;border-radius:50%;background:var(--teal);animation:pulse 1.2s ease-in-out infinite;}
 .ait-dot:nth-child(2){animation-delay:.2s;}
 .ait-dot:nth-child(3){animation-delay:.4s;}
@@ -1102,7 +1109,172 @@ function saveAndBack() {
   showToast('Guardado');
   renderSidebarRoadmap();
 }
+function switchReportTab(tab) {
+  document.querySelectorAll('.rtab').forEach(b => b.classList.remove('rtab-active'));
+  document.querySelectorAll('.rtab-panel').forEach(p => p.classList.remove('rtab-on'));
+  document.getElementById('rtab-' + tab).classList.add('rtab-active');
+  document.getElementById('rpanel-' + tab).classList.add('rtab-on');
+  if (tab === 'matriz') renderMatrixTab();
+}
 
+function renderMatrixTab() {
+  const container = document.getElementById('matrix-body');
+  const r = window._lastReport;
+  if (!r || !r.procesos || !r.procesos.length) {
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">No hay procesos en este informe. Regenera el informe para obtener la matriz.</div>';
+    return;
+  }
+  const procesos = r.procesos;
+  const CAT = {
+    quick_win:    { label:'Quick Win',    color:'#1D9E75' },
+    big_swing:    { label:'Big Swing',    color:'#7F77DD' },
+    nice_to_have: { label:'Nice-to-Have', color:'#BA7517' },
+    deprioritize: { label:'Deprioritize', color:'#E24B4A' },
+  };
+
+  // Pills
+  const pillsHtml = Object.keys(CAT).map(cat => {
+    const items = procesos.filter(p => p.categoria === cat);
+    const totalH = items.reduce((a, p) => a + (p.horas_mes || 0), 0);
+    return `<div style="flex:1;display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:6px;border:0.5px solid ${CAT[cat].color}33;background:${CAT[cat].color}0f;">
+      <div style="font-size:22px;font-weight:700;color:${CAT[cat].color};">${items.length}</div>
+      <div><div style="font-size:11px;font-weight:600;color:${CAT[cat].color};">${CAT[cat].label}</div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">${totalH ? '~'+totalH+'h/mes' : '—'}</div></div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:16px;">${pillsHtml}</div>
+    <div style="display:flex;gap:12px;">
+      <div style="flex:1;position:relative;height:420px;">
+        <div style="position:absolute;left:2px;top:50%;transform:translateY(-50%) rotate(-90deg);font-size:9px;color:var(--text3);font-family:var(--mono);white-space:nowrap;letter-spacing:.08em;">Mayor impacto →</div>
+        <div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text3);font-family:var(--mono);white-space:nowrap;letter-spacing:.08em;">Esfuerzo de implementación →</div>
+        <svg id="matrix-tab-svg" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;"></svg>
+      </div>
+      <div style="width:240px;background:var(--s1);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="padding:12px 14px;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600;color:var(--text);">Procesos identificados</div>
+        <div style="overflow-y:auto;max-height:380px;" id="matrix-tab-list"></div>
+      </div>
+    </div>`;
+
+  // List
+  const ORDER = { quick_win:0, big_swing:1, nice_to_have:2, deprioritize:3 };
+  const sorted = [...procesos].map((p,i) => ({...p, _idx:i}))
+    .sort((a,b) => (ORDER[a.categoria]??4)-(ORDER[b.categoria]??4) || b.impacto-a.impacto);
+  document.getElementById('matrix-tab-list').innerHTML = sorted.map(p => {
+    const cfg = CAT[p.categoria] || CAT.nice_to_have;
+    return `<div style="padding:9px 14px;border-bottom:0.5px solid var(--border);cursor:pointer;position:relative;padding-left:16px;"
+      onmouseenter="this.style.background='rgba(0,173,181,0.04)'" onmouseleave="this.style.background=''"
+      onclick="highlightBubble(${p._idx})">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:2px;background:${cfg.color};"></div>
+      <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:3px;line-height:1.3;">${p.nombre}</div>
+      <div style="display:flex;gap:5px;align-items:center;">
+        <span style="font-size:9px;padding:1px 6px;border-radius:3px;font-weight:600;background:${cfg.color}20;color:${cfg.color};">${cfg.label}</span>
+        <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">I:${p.impacto} E:${p.esfuerzo}${p.horas_mes?' · '+p.horas_mes+'h/mes':''}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // SVG
+  setTimeout(() => drawMatrixSVG(procesos, CAT), 50);
+}
+
+function drawMatrixSVG(procesos, CAT) {
+  const svg = document.getElementById('matrix-tab-svg');
+  if (!svg) return;
+  svg.innerHTML = '';
+  const W = svg.clientWidth || 500;
+  const H = svg.clientHeight || 420;
+  const ML=34, MR=16, MT=18, MB=24;
+  const PW=W-ML-MR, PH=H-MT-MB;
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+
+  const quads = [
+    {x:ML,y:MT,w:PW/2,h:PH/2,fill:'rgba(29,158,117,0.05)',label:'QUICK WINS',lx:ML+8,ly:MT+14,anchor:'start'},
+    {x:ML+PW/2,y:MT,w:PW/2,h:PH/2,fill:'rgba(127,119,221,0.04)',label:'BIG SWINGS',lx:ML+PW-8,ly:MT+14,anchor:'end'},
+    {x:ML,y:MT+PH/2,w:PW/2,h:PH/2,fill:'rgba(186,117,23,0.03)',label:'NICE-TO-HAVE',lx:ML+8,ly:MT+PH-8,anchor:'start'},
+    {x:ML+PW/2,y:MT+PH/2,w:PW/2,h:PH/2,fill:'rgba(226,75,74,0.03)',label:'DEPRIORITIZE',lx:ML+PW-8,ly:MT+PH-8,anchor:'end'},
+  ];
+  quads.forEach(q => {
+    svg.appendChild(mEl('rect',{x:q.x,y:q.y,width:q.w,height:q.h,fill:q.fill}));
+    const t=mEl('text',{x:q.lx,y:q.ly,'font-size':'9','font-family':'DM Mono,monospace',fill:'rgba(122,176,184,0.28)','font-weight':'700','letter-spacing':'1.4','text-anchor':q.anchor});
+    t.textContent=q.label; svg.appendChild(t);
+  });
+
+  for(let i=1;i<=4;i++){
+    svg.appendChild(mEl('line',{x1:ML+(PW/5)*i,y1:MT,x2:ML+(PW/5)*i,y2:MT+PH,stroke:'rgba(0,173,181,0.06)','stroke-width':'0.5'}));
+    svg.appendChild(mEl('line',{x1:ML,y1:MT+(PH/5)*i,x2:ML+PW,y2:MT+(PH/5)*i,stroke:'rgba(0,173,181,0.06)','stroke-width':'0.5'}));
+  }
+  svg.appendChild(mEl('line',{x1:ML+PW/2,y1:MT,x2:ML+PW/2,y2:MT+PH,stroke:'rgba(0,173,181,0.2)','stroke-width':'1','stroke-dasharray':'4 4'}));
+  svg.appendChild(mEl('line',{x1:ML,y1:MT+PH/2,x2:ML+PW,y2:MT+PH/2,stroke:'rgba(0,173,181,0.2)','stroke-width':'1','stroke-dasharray':'4 4'}));
+
+  for(let v=1;v<=5;v++){
+    const tx=mEl('text',{x:ML+((v-0.5)/5)*PW,y:MT+PH+16,'text-anchor':'middle','font-size':'9','font-family':'DM Mono,monospace',fill:'rgba(58,122,130,0.5)'}); tx.textContent=v; svg.appendChild(tx);
+    const ty=mEl('text',{x:ML-6,y:MT+PH-((v-0.5)/5)*PH+3,'text-anchor':'end','font-size':'9','font-family':'DM Mono,monospace',fill:'rgba(58,122,130,0.5)'}); ty.textContent=v; svg.appendChild(ty);
+  }
+
+  const maxH=Math.max(...procesos.map(p=>p.horas_mes||0),1);
+  const minR=12,maxR=24;
+  const posMap={};
+  procesos.forEach((p,i)=>{const k=p.esfuerzo+'_'+p.impacto;if(!posMap[k])posMap[k]=[];posMap[k].push(i);});
+
+  procesos.forEach((p,i)=>{
+    const cfg=CAT[p.categoria]||CAT.nice_to_have;
+    const r=p.horas_mes?minR+((p.horas_mes/maxH)*(maxR-minR)):(minR+maxR)/2;
+    const key=p.esfuerzo+'_'+p.impacto;
+    const grp=posMap[key],pos=grp.indexOf(i),tot=grp.length;
+    const jx=tot>1?(pos-(tot-1)/2)*(r*1.5):0;
+    const jy=tot>1?(pos%2===0?-1:1)*r*0.4:0;
+    const cx=ML+((p.esfuerzo-0.5)/5)*PW+jx;
+    const cy=MT+PH-((p.impacto-0.5)/5)*PH+jy;
+
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','bubble-g'); g.dataset.idx=i; g.style.cursor='pointer';
+    g.appendChild(mEl('circle',{class:'outer-glow',cx,cy,r:r+5,fill:cfg.color,opacity:'0.15'}));
+    g.appendChild(mEl('circle',{class:'main-circle',cx,cy,r,fill:cfg.color,'fill-opacity':'0.85',stroke:'#fff','stroke-opacity':'0.25','stroke-width':'1'}));
+    const num=mEl('text',{x:cx,y:cy+3.5,'text-anchor':'middle','font-size':r>16?'10':'9','font-family':'DM Mono,monospace','font-weight':'500',fill:'#fff','pointer-events':'none'});
+    num.textContent=String(i+1).padStart(2,'0'); g.appendChild(num);
+    g.addEventListener('mouseenter',e=>showMatrixTooltip(e,p,cfg));
+    g.addEventListener('mousemove',e=>moveMatrixTooltip(e));
+    g.addEventListener('mouseleave',hideMatrixTooltip);
+    g.addEventListener('click',()=>highlightBubble(i));
+    svg.appendChild(g);
+  });
+}
+
+function highlightBubble(idx) {
+  document.querySelectorAll('#matrix-tab-svg .bubble-g').forEach(g => {
+    const sel = parseInt(g.dataset.idx) === idx;
+    g.querySelector('.main-circle')?.setAttribute('stroke-width', sel ? '2.5' : '1');
+    g.querySelector('.main-circle')?.setAttribute('stroke-opacity', sel ? '0.9' : '0.25');
+    g.querySelector('.outer-glow')?.setAttribute('opacity', sel ? '0.45' : '0.15');
+  });
+}
+
+function mEl(tag, attrs) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k,v));
+  return e;
+}
+
+function showMatrixTooltip(e, p, cfg) {
+  const tt = document.getElementById('tooltip');
+  document.getElementById('tt-name').textContent = p.nombre;
+  const cat = document.getElementById('tt-cat');
+  cat.textContent = cfg.label; cat.style.color = cfg.color;
+  document.getElementById('tt-meta').textContent = 'Impacto: '+p.impacto+'/5  Esfuerzo: '+p.esfuerzo+'/5'+(p.horas_mes?' · '+p.horas_mes+'h/mes':'');
+  tt.classList.add('visible');
+  moveMatrixTooltip(e);
+}
+function moveMatrixTooltip(e) {
+  const tt = document.getElementById('tooltip');
+  const x = e.clientX+14, y = e.clientY-10;
+  tt.style.left=(x+tt.offsetWidth>window.innerWidth?x-tt.offsetWidth-28:x)+'px';
+  tt.style.top=(y+tt.offsetHeight>window.innerHeight?y-tt.offsetHeight:y)+'px';
+}
+function hideMatrixTooltip() {
+  document.getElementById('tooltip').classList.remove('visible');
+}
 // ── REPORT ──
 function openReport() {
   showScreen('report');
@@ -1118,7 +1290,12 @@ const latestReportRow = reports.length ? reports[0] : null;
 const latestReport = latestReportRow?.report_json || null;
 
 document.getElementById('report-content').innerHTML = `
-  <div style="max-width:1100px;margin:0 auto;">
+<div style="max-width:1100px;margin:0 auto;">
+    <div class="report-tabs">
+      <button class="rtab rtab-active" id="rtab-informe" onclick="switchReportTab('informe')">📄 Informe DIOP</button>
+      <button class="rtab" id="rtab-matriz" onclick="switchReportTab('matriz')">📊 Matriz de Oportunidad</button>
+    </div>
+    <div class="rtab-panel rtab-on" id="rpanel-informe">
     <div class="report-ready" id="report-ready-box" style="padding:20px 20px 28px;margin-bottom:16px;">
       <div class="rr-icon">${latestReport ? '📄' : allDone ? '🎯' : '📋'}</div>
 <div class="rr-title">
@@ -1153,6 +1330,10 @@ document.getElementById('report-content').innerHTML = `
 }
     </div>
     <div class="report-content" id="report-body"></div>
+    </div>
+    <div class="rtab-panel" id="rpanel-matriz">
+      <div id="matrix-body" style="padding:16px 0;"></div>
+    </div>
   </div>`;
 
   if (latestReport) {
@@ -1472,6 +1653,7 @@ Devuelve SOLO el JSON, sin texto adicional.`;
     dirtyQuestions = {};  
 
     openReport();
+    setTimeout(() => switchReportTab('matriz'), 300);
   } catch (err) {
     console.error(err);
     document.getElementById('report-body').innerHTML = `
