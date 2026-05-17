@@ -2712,6 +2712,11 @@ async function openVSM() {
 
 // ── RENDER FULL VSM ──
 function renderVSM() {
+  const mainContent = document.getElementById('main-content');
+  const scrollPos = mainContent ? mainContent.scrollTop : 0;
+  const activeId = document.activeElement ? document.activeElement.getAttribute('data-vsm-id') : null;
+  const selStart = document.activeElement ? document.activeElement.selectionStart : null;
+  
   const vsm = getVSM();
   const takt = calcTaktTime(vsm);
   
@@ -2810,6 +2815,9 @@ function renderVSM() {
   document.getElementById('vsm-content').innerHTML = html;
   renderVSMResults();
   renderVSMDiagram();
+  
+  // Restore scroll position
+  if (mainContent) requestAnimationFrame(() => { mainContent.scrollTop = scrollPos; });
 }
 
 function renderProcessCard(proc, idx, takt) {
