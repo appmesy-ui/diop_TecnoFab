@@ -1490,6 +1490,9 @@ if (procesosSeleccionados) {
     });
   });
 
+  // Add VSM data if available
+  ctx += getVSMReportContext();
+
   const prompt = `Eres un experto en diagnóstico operativo industrial para pymes. Formas parte de Tecno-Fab, una consultora de digitalización industrial IT/OT especializada en empresas industriales de 50-500 empleados en España.
 
 Has completado un diagnóstico DIOP completo de una empresa industrial. Aquí están todas las respuestas recogidas en las tres sesiones:
@@ -1573,6 +1576,7 @@ REGLAS DE ANÁLISIS (CRÍTICO):
 - Todo el informe debe contar una historia coherente:
   problema → impacto → acción → resultado.
 - Evita contradicciones entre secciones.
+- Si hay datos de VALUE STREAM MAP disponibles (sección VSM), intégralos en el análisis: el ratio de valor añadido, el lead time, los cuellos de botella y las recomendaciones de flujo deben reflejarse en el resumen ejecutivo, los KPIs y los quick wins.
 
 12. IDENTIFICACIÓN DEL DRIVER PRINCIPAL:
 - Identifica cuál es la principal fuente de pérdida económica (1 o 2 máximo).
@@ -2644,7 +2648,7 @@ function scheduleVSMSave() {
   vsmSaveTimer = setTimeout(saveVSMData, 800);
 }
 
-function vsmChanged() { renderVSMResults(); renderVSMDiagram(); scheduleVSMSave(); renderSidebarRoadmap(); }
+function vsmChanged() { renderVSMResults(); renderVSMDiagram(); renderVSMConclusions(); scheduleVSMSave(); renderSidebarRoadmap(); }
 
 // ── TAKT TIME CALCULATION ──
 function calcTaktTime(vsm) {
@@ -2810,11 +2814,19 @@ function renderVSM() {
       <div class="vsm-section-sub">Diagrama generado automáticamente</div>
       <div class="vsm-diagram-wrap" id="vsm-diagram"></div>
     </div>
+
+    <!-- CONCLUSIONS & BENCHMARK -->
+    <div class="vsm-section" id="vsm-conclusions-section">
+      <div class="vsm-section-title">📋 Análisis y conclusiones — Entregable cliente</div>
+      <div class="vsm-section-sub">Benchmarks del sector, hallazgos clave y recomendaciones priorizadas</div>
+      <div id="vsm-conclusions"></div>
+    </div>
   `;
   
   document.getElementById('vsm-content').innerHTML = html;
   renderVSMResults();
   renderVSMDiagram();
+  renderVSMConclusions();
   
   // Restore scroll position
   if (mainContent) requestAnimationFrame(() => { mainContent.scrollTop = scrollPos; });
@@ -3155,5 +3167,260 @@ function renderVSMDiagram() {
 function drawTriangle(x, y, label, textColor, strokeColor) {
   return `<polygon points="${x},${y+20} ${x+12},${y} ${x+24},${y+20}" fill="none" stroke="${strokeColor}" stroke-width="0.8"/>
     <text x="${x+12}" y="${y+32}" text-anchor="middle" fill="${textColor}" font-size="6" font-family="'DM Mono',monospace">${label}</text>`;
+}
+
+// ── SECTOR BENCHMARKS ──
+const VSM_BENCHMARKS = {
+  'Alimentación y bebidas': { va_ratio: [0.5, 5], lead_time_days: [2, 15], uptime: [75, 92], co_min: [15, 45], label: 'Food & Beverage' },
+  'Farmacéutico': { va_ratio: [0.2, 3], lead_time_days: [5, 30], uptime: [70, 90], co_min: [20, 60], label: 'Pharma' },
+  'Cosmética y cuidado personal': { va_ratio: [0.5, 5], lead_time_days: [2, 12], uptime: [75, 90], co_min: [15, 40], label: 'Cosmética' },
+  'Metal y componentes': { va_ratio: [1, 8], lead_time_days: [3, 20], uptime: [70, 88], co_min: [20, 60], label: 'Metal' },
+  'Plástico y caucho': { va_ratio: [1, 10], lead_time_days: [1, 10], uptime: [75, 92], co_min: [15, 45], label: 'Plástico' },
+  'Química': { va_ratio: [0.5, 5], lead_time_days: [3, 20], uptime: [72, 90], co_min: [30, 90], label: 'Química' },
+  'default': { va_ratio: [0.5, 5], lead_time_days: [2, 15], uptime: [72, 90], co_min: [15, 45], label: 'Industrial' }
+};
+
+// ── CONCLUSIONS ──
+function renderVSMConclusions() {
+  const el = document.getElementById('vsm-conclusions');
+  if (!el) return;
+  
+  const vsm = getVSM();
+  const procs = vsm.processes;
+  if (!procs.length) { el.innerHTML = '<div style="color:var(--text4);font-size:12px;">Añade procesos y datos para generar conclusiones</div>'; return; }
+  
+  const takt = calcTaktTime(vsm);
+  const sector = currentClient?.sector || '';
+  const bench = VSM_BENCHMARKS[sector] || VSM_BENCHMARKS['default'];
+  
+  // Calculate all metrics
+  let totalVA = 0;
+  procs.forEach(p => { const ct = normalizeCT(p); if (ct) totalVA += ct; });
+  
+  let totalNVA = 0;
+  const nvaBreakdown = [];
+  
+  const mpDays = parseFloat(vsm.inventories.mp);
+  if (mpDays) { const s = mpDays * 24 * 3600; totalNVA += s; nvaBreakdown.push({ name: 'Almacén MP', seconds: s, pct: 0 }); }
+  
+  for (let i = 0; i < procs.length - 1; i++) {
+    const key = `${i}_${i+1}`;
+    const wip = parseFloat(vsm.inventories.between?.[key]);
+    const nextCT = normalizeCT(procs[i+1]);
+    if (wip && nextCT) { const s = wip * nextCT; totalNVA += s; nvaBreakdown.push({ name: `${procs[i].name||'?'} → ${procs[i+1].name||'?'}`, seconds: s, pct: 0 }); }
+  }
+  
+  const ptUnits = parseFloat(vsm.inventories.pt);
+  const demandDay = parseFloat(vsm.demand.units_per_day);
+  if (ptUnits && demandDay) { const s = (ptUnits / demandDay) * 24 * 3600; totalNVA += s; nvaBreakdown.push({ name: 'Almacén PT', seconds: s, pct: 0 }); }
+  
+  const leadTime = totalVA + totalNVA;
+  const vaRatio = leadTime > 0 ? (totalVA / leadTime) * 100 : 0;
+  const leadTimeDays = leadTime / 86400;
+  
+  // Calculate percentages
+  nvaBreakdown.forEach(n => n.pct = totalNVA > 0 ? (n.seconds / (totalNVA + totalVA)) * 100 : 0);
+  nvaBreakdown.sort((a, b) => b.seconds - a.seconds);
+  
+  // Bottlenecks
+  const bottlenecks = procs.map((p, i) => ({ ...p, idx: i, ctEff: effectiveCT(p), ctNorm: normalizeCT(p) })).filter(p => takt && p.ctEff && p.ctEff > takt);
+  
+  // Highest C/O
+  const sortedCO = procs.map(p => ({ name: p.name, co: parseFloat(p.co) || 0 })).filter(p => p.co > 0).sort((a, b) => b.co - a.co);
+  
+  // Lowest uptime
+  const sortedUp = procs.map(p => ({ name: p.name, up: parseFloat(p.uptime) || 100 })).sort((a, b) => a.up - b.up);
+  
+  let html = '';
+  
+  // ── BENCHMARK COMPARISON ──
+  html += `<div style="margin-top:12px;"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">📊 Benchmark sectorial — ${bench.label}</div>`;
+  html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
+  
+  const vaStatus = vaRatio <= bench.va_ratio[0] ? 'bad' : vaRatio <= bench.va_ratio[1] ? 'warn' : '';
+  const ltStatus = leadTimeDays > bench.lead_time_days[1] ? 'bad' : leadTimeDays > bench.lead_time_days[0] ? 'warn' : '';
+  const avgUp = procs.reduce((a, p) => a + (parseFloat(p.uptime) || 0), 0) / procs.length;
+  const upStatus = avgUp < bench.uptime[0] ? 'bad' : avgUp < bench.uptime[1] ? 'warn' : '';
+  const avgCO = sortedCO.length ? sortedCO.reduce((a, p) => a + p.co, 0) / sortedCO.length : 0;
+  const coStatus = avgCO > bench.co_min[1] ? 'bad' : avgCO > bench.co_min[0] ? 'warn' : '';
+  
+  const benchItems = [
+    { label: 'Ratio VA', value: vaRatio > 0 ? vaRatio.toFixed(4) + '%' : '—', bench: bench.va_ratio[0] + '–' + bench.va_ratio[1] + '%', status: vaStatus },
+    { label: 'Lead Time', value: leadTimeDays > 0 ? leadTimeDays.toFixed(1) + ' días' : '—', bench: bench.lead_time_days[0] + '–' + bench.lead_time_days[1] + ' días', status: ltStatus },
+    { label: 'Uptime medio', value: avgUp > 0 ? avgUp.toFixed(1) + '%' : '—', bench: bench.uptime[0] + '–' + bench.uptime[1] + '%', status: upStatus },
+    { label: 'C/O medio', value: avgCO > 0 ? avgCO.toFixed(0) + ' min' : '—', bench: bench.co_min[0] + '–' + bench.co_min[1] + ' min', status: coStatus }
+  ];
+  
+  benchItems.forEach(b => {
+    const col = b.status === 'bad' ? 'var(--red)' : b.status === 'warn' ? 'var(--amber)' : 'var(--green)';
+    html += `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);padding:12px;text-align:center;">
+      <div style="font-size:18px;font-weight:700;color:${col};font-family:var(--mono);">${b.value}</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:2px;text-transform:uppercase;">${b.label}</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:4px;padding-top:4px;border-top:0.5px solid var(--border);">Sector: ${b.bench}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  
+  // ── LEAD TIME BREAKDOWN ──
+  if (nvaBreakdown.length) {
+    html += `<div style="margin-top:20px;"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">⏱️ Desglose del Lead Time — ¿Dónde se pierde el tiempo?</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
+    nvaBreakdown.forEach(n => {
+      const barW = Math.max(n.pct * 2, 4);
+      html += `<div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:180px;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.name}</div>
+        <div style="flex:1;height:12px;background:var(--s1);border-radius:3px;overflow:hidden;">
+          <div style="width:${barW}%;height:100%;background:${n.pct > 40 ? 'var(--red)' : n.pct > 20 ? 'var(--amber)' : 'var(--teal)'};border-radius:3px;"></div>
+        </div>
+        <div style="width:70px;text-align:right;font-size:11px;color:var(--text2);font-family:var(--mono);">${formatTime(n.seconds)}</div>
+        <div style="width:45px;text-align:right;font-size:10px;color:var(--text3);font-family:var(--mono);">${n.pct.toFixed(1)}%</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+  
+  // ── KEY FINDINGS ──
+  html += `<div style="margin-top:20px;"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">🔍 Hallazgos clave</div>`;
+  html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+  
+  // Finding 1: VA ratio
+  if (vaRatio > 0) {
+    html += renderFinding('red', `El producto pasa ${leadTimeDays.toFixed(1)} días en planta pero solo se transforma durante ${formatTime(totalVA)}. Ratio de valor añadido: ${vaRatio.toFixed(4)}%.`);
+  }
+  
+  // Finding 2: Where is 80% of lead time
+  if (nvaBreakdown.length) {
+    let accum = 0;
+    const top = [];
+    for (const n of nvaBreakdown) {
+      top.push(n.name);
+      accum += n.pct;
+      if (accum >= 75) break;
+    }
+    html += renderFinding('amber', `El ${accum.toFixed(0)}% del lead time se concentra en: ${top.join(', ')}. Estos son los puntos con mayor potencial de reducción.`);
+  }
+  
+  // Finding 3: Bottlenecks
+  if (bottlenecks.length) {
+    const bNames = bottlenecks.map(b => `${b.name||'?'} (${b.ctEff.toFixed(2)} seg vs takt ${takt.toFixed(2)} seg)`);
+    html += renderFinding('red', `Cuellos de botella detectados: ${bNames.join(', ')}. Estos procesos no pueden seguir el ritmo de la demanda del cliente.`);
+  }
+  
+  // Finding 4: Causal chain (highest C/O → batch → WIP)
+  if (sortedCO.length && sortedCO[0].co > 15) {
+    html += renderFinding('amber', `${sortedCO[0].name} tiene el changeover más alto (${sortedCO[0].co} min), lo que fuerza lotes grandes, genera sobreproducción y acumula inventario aguas abajo. Candidato prioritario para SMED.`);
+  }
+  
+  // Finding 5: Low uptime
+  if (sortedUp.length && sortedUp[0].up < 90) {
+    html += renderFinding('amber', `${sortedUp[0].name} tiene el uptime más bajo (${sortedUp[0].up}%), lo que reduce capacidad efectiva y genera paradas no planificadas. Revisar plan de mantenimiento preventivo.`);
+  }
+  
+  html += `</div></div>`;
+  
+  // ── PRIORITIZED RECOMMENDATIONS ──
+  html += `<div style="margin-top:20px;"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">🎯 Recomendaciones priorizadas</div>`;
+  html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+  
+  let recNum = 1;
+  
+  // Rec 1: Fix bottleneck
+  if (bottlenecks.length) {
+    const bn = bottlenecks[0];
+    const upBn = parseFloat(bn.uptime);
+    const coBn = parseFloat(bn.co);
+    let action = '';
+    if (upBn && upBn < 90) action = `Mejorar uptime de ${bn.name} (actual ${upBn}%) mediante mantenimiento preventivo y análisis de paradas.`;
+    else if (coBn && coBn > 15) action = `Reducir tiempo de cambio en ${bn.name} (actual ${coBn} min) mediante proyecto SMED para recuperar capacidad.`;
+    else action = `Analizar y resolver la restricción de capacidad en ${bn.name} (C/T efectivo ${bn.ctEff.toFixed(2)} seg vs takt ${takt.toFixed(2)} seg).`;
+    html += renderRec(recNum++, action, 'Primero — sin capacidad en el cuello de botella, cualquier otra mejora acumula más inventario');
+  }
+  
+  // Rec 2: SMED on highest C/O
+  if (sortedCO.length && sortedCO[0].co > 15) {
+    html += renderRec(recNum++, `Proyecto SMED en ${sortedCO[0].name} para reducir C/O de ${sortedCO[0].co} min. Objetivo: reducir tamaño de lote y bajar WIP entre procesos.`, 'Reducir lotes ataca directamente el inventario en proceso y el lead time');
+  }
+  
+  // Rec 3: Reduce biggest NVA point
+  if (nvaBreakdown.length) {
+    const top = nvaBreakdown[0];
+    html += renderRec(recNum++, `Reducir inventario en ${top.name} (${formatTime(top.seconds)}, ${top.pct.toFixed(1)}% del lead time). Revisar política de aprovisionamiento o lógica de lotes que genera esta acumulación.`, 'El mayor contribuyente al lead time total');
+  }
+  
+  // Rec 4: Implement pull
+  html += renderRec(recNum++, `Evolucionar de sistema push (programa semanal a cada proceso) a sistema pull con señales kanban entre procesos, empezando por el cuello de botella aguas abajo.`, 'El flujo de información push genera sobreproducción en cada etapa');
+  
+  html += `</div></div>`;
+  
+  el.innerHTML = html;
+}
+
+function renderFinding(color, text) {
+  const colors = { red: 'var(--red)', amber: 'var(--amber)', green: 'var(--green)' };
+  const bgs = { red: 'rgba(226,75,74,0.06)', amber: 'rgba(186,117,23,0.06)', green: 'rgba(29,158,117,0.06)' };
+  return `<div style="padding:10px 14px;background:${bgs[color]};border-left:3px solid ${colors[color]};border-radius:0 var(--r-sm) var(--r-sm) 0;">
+    <div style="font-size:12px;color:var(--text);line-height:1.5;">${text}</div>
+  </div>`;
+}
+
+function renderRec(num, text, rationale) {
+  return `<div style="padding:12px 14px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);display:flex;gap:12px;align-items:flex-start;">
+    <div style="width:24px;height:24px;border-radius:50%;background:rgba(0,173,181,0.15);border:1px solid var(--teal);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--teal-l);flex-shrink:0;">${num}</div>
+    <div><div style="font-size:12px;color:var(--text);line-height:1.5;">${text}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:4px;font-style:italic;">↳ ${rationale}</div></div>
+  </div>`;
+}
+
+// ── VSM CONTEXT FOR DIOP REPORT ──
+function getVSMReportContext() {
+  if (!currentClient) return '';
+  const vsm = vsmData[currentClient.id];
+  if (!vsm || !vsm.processes || !vsm.processes.length) return '';
+  
+  const takt = calcTaktTime(vsm);
+  const procs = vsm.processes;
+  
+  let totalVA = 0;
+  procs.forEach(p => { const ct = normalizeCT(p); if (ct) totalVA += ct; });
+  
+  let totalNVA = 0;
+  const mpDays = parseFloat(vsm.inventories.mp);
+  if (mpDays) totalNVA += mpDays * 24 * 3600;
+  for (let i = 0; i < procs.length - 1; i++) {
+    const key = `${i}_${i+1}`;
+    const wip = parseFloat(vsm.inventories.between?.[key]);
+    const nextCT = normalizeCT(procs[i+1]);
+    if (wip && nextCT) totalNVA += wip * nextCT;
+  }
+  const ptUnits = parseFloat(vsm.inventories.pt);
+  const demandDay = parseFloat(vsm.demand.units_per_day);
+  if (ptUnits && demandDay) totalNVA += (ptUnits / demandDay) * 24 * 3600;
+  
+  const leadTime = totalVA + totalNVA;
+  const vaRatio = leadTime > 0 ? (totalVA / leadTime) * 100 : 0;
+  
+  const bottlenecks = procs.filter(p => { const eff = effectiveCT(p); return takt && eff && eff > takt; });
+  
+  let ctx = '\n=== VALUE STREAM MAP (ANÁLISIS DE FLUJO) ===\n';
+  ctx += `Familia de producto mapeada: ${vsm.client_info.name || 'No especificada'}\n`;
+  ctx += `Demanda: ${vsm.demand.units_per_day || '?'} uds/día\n`;
+  ctx += `Takt Time: ${takt ? takt.toFixed(2) + ' seg/ud' : 'No calculado'}\n`;
+  ctx += `Lead Time total: ${formatTime(leadTime)}\n`;
+  ctx += `Tiempo de valor añadido: ${formatTime(totalVA)}\n`;
+  ctx += `Ratio de valor añadido: ${vaRatio > 0 ? vaRatio.toFixed(4) + '%' : 'No calculado'}\n`;
+  ctx += `\nProcesos mapeados:\n`;
+  procs.forEach((p, i) => {
+    const ct = normalizeCT(p); const eff = effectiveCT(p);
+    const isBot = takt && eff && eff > takt;
+    ctx += `  ${i+1}. ${p.name||'?'} — C/T: ${ct ? ct.toFixed(2)+'seg' : '?'}, C/O: ${p.co||'?'}min, Uptime: ${p.uptime||'?'}%${isBot ? ' [CUELLO DE BOTELLA]' : ''}\n`;
+  });
+  if (bottlenecks.length) {
+    ctx += `\nCuellos de botella: ${bottlenecks.map(b => b.name||'?').join(', ')}\n`;
+  }
+  ctx += `Almacén MP: ${vsm.inventories.mp||'?'} días\n`;
+  ctx += `Almacén PT: ${vsm.inventories.pt||'?'} uds${demandDay ? ' (' + (ptUnits/demandDay).toFixed(1) + ' días)' : ''}\n`;
+  ctx += `Sistema de planificación: ${vsm.planning.type||'?'} — programa ${vsm.planning.frequency||'?'}\n`;
+  
+  return ctx;
 }
 </script>
