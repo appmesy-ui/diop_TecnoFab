@@ -474,6 +474,7 @@ select.fi{cursor:pointer;}
     <div class="notes-tab-row">
       <button class="notes-tab active" onclick="switchNotesTab('general',this)">General</button>
       <button class="notes-tab" onclick="switchNotesTab('ceo',this)">CEO</button>
+      <button class="notes-tab" onclick="switchNotesTab('ops',this)">Dir.Ops</button>
       <button class="notes-tab" onclick="switchNotesTab('fab',this)">Fábrica</button>
       <button class="notes-tab" onclick="switchNotesTab('sys',this)">Sistemas</button>
     </div>
@@ -537,6 +538,16 @@ select.fi{cursor:pointer;}
     <!-- M6 INITIATIVE BACKLOG + RIM + ROI -->
     <div class="screen" id="screen-m6">
       <div id="m6-content"></div>
+    </div>
+
+    <!-- M2EXT FIELD TOOLS: Gemba, Loss Tree, 5S, Root Cause -->
+    <div class="screen" id="screen-m2ext">
+      <div id="m2ext-content"></div>
+    </div>
+
+    <!-- M3EXT FIELD TOOLS: Systems Inventory, Digital Maturity, Data Flow, Cybersecurity -->
+    <div class="screen" id="screen-m3ext">
+      <div id="m3ext-content"></div>
     </div>
 
   </main>
@@ -690,10 +701,55 @@ const SESSIONS = {
         {id:'distribution', text:'¿Hacen expediciones a almacén logístico o directamente a cliente final?', type:'sel', prio:'s', opts:['Directamente a cliente final','A almacén logístico propio','A operador logístico externo','Mixto']},
       ]},
     ]
+  },
+  ops: {
+    id:'ops', label:'Director Operaciones', icon:'🏭', iconClass:'shi-fab', headerClass:'qbh-fab',
+    time:'~45 minutos', sub:'Pérdidas reales · Datos que faltan · Problemas del día a día',
+    blocks:[
+      { id:'ops_pain', name:'Problemas operativos', obj:'Identificar las pérdidas reales y los datos que faltan', questions:[
+        {id:'top3_problems', text:'¿Qué 3 problemas te quitan más tiempo cada semana? (el más costoso primero)', type:'txt', prio:'c'},
+        {id:'info_search_time', text:'¿Dónde pierdes tiempo buscando información o esperando?', type:'txt', prio:'c'},
+        {id:'missing_data_decision', text:'¿Qué decisión no puedes tomar bien porque te falta el dato?', type:'txt', prio:'c', roi:'Señal directa de OFI D2 bajo'},
+        {id:'single_person_dependency', text:'¿Qué proceso depende de una sola persona?', type:'txt', prio:'c', roi:'Riesgo de concentración → iniciativa L1'},
+        {id:'info_flow_to_desk', text:'¿Cómo llega la información de producción a tu escritorio?', type:'sel', prio:'c', opts:['En tiempo real en pantalla','Por Excel al final del turno','Por reunión diaria','Por teléfono/WhatsApp','Me bajo a planta a preguntar']},
+        {id:'last_improvement_success', text:'¿Cuándo fue el último proyecto de mejora que funcionó? ¿Y el último que falló?', type:'txt', prio:'i'},
+        {id:'one_thing_change', text:'Si pudieras cambiar una sola cosa mañana, ¿qué sería?', type:'txt', prio:'c', roi:'La respuesta suele ser el Quick Win correcto'},
+      ]},
+    ]
+  },
+  itot: {
+    id:'itot', label:'IT / OT', icon:'💻', iconClass:'shi-sys', headerClass:'qbh-sys',
+    time:'~45 minutos', sub:'Flujo de datos real · Sistemas · Ciberseguridad OT',
+    blocks:[
+      { id:'itot_systems', name:'Sistemas y flujo de datos', obj:'Mapear el flujo de datos real — no el teórico. Cada transferencia manual es una brecha de observabilidad.', questions:[
+        {id:'systems_real_use', text:'¿Qué sistemas existen y quién los usa realmente? (ERP, SCADA, MES, GMAO, QMS, WMS)', type:'txt', prio:'c'},
+        {id:'data_flow_plant_to_mgmt', text:'¿Cómo fluyen los datos desde planta hasta dirección? Trazar el camino completo.', type:'txt', prio:'c'},
+        {id:'manual_transfers', text:'¿Dónde hay transferencia manual en ese flujo? (Excel, email, PDF, teléfono)', type:'txt', prio:'c', roi:'Cada transferencia manual es una ruptura de observabilidad'},
+        {id:'ot_it_separation', text:'¿Las redes OT e IT están físicamente separadas?', type:'sel', prio:'c', opts:['Sí — segmentación física o VLAN','No — misma red','No lo sé']},
+        {id:'scada_remote_mfa', text:'¿Hay acceso remoto al SCADA? ¿Requiere MFA o VPN?', type:'sel', prio:'c', opts:['Sí con MFA/VPN','Sí sin MFA','No hay acceso remoto','No hay SCADA']},
+        {id:'failure_info_lag', text:'¿Cuánto tarda en llegar a un directivo la info de una avería?', type:'sel', prio:'c', roi:'Medir el lag de observabilidad', opts:['Instantáneo (alerta automática)','Menos de 30 min','Entre 30 min y 2 horas','Al final del turno','Al día siguiente o más']},
+        {id:'untrusted_data', text:'¿Qué dato del sistema no confías y por qué?', type:'txt', prio:'i', roi:'Señal de Legacy Digitalization Trap'},
+        {id:'erp_integration_obstacle', text:'Si integraras producción con el ERP hoy, ¿cuál sería el mayor obstáculo?', type:'txt', prio:'i', roi:'Prerrequisitos de L3 Connect'},
+      ]},
+    ]
+  },
+  operario: {
+    id:'operario', label:'Operario / Técnico', icon:'👷', iconClass:'shi-fab', headerClass:'qbh-fab',
+    time:'~20 minutos', sub:'Realidad de planta sin filtros de gestión',
+    blocks:[
+      { id:'op_reality', name:'Realidad del día a día', obj:'Ver la realidad de planta sin filtros de gestión. Las discrepancias entre lo que dice dirección y el operario son los hallazgos más valiosos.', questions:[
+        {id:'hardest_daily', text:'¿Qué hace el trabajo más difícil cada día?', type:'txt', prio:'c'},
+        {id:'search_time_per_shift', text:'¿Cuánto tiempo buscas herramientas, materiales o información por turno?', type:'sel', prio:'c', roi:'Cuantificar en minutos → coste anual', opts:['Menos de 10 min','10-30 min','30-60 min','Más de 1 hora']},
+        {id:'last_unexpected_stop', text:'¿Cuándo fue el último paro inesperado? ¿Qué pasó? ¿Había señales previas?', type:'txt', prio:'c'},
+        {id:'legacy_practices', text:'¿Hay cosas que haces de cierta forma porque siempre se hizo así, pero no sabes por qué?', type:'txt', prio:'i', roi:'Indica procesos no estandarizados — oportunidad L1'},
+        {id:'digital_usage', text:'¿Qué sistema digital usas? ¿Cuál evitas y por qué?', type:'txt', prio:'i', roi:'El sistema evitado tiene un motivo real'},
+        {id:'shift_handover_reality', text:'Si el turno anterior deja algo mal, ¿cómo te enteras?', type:'txt', prio:'c', roi:'Señal del nivel de comunicación entre turnos'},
+      ]},
+    ]
   }
 };
 
-const SESSION_ORDER = ['ceo','fab','sys'];
+const SESSION_ORDER = ['ceo','ops','itot','operario','fab','sys'];
 function getProcesesBySector() {
   const sector = currentClient?.sector || allAnswers[`${currentClient?.id}_ceo_sector`] || '';
   const listas = {
@@ -710,7 +766,7 @@ function getProcesesBySector() {
   };
   return listas[sector] || ['Recepción de materiales','Preparación','Procesado principal','Control en proceso','Semiterminado','Ensamblaje o acabado','Control de calidad','Envasado o embalaje','Almacenamiento','Expedición','Planificación','Mantenimiento','Gestión de residuos','Logística interna','Documentación y trazabilidad'];
 }
-const SESSION_LABELS = {ceo:'CEO',fab:'Fábrica',sys:'Sistemas'};
+const SESSION_LABELS = {ceo:'CEO',ops:'Dir. Operaciones',itot:'IT/OT',operario:'Operario',fab:'Fábrica',sys:'Sistemas'};
 
 // ── INIT ──
 async function init() {
@@ -2466,18 +2522,36 @@ function renderSidebarRoadmap() {
   const vsmHasData = currentClient && vsmData[currentClient.id] && vsmData[currentClient.id].processes && vsmData[currentClient.id].processes.length > 0;
   const f0HasData = currentClient && f0Data[currentClient.id] && f0Data[currentClient.id].archetype_hypothesis;
   const m4HasData = currentClient && m4Data[currentClient.id] && m4Data[currentClient.id].dimensions && Object.values(m4Data[currentClient.id].dimensions).some(v => v > 0);
-  const m5Ready = f0HasData || (prog && SESSION_ORDER.some(s => prog.sessions[s] !== 'pending'));
-  const reportState = prog && SESSION_ORDER.every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
+  const m2extHasData = currentClient && m2extData[currentClient.id];
+  const m3extHasData = currentClient && m3extData[currentClient.id];
+  const m5Ready = f0HasData || (prog && ['ceo','fab','sys'].some(s => prog.sessions[s] !== 'pending'));
+  const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
+
+  function ss(sid){ return prog?.sessions[sid]||'pending'; }
+  function ic(state,dirty){ return state==='done'?(dirty?'!':'✓'):state==='active'?'→':'○'; }
+  function cc(state,dirty){ return state==='done'?(dirty?'rc-dirty':'rc-done'):state==='active'?'rc-active':'rc-pending'; }
+  function lc(state,dirty){ return state==='done'?(dirty?'rly':'rld'):state==='active'?'rla':''; }
 
   const modules = [
     { id:'f0', label:'F0 · Pre-engagement', icon: f0HasData ? '✓' : '🎯', state: f0HasData ? 'rc-done' : 'rc-pending', labelClass: f0HasData ? 'rld' : '', action: 'openF0()' },
-    null, // separator
-    { id:'ceo', label:'M1 · Entrevistas', icon: prog?.sessions.ceo === 'done' ? '✓' : prog?.sessions.ceo === 'active' ? '→' : '○', state: prog?.sessions.ceo === 'done' ? 'rc-done' : prog?.sessions.ceo === 'active' ? 'rc-active' : 'rc-pending', labelClass: prog?.sessions.ceo === 'done' ? 'rld' : prog?.sessions.ceo === 'active' ? 'rla' : '', action: "openSession('ceo')" },
-    { id:'fab', label:'M2 · Dx operativo', icon: prog?.sessions.fab === 'done' ? '✓' : prog?.sessions.fab === 'active' ? '→' : '○', state: prog?.sessions.fab === 'done' ? 'rc-done' : prog?.sessions.fab === 'active' ? 'rc-active' : 'rc-pending', labelClass: prog?.sessions.fab === 'done' ? 'rld' : prog?.sessions.fab === 'active' ? 'rla' : '', action: "openSession('fab')" },
-    { id:'vsm', label:'　└ Value Stream Map', icon: vsmHasData ? '✓' : '📊', state: vsmHasData ? 'rc-done' : 'rc-pending', labelClass: vsmHasData ? 'rld' : '', action: 'openVSM()' },
-    { id:'sys', label:'M3 · Dx digital', icon: prog?.sessions.sys === 'done' ? '✓' : prog?.sessions.sys === 'active' ? '→' : '○', state: prog?.sessions.sys === 'done' ? 'rc-done' : prog?.sessions.sys === 'active' ? 'rc-active' : 'rc-pending', labelClass: prog?.sessions.sys === 'done' ? 'rld' : prog?.sessions.sys === 'active' ? 'rla' : '', action: "openSession('sys')" },
+    null,
+    { id:'_h', label:'M1 · ENTREVISTAS', header:true },
+    { id:'ceo', label:'　CEO', icon:ic(ss('ceo')), state:cc(ss('ceo')), labelClass:lc(ss('ceo')), action:"openSession('ceo')", sub:true },
+    { id:'ops', label:'　Dir. Operaciones', icon:ic(ss('ops')), state:cc(ss('ops')), labelClass:lc(ss('ops')), action:"openSession('ops')", sub:true },
+    { id:'itot', label:'　IT / OT', icon:ic(ss('itot')), state:cc(ss('itot')), labelClass:lc(ss('itot')), action:"openSession('itot')", sub:true },
+    { id:'operario', label:'　Operario', icon:ic(ss('operario')), state:cc(ss('operario')), labelClass:lc(ss('operario')), action:"openSession('operario')", sub:true },
+    null,
+    { id:'_h2', label:'M2 · DX OPERATIVO', header:true },
+    { id:'fab', label:'　Proceso + KPIs', icon:ic(ss('fab')), state:cc(ss('fab')), labelClass:lc(ss('fab')), action:"openSession('fab')", sub:true },
+    { id:'vsm', label:'　Value Stream Map', icon: vsmHasData ? '✓' : '📊', state: vsmHasData ? 'rc-done' : 'rc-pending', labelClass: vsmHasData ? 'rld' : '', action: 'openVSM()', sub:true },
+    { id:'m2ext', label:'　Gemba · Pérdidas · 5S', icon: m2extHasData ? '✓' : '📋', state: m2extHasData ? 'rc-done' : 'rc-pending', labelClass: m2extHasData ? 'rld' : '', action: 'openM2ext()', sub:true },
+    null,
+    { id:'_h3', label:'M3 · DX DIGITAL', header:true },
+    { id:'sys', label:'　Sistemas + ERP', icon:ic(ss('sys')), state:cc(ss('sys')), labelClass:lc(ss('sys')), action:"openSession('sys')", sub:true },
+    { id:'m3ext', label:'　Madurez · Flujo · Ciber', icon: m3extHasData ? '✓' : '💻', state: m3extHasData ? 'rc-done' : 'rc-pending', labelClass: m3extHasData ? 'rld' : '', action: 'openM3ext()', sub:true },
+    null,
     { id:'m4', label:'M4 · Dx organizacional', icon: m4HasData ? '✓' : '🏢', state: m4HasData ? 'rc-done' : 'rc-pending', labelClass: m4HasData ? 'rld' : '', action: 'openM4()' },
-    null, // separator
+    null,
     { id:'m5', label:'M5 · OFI™ Dashboard', icon: '📊', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: '', action: 'openM5()' },
     { id:'m6', label:'M6 · Iniciativas + RIM™', icon: '🎯', state: 'rc-pending', labelClass: '', action: 'openM6()' },
     { id:'report', label:'M7 · Informe final', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
@@ -2485,14 +2559,12 @@ function renderSidebarRoadmap() {
 
   let html = '';
   modules.forEach(m => {
-    if (m === null) {
-      html += '<div style="height:6px;"></div>';
-      return;
-    }
+    if (m === null) { html += '<div style="height:4px;"></div>'; return; }
+    if (m.header) { html += `<div style="padding:3px 12px;font-size:9px;color:var(--text4);letter-spacing:.08em;font-family:var(--mono);">${m.label}</div>`; return; }
     const isActive = currentSession === m.id;
-    html += `<div class="rm-item ${isActive ? 'rm-active' : ''}" onclick="${m.action}">
-      <div class="rm-circle ${m.state}">${m.icon}</div>
-      <div class="rm-label ${m.labelClass}">${m.label}</div>
+    html += `<div class="rm-item ${isActive ? 'rm-active' : ''}" onclick="${m.action}" style="${m.sub?'padding-left:8px;':''}">
+      <div class="rm-circle ${m.state}" style="${m.sub?'width:16px;height:16px;font-size:8px;':''}">${m.icon}</div>
+      <div class="rm-label ${m.labelClass}" style="${m.sub?'font-size:11px;':''}">${m.label}</div>
     </div>`;
   });
 
@@ -2722,7 +2794,7 @@ const M4_DIMENSIONS=[
   {k:'collaboration',name:'Colaboración inter-departamental',low:'Silos que se culpan mutuamente',high:'Colaboración sistémica y proactiva',signal:'¿Producción, mantenimiento y calidad se reúnen periódicamente?'}
 ];
 
-function defaultM4(){const d={};M4_DIMENSIONS.forEach(dim=>d[dim.k]=0);return{dimensions:d,evidence:{},governance:{},archetype_signals:''};}
+function defaultM4(){const d={};M4_DIMENSIONS.forEach(dim=>d[dim.k]=0);return{dimensions:d,evidence:{},governance:{oee:{owner:'',review:'',deviation:''},rechazo:{owner:'',review:'',deviation:''},mtbf:{owner:'',review:'',deviation:''},servicio:{owner:'',review:'',deviation:''},plan_real:{owner:'',review:'',deviation:''},stock:{owner:'',review:'',deviation:''}},archetype_signals:''};}
 function getM4(){if(!currentClient)return defaultM4();if(!m4Data[currentClient.id])m4Data[currentClient.id]=defaultM4();return m4Data[currentClient.id];}
 
 async function loadM4Data(clientId){try{const key=`${clientId}_m4_m4_config`;if(allAnswers[key]){m4Data[clientId]=JSON.parse(allAnswers[key]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','m4').eq('question_id','m4_config').single();if(data?.answer){m4Data[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}}}catch(e){}}
@@ -2765,6 +2837,20 @@ function renderM4(){
   html+=`</div>`;
 
   // Archetype signals from M4
+  html+=`<div class="vsm-section"><div class="vsm-section-title">🏛️ Mapa de gobernanza operativa</div><div class="vsm-section-sub">¿Quién posee qué KPI? Si "Nada" domina → iniciativas L4 Govern tienen readiness alta.</div>`;
+  const govKPIs=[{k:'oee',l:'OEE global'},{k:'rechazo',l:'Tasa rechazo / calidad'},{k:'mtbf',l:'MTBF / averías'},{k:'servicio',l:'Nivel de servicio'},{k:'plan_real',l:'Plan vs. real producción'},{k:'stock',l:'Stock / WIP'}];
+  html+=`<div style="display:grid;grid-template-columns:140px 1fr 120px 1fr;gap:6px;margin-bottom:4px;padding:4px 0;"><div style="font-size:9px;color:var(--text4);font-weight:600;">KPI</div><div style="font-size:9px;color:var(--text4);font-weight:600;">Propietario</div><div style="font-size:9px;color:var(--text4);font-weight:600;">Revisión</div><div style="font-size:9px;color:var(--text4);font-weight:600;">Qué pasa con desviación</div></div>`;
+  govKPIs.forEach(g=>{
+    const gov=m.governance?.[g.k]||{owner:'',review:'',deviation:''};
+    html+=`<div style="display:grid;grid-template-columns:140px 1fr 120px 1fr;gap:6px;align-items:center;margin-bottom:4px;">
+      <div style="font-size:11px;color:var(--text);font-weight:500;">${g.l}</div>
+      <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Nombre/rol" value="${gov.owner||''}" oninput="if(!getM4().governance)getM4().governance={};if(!getM4().governance['${g.k}'])getM4().governance['${g.k}']={};getM4().governance['${g.k}'].owner=this.value;m4Changed()">
+      <select class="vsm-select" style="font-size:10px;padding:4px;" onchange="if(!getM4().governance)getM4().governance={};if(!getM4().governance['${g.k}'])getM4().governance['${g.k}']={};getM4().governance['${g.k}'].review=this.value;m4Changed()"><option value="">—</option><option ${gov.review==='Diaria'?'selected':''}>Diaria</option><option ${gov.review==='Semanal'?'selected':''}>Semanal</option><option ${gov.review==='Nada'?'selected':''}>Nada</option></select>
+      <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Acción ante desviación" value="${gov.deviation||''}" oninput="if(!getM4().governance)getM4().governance={};if(!getM4().governance['${g.k}'])getM4().governance['${g.k}']={};getM4().governance['${g.k}'].deviation=this.value;m4Changed()">
+    </div>`;
+  });
+  html+=`</div>`;
+
   html+=`<div class="vsm-section"><div class="vsm-section-title">🔮 Señales de arquetipo observadas en M4</div><textarea class="vsm-input" style="min-height:60px;resize:vertical;" placeholder="¿Qué arquetipo confirman las observaciones organizacionales?" oninput="getM4().archetype_signals=this.value;m4Changed();">${m.archetype_signals||''}</textarea></div>`;
   
   document.getElementById('m4-content').innerHTML=html;
@@ -3187,6 +3273,204 @@ function renderRIMMatrix(backlog){
   h+=`</div>`;
   el.innerHTML=h;
 }
+
+// ══════════════════════════════════════════════════════
+// ── M2EXT · FIELD TOOLS (Gemba, Loss Tree, 5S, Root Cause) ──
+// ══════════════════════════════════════════════════════
+
+let m2extData={};let m2extSaveTimer=null;let m2extTab='gemba';
+function defaultM2ext(){return{gemba:{wip_station:'',wt_visible:'',flow_interrupted:'',pt_constraint:'',wt_constraint:'',speed_nominal:'',speed_real:'',info_method:'',realtime_screens:'',stops_system:'',notes:''},losses:{'averia':'','falta_material':'','changeover':'','otros_disp':'','microparos':'','velocidad':'','scrap':'','retrabajo':'','arranque':''},losses_eur:{'averia':'','falta_material':'','changeover':'','otros_disp':'','microparos':'','velocidad':'','scrap':'','retrabajo':'','arranque':''},losses_level:{'averia':'','falta_material':'','changeover':'','otros_disp':'','microparos':'','velocidad':'','scrap':'','retrabajo':'','arranque':''},fiveS:{seiri:0,seiton:0,seiso:0,seiketsu:0,shitsuke:0,notes:''},rootCause:[{desc:'',tool:'',cause:'',confidence:'',initiative:'',ttl:''},{desc:'',tool:'',cause:'',confidence:'',initiative:'',ttl:''},{desc:'',tool:'',cause:'',confidence:'',initiative:'',ttl:''}]};}
+function getM2ext(){if(!currentClient)return defaultM2ext();if(!m2extData[currentClient.id])m2extData[currentClient.id]=defaultM2ext();return m2extData[currentClient.id];}
+async function loadM2extData(cid){try{const k=`${cid}_m2ext_config`;if(allAnswers[k]){m2extData[cid]=JSON.parse(allAnswers[k]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',cid).eq('session','m2ext').eq('question_id','config').single();if(data?.answer){m2extData[cid]=JSON.parse(data.answer);allAnswers[k]=data.answer;}}}catch(e){}}
+async function saveM2ext(){if(!currentClient)return;const j=JSON.stringify(getM2ext());allAnswers[`${currentClient.id}_m2ext_config`]=j;try{await sb.from('diop_answers').upsert({client_id:currentClient.id,session:'m2ext',question_id:'config',answer:j,updated_at:new Date().toISOString()});}catch(e){}}
+function scheduleM2extSave(){clearTimeout(m2extSaveTimer);m2extSaveTimer=setTimeout(saveM2ext,800);}
+function m2extChanged(){scheduleM2extSave();renderSidebarRoadmap();}
+async function openM2ext(){currentSession='m2ext';document.getElementById('main-content').scrollTop=0;showScreen('m2ext');await loadM2extData(currentClient.id);renderM2ext();renderSidebarRoadmap();}
+
+function renderM2ext(){
+  const d=getM2ext();
+  let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">📋</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M2 · Herramientas de campo</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Gemba Walk · Árbol de pérdidas · 5S · Causa raíz</div></div></div>`;
+  // Tabs
+  html+=`<div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;">`;
+  [{k:'gemba',l:'🔍 Gemba Walk'},{k:'losses',l:'📉 Árbol pérdidas'},{k:'fiveS',l:'🧹 5S'},{k:'rootcause',l:'🔬 Causa raíz'}].forEach(t=>{
+    const sel=m2extTab===t.k;
+    html+=`<button onclick="m2extTab='${t.k}';renderM2ext();" style="padding:8px 16px;border:1px solid ${sel?'var(--teal)':'var(--border2)'};background:${sel?'rgba(0,173,181,0.1)':'var(--s2)'};color:${sel?'var(--teal-l)':'var(--text2)'};border-radius:20px;font-size:12px;font-weight:${sel?'600':'400'};cursor:pointer;font-family:var(--font);">${t.l}</button>`;
+  });
+  html+=`</div>`;
+
+  if(m2extTab==='gemba'){
+    html+=`<div class="vsm-section"><div class="vsm-section-title">🔍 Gemba Walk — Observación directa</div><div class="vsm-section-sub">Cronómetro + ojos abiertos. Registrar lo que ves, no lo que te cuentan.</div>`;
+    const gf=[
+      {k:'wip_station',l:'Estación con mayor WIP acumulado',p:'Nombre/nº de estación y cantidad estimada'},
+      {k:'wt_visible',l:'WT visible (operario esperando)',p:'Estación + tiempo estimado (min)'},
+      {k:'flow_interrupted',l:'Flujo interrumpido — ¿dónde?',p:'Descripción + causa observada'},
+    ];
+    html+=`<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Flujo y WIP — observar movimiento de material</div>`;
+    gf.forEach(f=>{html+=`<div class="vsm-field" style="margin-bottom:8px;"><div class="vsm-label">${f.l}</div><input class="vsm-input" placeholder="${f.p}" value="${d.gemba[f.k]||''}" oninput="getM2ext().gemba['${f.k}']=this.value;m2extChanged()"></div>`;});
+    html+=`<div style="font-size:12px;font-weight:600;color:var(--text);margin:14px 0 8px;">Medición directa — cronómetro obligatorio</div>`;
+    [{k:'pt_constraint',l:'PT en el constraint (min/ud)',p:'Estación + PT medido'},{k:'wt_constraint',l:'WT antes del constraint (min)',p:'Tiempo espera medido'},{k:'speed_nominal',l:'Velocidad nominal (uds/h)',p:''},{k:'speed_real',l:'Velocidad real observada (uds/h)',p:''}].forEach(f=>{
+      html+=`<div class="vsm-field" style="margin-bottom:8px;"><div class="vsm-label">${f.l}</div><input class="vsm-input" placeholder="${f.p}" value="${d.gemba[f.k]||''}" oninput="getM2ext().gemba['${f.k}']=this.value;m2extChanged()"></div>`;});
+    html+=`<div style="font-size:12px;font-weight:600;color:var(--text);margin:14px 0 8px;">Información y sistemas en planta</div>`;
+    [{k:'info_method',l:'¿Cómo sabe el operario qué producir?',p:'Papel / pantalla / de memoria / radio'},{k:'realtime_screens',l:'¿Hay pantallas con datos en tiempo real?',p:'Descripción + qué muestran'},{k:'stops_system',l:'¿Se registran los paros en algún sistema?',p:'Sistema / papel / nada'}].forEach(f=>{
+      html+=`<div class="vsm-field" style="margin-bottom:8px;"><div class="vsm-label">${f.l}</div><input class="vsm-input" placeholder="${f.p}" value="${d.gemba[f.k]||''}" oninput="getM2ext().gemba['${f.k}']=this.value;m2extChanged()"></div>`;});
+    html+=`<div class="vsm-field" style="margin-top:10px;"><div class="vsm-label">Notas de observación</div><textarea class="vsm-input" style="min-height:60px;resize:vertical;" placeholder="Observaciones libres del Gemba Walk..." oninput="getM2ext().gemba.notes=this.value;m2extChanged()">${d.gemba.notes||''}</textarea></div>`;
+    html+=`</div>`;
+  }
+  
+  if(m2extTab==='losses'){
+    const cats=[{k:'averia',l:'Paros no planificados (averías)',g:'DISPONIBILIDAD'},{k:'falta_material',l:'Paros por falta de material / espera',g:'DISPONIBILIDAD'},{k:'changeover',l:'Cambios de formato (changeover)',g:'DISPONIBILIDAD'},{k:'otros_disp',l:'Otros paros de disponibilidad',g:'DISPONIBILIDAD'},{k:'microparos',l:'Micro-paros (< 5 min)',g:'RENDIMIENTO'},{k:'velocidad',l:'Velocidad reducida',g:'RENDIMIENTO'},{k:'scrap',l:'Scrap / Chatarra',g:'CALIDAD'},{k:'retrabajo',l:'Retrabajos',g:'CALIDAD'},{k:'arranque',l:'Rejects de arranque',g:'CALIDAD'}];
+    html+=`<div class="vsm-section"><div class="vsm-section-title">📉 Árbol de pérdidas</div><div class="vsm-section-sub">Cuantificar cada categoría de pérdida. Si > 40% sin clasificar → activar Gemba de 2 turnos.</div>`;
+    let lastG='';
+    cats.forEach(c=>{
+      if(c.g!==lastG){lastG=c.g;html+=`<div style="font-size:10px;font-weight:700;color:var(--teal);margin:12px 0 6px;letter-spacing:.05em;">${c.g}</div>`;}
+      html+=`<div style="display:grid;grid-template-columns:1fr 80px 100px 70px;gap:8px;align-items:center;margin-bottom:4px;">
+        <div style="font-size:11px;color:var(--text);">${c.l}</div>
+        <input class="vsm-input" style="font-size:11px;text-align:right;" placeholder="%" value="${d.losses[c.k]||''}" oninput="getM2ext().losses['${c.k}']=this.value;m2extChanged()">
+        <input class="vsm-input" style="font-size:11px;text-align:right;" placeholder="€/año" value="${d.losses_eur[c.k]||''}" oninput="getM2ext().losses_eur['${c.k}']=this.value;m2extChanged()">
+        <select class="vsm-select" style="font-size:10px;padding:4px;" onchange="getM2ext().losses_level['${c.k}']=this.value;m2extChanged()"><option value="">Obs</option><option ${d.losses_level[c.k]==='A'?'selected':''}>A</option><option ${d.losses_level[c.k]==='B'?'selected':''}>B</option><option ${d.losses_level[c.k]==='C'?'selected':''}>C</option><option ${d.losses_level[c.k]==='D'?'selected':''}>D</option></select>
+      </div>`;
+    });
+    html+=`<div style="margin-top:8px;font-size:9px;color:var(--text4);">Obs: A=Automático fiable · B=Mayoritariamente fiable · C=Manual/inconsistente · D=Inexistente</div>`;
+    html+=`</div>`;
+  }
+  
+  if(m2extTab==='fiveS'){
+    const dims=[{k:'seiri',n:'Seiri — Clasificar',low:'Caos visible, materiales mezclados',high:'Solo lo que se usa hoy',q:'¿Hay objetos innecesarios en las zonas de trabajo?'},{k:'seiton',n:'Seiton — Ordenar',low:'Nada tiene lugar fijo',high:'Panel sombra, todo < 30s',q:'¿Cada herramienta tiene lugar designado y marcado?'},{k:'seiso',n:'Seiso — Limpiar',low:'Suciedad significativa, fugas',high:'Rutina diaria con inspección',q:'¿Superficies, suelos y equipos limpios?'},{k:'seiketsu',n:'Seiketsu — Estandarizar',low:'Cada persona a su manera',high:'Fichas visuales en cada puesto',q:'¿Hay estándares visuales? ¿Son consistentes entre turnos?'},{k:'shitsuke',n:'Shitsuke — Sostener',low:'Sin auditoría ni responsable',high:'Auditorías con tendencia, 5S integrado',q:'¿Hay registros de auditoría recientes y publicados?'}];
+    const avg=dims.reduce((a,d)=>a+(parseInt(getM2ext().fiveS[d.k])||0),0)/dims.length;
+    html+=`<div class="vsm-section"><div class="vsm-section-title">🧹 Evaluación 5S</div><div class="vsm-section-sub">Puntuación basada en observación directa. < 2.5 → Quick Win obligatorio en backlog.</div>`;
+    if(avg>0){const col=avg<2.5?'var(--red)':avg<3.5?'var(--amber)':'var(--green)';html+=`<div style="text-align:center;margin-bottom:14px;"><span style="font-size:28px;font-weight:700;color:${col};font-family:var(--mono);">${avg.toFixed(1)}</span><span style="font-size:14px;color:var(--text3);">/5</span></div>`;}
+    dims.forEach(dim=>{
+      const val=parseInt(d.fiveS[dim.k])||0;
+      html+=`<div style="padding:14px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);">${dim.n}</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">${dim.q}</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          ${[1,2,3,4,5].map(n=>{const sel=val===n;const col=n<=2?'var(--red)':n===3?'var(--amber)':'var(--green)';return `<div onclick="getM2ext().fiveS['${dim.k}']=${n};renderM2ext();m2extChanged();" style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);cursor:pointer;font-size:16px;font-weight:700;border:1.5px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};">${n}</div>`;}).join('')}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--text4);"><span>${dim.low}</span><span>${dim.high}</span></div>
+      </div>`;
+    });
+    html+=`<div class="vsm-field"><div class="vsm-label">Notas 5S</div><textarea class="vsm-input" style="min-height:40px;resize:vertical;" placeholder="Observaciones..." oninput="getM2ext().fiveS.notes=this.value;m2extChanged()">${d.fiveS.notes||''}</textarea></div></div>`;
+  }
+  
+  if(m2extTab==='rootcause'){
+    html+=`<div class="vsm-section"><div class="vsm-section-title">🔬 Análisis de causa raíz — Top 3 pérdidas</div><div class="vsm-section-sub">Para cada pérdida de mayor impacto, aplicar herramienta de causa raíz y vincular a iniciativa TTL.</div>`;
+    for(let i=0;i<3;i++){
+      const rc=d.rootCause[i]||{};
+      html+=`<div style="padding:14px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:8px;">Pérdida ${i+1}</div>
+        <div class="vsm-field" style="margin-bottom:6px;"><div class="vsm-label">Descripción del problema</div><input class="vsm-input" value="${rc.desc||''}" oninput="getM2ext().rootCause[${i}].desc=this.value;m2extChanged()"></div>
+        <div class="vsm-field" style="margin-bottom:6px;"><div class="vsm-label">Herramienta utilizada</div><select class="vsm-select" onchange="getM2ext().rootCause[${i}].tool=this.value;m2extChanged()"><option value="">Seleccionar...</option><option ${rc.tool==='5 Whys'?'selected':''}>5 Whys</option><option ${rc.tool==='Ishikawa'?'selected':''}>Ishikawa (6M)</option><option ${rc.tool==='FMEA'?'selected':''}>FMEA ligero</option><option ${rc.tool==='Pareto'?'selected':''}>Pareto</option></select></div>
+        <div class="vsm-field" style="margin-bottom:6px;"><div class="vsm-label">Causa raíz identificada</div><input class="vsm-input" value="${rc.cause||''}" oninput="getM2ext().rootCause[${i}].cause=this.value;m2extChanged()"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div class="vsm-field"><div class="vsm-label">Nivel confianza</div><select class="vsm-select" onchange="getM2ext().rootCause[${i}].confidence=this.value;m2extChanged()"><option value="">—</option><option ${rc.confidence==='Confirmado'?'selected':''}>Confirmado</option><option ${rc.confidence==='Hipótesis fuerte'?'selected':''}>Hipótesis fuerte</option><option ${rc.confidence==='Investigación req.'?'selected':''}>Investigación req.</option></select></div>
+          <div class="vsm-field"><div class="vsm-label">Iniciativa recomendada</div><input class="vsm-input" value="${rc.initiative||''}" oninput="getM2ext().rootCause[${i}].initiative=this.value;m2extChanged()"></div>
+          <div class="vsm-field"><div class="vsm-label">Capa TTL™</div><select class="vsm-select" onchange="getM2ext().rootCause[${i}].ttl=this.value;m2extChanged()"><option value="">—</option><option ${rc.ttl==='L1'?'selected':''}>L1</option><option ${rc.ttl==='L2'?'selected':''}>L2</option><option ${rc.ttl==='L3'?'selected':''}>L3</option><option ${rc.ttl==='L4'?'selected':''}>L4</option><option ${rc.ttl==='L5'?'selected':''}>L5</option></select></div>
+        </div>
+      </div>`;
+    }
+    html+=`</div>`;
+  }
+  document.getElementById('m2ext-content').innerHTML=html;
+}
+
+// ══════════════════════════════════════════════════════
+// ── M3EXT · FIELD TOOLS (Systems, Digital Maturity, Data Flow, Cybersecurity) ──
+// ══════════════════════════════════════════════════════
+
+let m3extData={};let m3extSaveTimer=null;let m3extTab='systems';
+function defaultM3ext(){return{systems:[{type:'ERP',name:'',vendor:'',age:'',use_pct:'',integrated:''},{type:'SCADA',name:'',vendor:'',age:'',use_pct:'',integrated:''},{type:'MES',name:'',vendor:'',age:'',use_pct:'',integrated:''},{type:'GMAO',name:'',vendor:'',age:'',use_pct:'',integrated:''},{type:'QMS',name:'',vendor:'',age:'',use_pct:'',integrated:''},{type:'WMS',name:'',vendor:'',age:'',use_pct:'',integrated:''},{type:'BI / Dashboard',name:'',vendor:'',age:'',use_pct:'',integrated:''},{type:'Historian OT',name:'',vendor:'',age:'',use_pct:'',integrated:''},{type:'Otros',name:'',vendor:'',age:'',use_pct:'',integrated:''}],digital_dims:{produccion:0,mantenimiento:0,calidad:0,gestion:0,analytics:0,arquitectura:0,ciberseguridad:0},digital_evidence:{produccion:'',mantenimiento:'',calidad:'',gestion:'',analytics:'',arquitectura:'',ciberseguridad:''},dataflow:{planta_scada:'',scada_erp:'',scada_historian:'',erp_bi:'',calidad_erp:'',maint_erp:'',planning_prod:''},dataflow_breach:{planta_scada:'',scada_erp:'',scada_historian:'',erp_bi:'',calidad_erp:'',maint_erp:'',planning_prod:''},cyber:{net_separation:'',mfa_scada:'',default_passwords:'',firmware_updated:'',policy_documented:''},cyber_notes:{net_separation:'',mfa_scada:'',default_passwords:'',firmware_updated:'',policy_documented:''}};}
+function getM3ext(){if(!currentClient)return defaultM3ext();if(!m3extData[currentClient.id])m3extData[currentClient.id]=defaultM3ext();return m3extData[currentClient.id];}
+async function loadM3extData(cid){try{const k=`${cid}_m3ext_config`;if(allAnswers[k]){m3extData[cid]=JSON.parse(allAnswers[k]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',cid).eq('session','m3ext').eq('question_id','config').single();if(data?.answer){m3extData[cid]=JSON.parse(data.answer);allAnswers[k]=data.answer;}}}catch(e){}}
+async function saveM3ext(){if(!currentClient)return;const j=JSON.stringify(getM3ext());allAnswers[`${currentClient.id}_m3ext_config`]=j;try{await sb.from('diop_answers').upsert({client_id:currentClient.id,session:'m3ext',question_id:'config',answer:j,updated_at:new Date().toISOString()});}catch(e){}}
+function scheduleM3extSave(){clearTimeout(m3extSaveTimer);m3extSaveTimer=setTimeout(saveM3ext,800);}
+function m3extChanged(){scheduleM3extSave();renderSidebarRoadmap();}
+async function openM3ext(){currentSession='m3ext';document.getElementById('main-content').scrollTop=0;showScreen('m3ext');await loadM3extData(currentClient.id);renderM3ext();renderSidebarRoadmap();}
+
+function renderM3ext(){
+  const d=getM3ext();
+  let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">💻</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M3 · Herramientas digitales de campo</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Inventario sistemas · 7 dimensiones digitales · Flujo datos · Ciberseguridad OT</div></div></div>`;
+  html+=`<div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;">`;
+  [{k:'systems',l:'🖥️ Sistemas'},{k:'digital',l:'📊 7 Dimensiones'},{k:'dataflow',l:'🔄 Flujo datos'},{k:'cyber',l:'🔒 Ciberseguridad'}].forEach(t=>{
+    const sel=m3extTab===t.k;
+    html+=`<button onclick="m3extTab='${t.k}';renderM3ext();" style="padding:8px 16px;border:1px solid ${sel?'var(--teal)':'var(--border2)'};background:${sel?'rgba(0,173,181,0.1)':'var(--s2)'};color:${sel?'var(--teal-l)':'var(--text2)'};border-radius:20px;font-size:12px;font-weight:${sel?'600':'400'};cursor:pointer;font-family:var(--font);">${t.l}</button>`;
+  });
+  html+=`</div>`;
+
+  if(m3extTab==='systems'){
+    html+=`<div class="vsm-section"><div class="vsm-section-title">🖥️ Inventario de sistemas existentes</div><div class="vsm-section-sub">Uso real < 50% = señal de Legacy Digitalization Trap</div>`;
+    d.systems.forEach((s,i)=>{
+      html+=`<div style="display:grid;grid-template-columns:90px 1fr 1fr 70px 70px 1fr;gap:6px;align-items:center;margin-bottom:4px;padding:6px 0;border-bottom:0.5px solid var(--border);">
+        <div style="font-size:11px;font-weight:600;color:var(--teal);">${s.type}</div>
+        <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Sistema" value="${s.name}" oninput="getM3ext().systems[${i}].name=this.value;m3extChanged()">
+        <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Proveedor" value="${s.vendor}" oninput="getM3ext().systems[${i}].vendor=this.value;m3extChanged()">
+        <input class="vsm-input" style="font-size:10px;padding:5px;text-align:center;" placeholder="Años" value="${s.age}" oninput="getM3ext().systems[${i}].age=this.value;m3extChanged()">
+        <input class="vsm-input" style="font-size:10px;padding:5px;text-align:center;" placeholder="Uso %" value="${s.use_pct}" oninput="getM3ext().systems[${i}].use_pct=this.value;m3extChanged()">
+        <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Integrado con..." value="${s.integrated}" oninput="getM3ext().systems[${i}].integrated=this.value;m3extChanged()">
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  if(m3extTab==='digital'){
+    const dims=[
+      {k:'produccion',n:'Producción (SCADA, MES)',q:'¿El SCADA está integrado con el ERP en tiempo real, o los datos se exportan manualmente?'},
+      {k:'mantenimiento',n:'Mantenimiento (GMAO, predictivo)',q:'¿El GMAO está activo y el equipo lo usa? ¿MTBF/MTTR calculados automáticamente?'},
+      {k:'calidad',n:'Calidad (QMS, SPC)',q:'¿Hay trazabilidad lote a lote? ¿Alertas automáticas de desviación de calidad?'},
+      {k:'gestion',n:'Gestión operativa (ERP, BI)',q:'¿El ERP se consulta en tiempo real o en batch semanal? ¿Hay BI activo?'},
+      {k:'analytics',n:'Análisis de datos (BI, ML)',q:'¿Las decisiones operativas se toman con datos en tiempo real o de memoria?'},
+      {k:'arquitectura',n:'Arquitectura datos (API, master data)',q:'¿Los timestamps OT y ERP están sincronizados? ¿Hay propietario del master data?'},
+      {k:'ciberseguridad',n:'Ciberseguridad OT',q:'¿OT e IT en redes separadas? ¿Acceso remoto al SCADA con MFA?'}
+    ];
+    const avg=dims.reduce((a,dim)=>a+(parseInt(d.digital_dims[dim.k])||0),0)/dims.length;
+    html+=`<div class="vsm-section"><div class="vsm-section-title">📊 Madurez digital × 7 dimensiones → OFI D3</div><div class="vsm-section-sub">1=Solo papel · 2=Herramientas aisladas · 3=Integrados parcialmente · 4=Datos RT · 5=Predictivo/IA</div>`;
+    if(avg>0){const col=avg<2?'var(--red)':avg<3?'var(--amber)':avg<4?'var(--teal)':'var(--green)';html+=`<div style="text-align:center;margin-bottom:14px;"><span style="font-size:28px;font-weight:700;color:${col};font-family:var(--mono);">${avg.toFixed(1)}</span><span style="font-size:14px;color:var(--text3);">/5</span></div>`;}
+    dims.forEach(dim=>{
+      const val=parseInt(d.digital_dims[dim.k])||0;
+      html+=`<div style="padding:12px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);">${dim.n}</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">${dim.q}</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">${[1,2,3,4,5].map(n=>{const sel=val===n;const col=n<=2?'var(--red)':n===3?'var(--amber)':'var(--green)';return `<div onclick="getM3ext().digital_dims['${dim.k}']=${n};renderM3ext();m3extChanged();" style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);cursor:pointer;font-size:16px;font-weight:700;border:1.5px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};">${n}</div>`;}).join('')}</div>
+        <textarea class="vsm-input" style="min-height:30px;resize:vertical;font-size:10px;" placeholder="Evidencia observada..." oninput="getM3ext().digital_evidence['${dim.k}']=this.value;m3extChanged()">${d.digital_evidence[dim.k]||''}</textarea>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  if(m3extTab==='dataflow'){
+    const flows=[{k:'planta_scada',l:'Planta → SCADA'},{k:'scada_erp',l:'SCADA → ERP'},{k:'scada_historian',l:'SCADA → Historian'},{k:'erp_bi',l:'ERP → BI / Dashboard'},{k:'calidad_erp',l:'Calidad → ERP'},{k:'maint_erp',l:'Mantenimiento → ERP'},{k:'planning_prod',l:'Planificación → Producción'}];
+    html+=`<div class="vsm-section"><div class="vsm-section-title">🔄 Mapa de flujo de datos IT/OT</div><div class="vsm-section-sub">Cada transferencia manual es una brecha de observabilidad</div>`;
+    flows.forEach(f=>{
+      html+=`<div style="display:grid;grid-template-columns:180px 120px 1fr;gap:8px;align-items:center;margin-bottom:6px;padding:8px;background:var(--s2);border-radius:var(--r-sm);">
+        <div style="font-size:12px;color:var(--text);font-weight:500;">${f.l}</div>
+        <select class="vsm-select" style="font-size:11px;" onchange="getM3ext().dataflow['${f.k}']=this.value;m3extChanged()"><option value="">—</option><option ${d.dataflow[f.k]==='Auto'?'selected':''}>Auto</option><option ${d.dataflow[f.k]==='Manual'?'selected':''}>Manual</option><option ${d.dataflow[f.k]==='No existe'?'selected':''}>No existe</option></select>
+        <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Brecha / problema" value="${d.dataflow_breach[f.k]||''}" oninput="getM3ext().dataflow_breach['${f.k}']=this.value;m3extChanged()">
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  if(m3extTab==='cyber'){
+    const checks=[{k:'net_separation',l:'Red OT e IT completamente separadas (segmentación física o VLAN)',critical:true},{k:'mfa_scada',l:'Acceso remoto al SCADA requiere MFA',critical:true},{k:'default_passwords',l:'Contraseñas por defecto de equipos OT cambiadas',critical:false},{k:'firmware_updated',l:'Actualizaciones de firmware al día en PLCs/HMIs',critical:false},{k:'policy_documented',l:'Política de ciberseguridad OT documentada',critical:false}];
+    html+=`<div class="vsm-section"><div class="vsm-section-title">🔒 Checklist ciberseguridad OT</div><div class="vsm-section-sub">Cualquier "No" en las dos primeras = riesgo crítico. No negociable.</div>`;
+    checks.forEach(c=>{
+      const val=d.cyber[c.k];
+      html+=`<div style="padding:10px;background:var(--s2);border:0.5px solid ${val==='No'&&c.critical?'var(--red)':'var(--border)'};border-radius:var(--r);margin-bottom:6px;">
+        <div style="font-size:12px;color:var(--text);margin-bottom:6px;">${c.l}${c.critical?' <span style="color:var(--red);font-size:10px;font-weight:600;">CRÍTICO</span>':''}</div>
+        <div style="display:flex;gap:6px;">
+          ${['Sí','No','N/D'].map(o=>{const sel=val===o;const col=o==='No'&&c.critical?'var(--red)':o==='Sí'?'var(--green)':'var(--text3)';return `<button onclick="getM3ext().cyber['${c.k}']='${o}';renderM3ext();m3extChanged();" style="padding:8px 20px;border:1.5px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};border-radius:var(--r-sm);font-size:12px;font-weight:${sel?'700':'400'};cursor:pointer;font-family:var(--font);">${o}</button>`;}).join('')}
+        </div>
+        <input class="vsm-input" style="font-size:10px;margin-top:6px;padding:5px;" placeholder="Notas..." value="${d.cyber_notes[c.k]||''}" oninput="getM3ext().cyber_notes['${c.k}']=this.value;m3extChanged()">
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  document.getElementById('m3ext-content').innerHTML=html;
+}
+
+// ── EXTEND M4 WITH GOVERNANCE MAP ──
+// (added to existing renderM4 below)
+
 // ── VSM MODULE ──
 // ══════════════════════════════════════════════════════
 
