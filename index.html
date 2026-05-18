@@ -534,6 +534,11 @@ select.fi{cursor:pointer;}
       <div id="m5-content"></div>
     </div>
 
+    <!-- M6 INITIATIVE BACKLOG + RIM + ROI -->
+    <div class="screen" id="screen-m6">
+      <div id="m6-content"></div>
+    </div>
+
   </main>
 </div>
 
@@ -2474,6 +2479,7 @@ function renderSidebarRoadmap() {
     { id:'m4', label:'M4 · Dx organizacional', icon: m4HasData ? '✓' : '🏢', state: m4HasData ? 'rc-done' : 'rc-pending', labelClass: m4HasData ? 'rld' : '', action: 'openM4()' },
     null, // separator
     { id:'m5', label:'M5 · OFI™ Dashboard', icon: '📊', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: '', action: 'openM5()' },
+    { id:'m6', label:'M6 · Iniciativas + RIM™', icon: '🎯', state: 'rc-pending', labelClass: '', action: 'openM6()' },
     { id:'report', label:'M7 · Informe final', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
   ];
 
@@ -2922,6 +2928,265 @@ function renderM5(){
 }
 
 // ══════════════════════════════════════════════════════
+// ── M6 · INITIATIVE BACKLOG + RIM™ + ROI ──
+// ══════════════════════════════════════════════════════
+
+let m6Data={};
+let m6SaveTimer=null;
+
+// TTL CATALOGUE - expandable by user
+const TTL_CATALOGUE_DEFAULT=[
+  {layer:'L1',name:'5S en área de producción',desc:'Clasificar, ordenar, limpiar, estandarizar y sostener.',cat:'A',ttm:'2–4 sem'},
+  {layer:'L1',name:'Gestión visual de producción (tablero de turno)',desc:'Tablero físico o digital básico con plan vs. real por turno.',cat:'A',ttm:'2–3 sem'},
+  {layer:'L1',name:'Estandarización de procedimiento crítico',desc:'Documentar y estandarizar el proceso más variable.',cat:'D',ttm:'3–6 sem'},
+  {layer:'L1',name:'PM básico en equipos críticos',desc:'Plan de mantenimiento preventivo en los 3-5 equipos más críticos.',cat:'A',ttm:'3–5 sem'},
+  {layer:'L1',name:'SMED básico — reducción de changeover',desc:'Análisis y separación de tareas internas/externas en el cambio de mayor impacto.',cat:'A',ttm:'4–8 sem'},
+  {layer:'L1',name:'Segmentación red OT/IT',desc:'Separar red de planta (OT) de la red corporativa (IT).',cat:'D',ttm:'4–6 sem'},
+  {layer:'L1',name:'Protocolo limpieza e inspección',desc:'Rutinas de limpieza que sirven como inspección del equipo.',cat:'A',ttm:'2–4 sem'},
+  {layer:'L1',name:'Reorganización de layout sin obra',desc:'Reordenar equipos y materiales para reducir movimientos.',cat:'A',ttm:'3–6 sem'},
+  {layer:'L1',name:'Estándares de calidad visual en línea',desc:'Muestras OK/NOK en cada puesto de inspección visual.',cat:'A',ttm:'2–3 sem'},
+  {layer:'L1',name:'Formación 5 Whys / causa raíz',desc:'Taller de 4-8h para el equipo operativo.',cat:'B',ttm:'2–3 sem'},
+  {layer:'L2',name:'Captura de paros por línea',desc:'Sistema de registro de paradas con categorización básica.',cat:'A',ttm:'4–8 sem'},
+  {layer:'L2',name:'Cálculo OEE automatizado',desc:'OEE calculado a partir de datos reales, no estimaciones.',cat:'A',ttm:'6–10 sem'},
+  {layer:'L2',name:'Registro digital de producción por turno',desc:'Sustituir partes en papel por captura digital.',cat:'A',ttm:'4–6 sem'},
+  {layer:'L2',name:'Trazabilidad de lotes (MP → PT)',desc:'Registro completo del lote desde recepción hasta expedición.',cat:'D',ttm:'8–12 sem'},
+  {layer:'L2',name:'Control estadístico de proceso (SPC básico)',desc:'Gráficos de control en parámetros críticos de calidad.',cat:'A',ttm:'6–10 sem'},
+  {layer:'L2',name:'Registro digital de mantenimiento (GMAO)',desc:'Implementar GMAO básico con órdenes de trabajo.',cat:'A',ttm:'8–12 sem'},
+  {layer:'L2',name:'Medición de consumo energético por línea',desc:'Contadores de energía en equipos principales.',cat:'C',ttm:'4–8 sem'},
+  {layer:'L2',name:'Digitalización BOM',desc:'BOM actualizado y centralizado en ERP.',cat:'B',ttm:'4–8 sem'},
+  {layer:'L3',name:'Integración SCADA-ERP',desc:'Datos de planta fluyen automáticamente al ERP.',cat:'A',ttm:'10–16 sem'},
+  {layer:'L3',name:'Dashboard operativo en tiempo real',desc:'Pantallas en planta con KPIs actualizados automáticamente.',cat:'A',ttm:'6–10 sem'},
+  {layer:'L3',name:'MES (Manufacturing Execution System)',desc:'Sistema de ejecución de producción integrado.',cat:'A',ttm:'16–24 sem'},
+  {layer:'L3',name:'Integración calidad con producción',desc:'QMS conectado con datos de producción en tiempo real.',cat:'B',ttm:'10–16 sem'},
+  {layer:'L3',name:'WMS integrado con producción',desc:'Gestión de almacén conectada con órdenes de producción.',cat:'B',ttm:'12–20 sem'},
+  {layer:'L4',name:'Rutinas de gestión operativa (reuniones tier)',desc:'Reuniones diarias/semanales estructuradas con agenda y KPIs.',cat:'B',ttm:'4–8 sem'},
+  {layer:'L4',name:'Ownership de KPIs por proceso',desc:'Asignar propietario a cada KPI con rendición de cuentas.',cat:'B',ttm:'3–6 sem'},
+  {layer:'L4',name:'Programa de mejora continua formal',desc:'Estructura de proyectos Kaizen con seguimiento.',cat:'B',ttm:'8–12 sem'},
+  {layer:'L4',name:'Gestión del cambio para nuevas herramientas',desc:'Programa de adopción con formación y seguimiento.',cat:'B',ttm:'6–10 sem'},
+  {layer:'L5',name:'Mantenimiento predictivo (IoT + ML)',desc:'Sensores + algoritmos para predecir fallos antes de que ocurran.',cat:'A',ttm:'16–24 sem'},
+  {layer:'L5',name:'Planificación avanzada (APS)',desc:'Optimización automática del programa de producción.',cat:'A',ttm:'16–24 sem'},
+  {layer:'L5',name:'Optimización de recetas / formulaciones',desc:'Ajuste automático de parámetros para minimizar merma.',cat:'A',ttm:'12–20 sem'},
+  {layer:'L6',name:'Digital twin de línea de producción',desc:'Modelo virtual para simulación y optimización.',cat:'A',ttm:'20–30 sem'},
+  {layer:'L6',name:'IA para control de calidad visual',desc:'Visión artificial para detección automática de defectos.',cat:'A',ttm:'16–24 sem'},
+];
+
+function defaultM6(){return{backlog:[],custom_catalogue:[]};}
+function getM6(){if(!currentClient)return defaultM6();if(!m6Data[currentClient.id])m6Data[currentClient.id]=defaultM6();return m6Data[currentClient.id];}
+
+async function loadM6Data(clientId){try{const key=`${clientId}_m6_m6_config`;if(allAnswers[key]){m6Data[clientId]=JSON.parse(allAnswers[key]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','m6').eq('question_id','m6_config').single();if(data?.answer){m6Data[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}}}catch(e){}}
+async function saveM6(){if(!currentClient)return;const j=JSON.stringify(getM6());allAnswers[`${currentClient.id}_m6_m6_config`]=j;try{await sb.from('diop_answers').upsert({client_id:currentClient.id,session:'m6',question_id:'m6_config',answer:j,updated_at:new Date().toISOString()});}catch(e){}}
+function scheduleM6Save(){clearTimeout(m6SaveTimer);m6SaveTimer=setTimeout(saveM6,800);}
+function m6Changed(){scheduleM6Save();renderSidebarRoadmap();}
+
+async function openM6(){currentSession='m6';document.getElementById('main-content').scrollTop=0;showScreen('m6');await loadM6Data(currentClient.id);renderM6();renderSidebarRoadmap();}
+
+function getFullCatalogue(){const m=getM6();return[...TTL_CATALOGUE_DEFAULT,...(m.custom_catalogue||[])];}
+
+function getTTLColor(layer){const c={'L1':'#E24B4A','L2':'#F59E0B','L3':'#3B82F6','L4':'#8B5CF6','L5':'#06B6D4','L6':'#10B981'};return c[layer]||'#6B7280';}
+function getRIMZone(impact,readiness){if(impact>=7&&readiness>=7)return{zone:'LANZAR AHORA',col:'var(--green)',bg:'rgba(16,185,129,0.1)'};if(impact>=7&&readiness>=4)return{zone:'PREPARAR',col:'var(--amber)',bg:'rgba(245,158,11,0.1)'};if(impact>=4&&readiness>=7)return{zone:'LANZAR AHORA',col:'var(--green)',bg:'rgba(16,185,129,0.1)'};if(impact>=4&&readiness>=4)return{zone:'PREPARAR',col:'var(--teal)',bg:'rgba(0,173,181,0.1)'};if(impact>=7)return{zone:'VISIÓN',col:'var(--blue)',bg:'rgba(59,130,246,0.1)'};if(impact<4&&readiness<4)return{zone:'DESCARTAR',col:'var(--red)',bg:'rgba(226,75,74,0.1)'};return{zone:'EVALUAR',col:'var(--text3)',bg:'var(--s2)'};}
+
+function renderM6(){
+  const m=getM6();const backlog=m.backlog||[];
+  const ofi=Math.round(calcOFI_D1()*0.30+calcOFI_D2()*0.25+calcOFI_D3()*0.25+calcOFI_D4()*0.20);
+  const clientTTL=ofi<15?'L1':ofi<30?'L2':ofi<45?'L3':ofi<60?'L4':ofi<75?'L5':'L6';
+  
+  let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🎯</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M6 · Initiative Backlog + RIM™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Selección, priorización y ROI de iniciativas · Capa TTL actual: ${clientTTL}</div></div></div>`;
+
+  // ── ADD FROM CATALOGUE ──
+  html+=`<div class="vsm-section"><div class="vsm-section-title">📚 Catálogo TTL™ <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;">${getFullCatalogue().length} iniciativas</span></div>
+    <div class="vsm-section-sub">Selecciona iniciativas del catálogo para añadir al backlog. Las que están por encima de la capa actual (${clientTTL}) se marcan como bloqueadas.</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">`;
+  ['L1','L2','L3','L4','L5','L6'].forEach(l=>{
+    html+=`<button onclick="filterCatalogue('${l}')" style="padding:4px 12px;border:1px solid ${getTTLColor(l)};background:${getTTLColor(l)}22;color:${getTTLColor(l)};border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${l}</button>`;
+  });
+  html+=`<button onclick="filterCatalogue('all')" style="padding:4px 12px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);border-radius:20px;font-size:10px;cursor:pointer;font-family:var(--font);">Todas</button>`;
+  html+=`<button onclick="showAddCustom()" style="padding:4px 12px;border:1px dashed var(--teal);background:transparent;color:var(--teal);border-radius:20px;font-size:10px;cursor:pointer;font-family:var(--font);">+ Nueva</button>`;
+  html+=`</div><div id="catalogue-list" style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>`;
+  html+=`<div id="custom-form" style="display:none;margin-top:10px;padding:12px;background:var(--s2);border:0.5px solid var(--teal);border-radius:var(--r);">
+    <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;">Nueva iniciativa personalizada</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;">
+      <select id="custom-layer" class="vsm-select" style="padding:5px 7px;font-size:11px;"><option>L1</option><option>L2</option><option>L3</option><option>L4</option><option>L5</option><option>L6</option></select>
+      <input id="custom-name" class="vsm-input" style="font-size:11px;" placeholder="Nombre de la iniciativa">
+    </div>
+    <input id="custom-desc" class="vsm-input" style="font-size:11px;margin-top:6px;" placeholder="Descripción breve">
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <button onclick="addCustomInitiative()" style="padding:6px 16px;background:var(--teal);color:white;border:none;border-radius:var(--r-sm);font-size:11px;cursor:pointer;font-family:var(--font);">Añadir al catálogo + backlog</button>
+      <button onclick="document.getElementById('custom-form').style.display='none'" style="padding:6px 16px;background:var(--s1);color:var(--text3);border:0.5px solid var(--border);border-radius:var(--r-sm);font-size:11px;cursor:pointer;font-family:var(--font);">Cancelar</button>
+    </div>
+  </div></div>`;
+
+  // ── BACKLOG ──
+  html+=`<div class="vsm-section"><div class="vsm-section-title">📋 Initiative Backlog <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;">${backlog.length} iniciativa${backlog.length!==1?'s':''}</span></div>`;
+  if(!backlog.length){
+    html+=`<div style="padding:30px;text-align:center;color:var(--text4);font-size:12px;">Añade iniciativas desde el catálogo TTL™ arriba</div>`;
+  } else {
+    html+=`<div style="display:flex;flex-direction:column;gap:8px;">`;
+    backlog.forEach((b,i)=>{
+      const rim=getRIMZone(b.impact||0,b.readiness||0);
+      const blocked=parseInt(b.layer?.replace('L',''))>parseInt(clientTTL.replace('L',''));
+      const ttlCol=getTTLColor(b.layer);
+      html+=`<div style="padding:14px;background:var(--s2);border:0.5px solid ${blocked?'var(--red)':'var(--border)'};border-radius:var(--r);${blocked?'opacity:0.7;':''}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span style="padding:2px 8px;background:${ttlCol}22;color:${ttlCol};border-radius:10px;font-size:9px;font-weight:700;">${b.layer}</span>
+              <span style="font-size:13px;font-weight:600;color:var(--text);">${b.name}</span>
+              ${blocked?'<span style="font-size:9px;color:var(--red);font-weight:600;">🔒 BLOQUEADA (requiere ${b.layer})</span>':''}
+            </div>
+            <div style="font-size:10px;color:var(--text3);">${b.desc||''}</div>
+          </div>
+          <button onclick="removeFromBacklog(${i})" style="background:none;border:none;color:var(--text4);cursor:pointer;font-size:14px;">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:10px;">
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Impacto (1-10)</span>
+            <input type="number" min="1" max="10" value="${b.impact||''}" placeholder="0" onchange="getM6().backlog[${i}].impact=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Readiness (1-10)</span>
+            <input type="number" min="1" max="10" value="${b.readiness||''}" placeholder="0" onchange="getM6().backlog[${i}].readiness=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Inversión (€)</span>
+            <input type="number" value="${b.investment||''}" placeholder="0" onchange="getM6().backlog[${i}].investment=parseInt(this.value);m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Ahorro €/año</span>
+            <input type="number" value="${b.savings||''}" placeholder="0" onchange="getM6().backlog[${i}].savings=parseInt(this.value);m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
+          </div>
+        </div>
+        ${(b.impact&&b.readiness)?`<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          <span style="padding:3px 10px;background:${rim.bg};border:1px solid ${rim.col};border-radius:10px;font-size:10px;font-weight:600;color:${rim.col};">${rim.zone}</span>
+          ${(b.investment&&b.savings)?`<span style="font-size:10px;color:var(--text3);font-family:var(--mono);">ROI: ${b.investment>0?Math.round((b.savings/b.investment)*100)+'%':'—'} · Payback: ${b.savings>0?Math.round(b.investment/b.savings*12)+' meses':'—'}</span>`:''}
+        </div>`:''}
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+
+  // ── RIM™ MATRIX ──
+  if(backlog.some(b=>b.impact&&b.readiness)){
+    html+=`<div class="vsm-section"><div class="vsm-section-title">🗺️ RIM™ Matrix — Readiness × Impact</div>
+      <div class="vsm-section-sub">Cada iniciativa posicionada según su impacto potencial y readiness organizacional</div>
+      <div id="rim-matrix" style="margin-top:12px;"></div></div>`;
+  }
+
+  // ── ROI SUMMARY ──
+  const withROI=backlog.filter(b=>b.investment>0&&b.savings>0);
+  if(withROI.length){
+    const totalInv=withROI.reduce((a,b)=>a+(b.investment||0),0);
+    const totalSav=withROI.reduce((a,b)=>a+(b.savings||0),0);
+    html+=`<div class="vsm-section"><div class="vsm-section-title">💰 Resumen ROI</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px;">
+        <div class="vsm-result-card"><div class="vsm-result-val">${withROI.length}</div><div class="vsm-result-label">Iniciativas con ROI</div></div>
+        <div class="vsm-result-card"><div class="vsm-result-val">${(totalInv/1000).toFixed(0)}k€</div><div class="vsm-result-label">Inversión total</div></div>
+        <div class="vsm-result-card"><div class="vsm-result-val">${(totalSav/1000).toFixed(0)}k€</div><div class="vsm-result-label">Ahorro anual</div></div>
+        <div class="vsm-result-card"><div class="vsm-result-val ${totalInv>0&&(totalSav/totalInv)>1?'':'warn'}">${totalInv>0?Math.round(totalInv/totalSav*12):0}m</div><div class="vsm-result-label">Payback</div></div>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('m6-content').innerHTML=html;
+  filterCatalogue(clientTTL);
+  if(backlog.some(b=>b.impact&&b.readiness))renderRIMMatrix(backlog);
+}
+
+function filterCatalogue(layer){
+  const cat=getFullCatalogue();
+  const backlog=getM6().backlog||[];
+  const backlogNames=backlog.map(b=>b.name);
+  const filtered=layer==='all'?cat:cat.filter(c=>c.layer===layer);
+  const el=document.getElementById('catalogue-list');
+  if(!el)return;
+  
+  const ofi=Math.round(calcOFI_D1()*0.30+calcOFI_D2()*0.25+calcOFI_D3()*0.25+calcOFI_D4()*0.20);
+  const clientTTL=ofi<15?'L1':ofi<30?'L2':ofi<45?'L3':ofi<60?'L4':ofi<75?'L5':'L6';
+  
+  el.innerHTML=filtered.map(c=>{
+    const inBacklog=backlogNames.includes(c.name);
+    const blocked=parseInt(c.layer.replace('L',''))>parseInt(clientTTL.replace('L',''));
+    const ttlCol=getTTLColor(c.layer);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:var(--r-sm);border:0.5px solid var(--border);${blocked?'opacity:0.5;':''}">
+      <span style="padding:2px 6px;background:${ttlCol}22;color:${ttlCol};border-radius:8px;font-size:9px;font-weight:700;flex-shrink:0;">${c.layer}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+        <div style="font-size:9px;color:var(--text4);">${c.ttm||''}</div>
+      </div>
+      ${inBacklog?'<span style="font-size:9px;color:var(--teal);">✓ añadida</span>':`<button onclick="addToBacklog('${c.name.replace(/'/g,"\\'")}')" style="padding:4px 10px;background:rgba(0,173,181,0.1);border:1px solid var(--teal);color:var(--teal);border-radius:var(--r-xs);font-size:10px;cursor:pointer;flex-shrink:0;font-family:var(--font);">+ Añadir</button>`}
+    </div>`;
+  }).join('');
+}
+
+function addToBacklog(name){
+  const cat=getFullCatalogue();
+  const item=cat.find(c=>c.name===name);
+  if(!item)return;
+  const m=getM6();
+  if(m.backlog.some(b=>b.name===name))return;
+  m.backlog.push({name:item.name,desc:item.desc,layer:item.layer,cat:item.cat,ttm:item.ttm,impact:0,readiness:0,investment:0,savings:0});
+  renderM6();m6Changed();
+}
+
+function removeFromBacklog(idx){
+  getM6().backlog.splice(idx,1);renderM6();m6Changed();
+}
+
+function showAddCustom(){document.getElementById('custom-form').style.display='block';}
+
+function addCustomInitiative(){
+  const layer=document.getElementById('custom-layer').value;
+  const name=document.getElementById('custom-name').value.trim();
+  const desc=document.getElementById('custom-desc').value.trim();
+  if(!name)return;
+  const m=getM6();
+  if(!m.custom_catalogue)m.custom_catalogue=[];
+  const item={layer,name,desc,cat:'A',ttm:'TBD',custom:true};
+  m.custom_catalogue.push(item);
+  m.backlog.push({...item,impact:0,readiness:0,investment:0,savings:0});
+  document.getElementById('custom-form').style.display='none';
+  document.getElementById('custom-name').value='';
+  document.getElementById('custom-desc').value='';
+  renderM6();m6Changed();
+}
+
+function renderRIMMatrix(backlog){
+  const el=document.getElementById('rim-matrix');
+  if(!el)return;
+  const scored=backlog.filter(b=>b.impact&&b.readiness);
+  
+  // 3x3 grid: rows=impact(high,med,low), cols=readiness(low,med,high)
+  const zones=[
+    [{label:'VISIÓN',col:'#3B82F6'},{label:'PREPARAR',col:'#F59E0B'},{label:'LANZAR',col:'#10B981'}],
+    [{label:'EVALUAR',col:'#6B7280'},{label:'PREPARAR',col:'#00ADB5'},{label:'LANZAR',col:'#10B981'}],
+    [{label:'DESCARTAR',col:'#E24B4A'},{label:'EVALUAR',col:'#6B7280'},{label:'EVALUAR',col:'#6B7280'}]
+  ];
+  
+  let h=`<div style="display:grid;grid-template-columns:30px repeat(3,1fr);grid-template-rows:20px repeat(3,1fr);gap:4px;min-height:280px;">`;
+  // Header row
+  h+=`<div></div><div style="text-align:center;font-size:9px;color:var(--text4);">Readiness Baja</div><div style="text-align:center;font-size:9px;color:var(--text4);">Readiness Media</div><div style="text-align:center;font-size:9px;color:var(--text4);">Readiness Alta</div>`;
+  
+  const impactLabels=['Impacto Alto','Impacto Medio','Impacto Bajo'];
+  for(let r=0;r<3;r++){
+    // Row label
+    h+=`<div style="writing-mode:vertical-lr;text-orientation:mixed;transform:rotate(180deg);font-size:9px;color:var(--text4);text-align:center;">${impactLabels[r]}</div>`;
+    for(let c=0;c<3;c++){
+      const z=zones[r][c];
+      // Find initiatives in this cell
+      const inCell=scored.filter(b=>{
+        const impRow=b.impact>=7?0:b.impact>=4?1:2;
+        const readCol=b.readiness<4?0:b.readiness<7?1:2;
+        return impRow===r&&readCol===c;
+      });
+      h+=`<div style="background:${z.col}11;border:1px solid ${z.col}44;border-radius:var(--r-sm);padding:6px;position:relative;min-height:70px;">
+        <div style="font-size:8px;color:${z.col};font-weight:700;margin-bottom:4px;">${z.label}</div>
+        ${inCell.map(b=>`<div style="font-size:9px;color:var(--text);background:var(--s1);padding:3px 6px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${b.name}"><span style="color:${getTTLColor(b.layer)};font-weight:700;">${b.layer}</span> ${b.name.substring(0,25)}${b.name.length>25?'…':''}</div>`).join('')}
+      </div>`;
+    }
+  }
+  h+=`</div>`;
+  el.innerHTML=h;
+}
 // ── VSM MODULE ──
 // ══════════════════════════════════════════════════════
 
