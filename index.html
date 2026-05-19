@@ -1544,8 +1544,16 @@ async function generateReport() {
 
   let ctx = `CLIENTE: ${currentClient.name}\nSECTOR: ${currentClient.sector || 'No indicado'}\n\n`;
 
-  const notasSecciones = ['general','ceo','fab','sys'];
-  const notasLabels = {general:'General',ceo:'CEO',fab:'Fábrica',sys:'Sistemas'};
+  // Ensure all module data is loaded
+  await loadVSMData(currentClient.id);
+  await loadM2extData(currentClient.id);
+  await loadM3extData(currentClient.id);
+  await loadM4Data(currentClient.id);
+  await loadM6Data(currentClient.id);
+  await loadF0Data(currentClient.id);
+
+  const notasSecciones = ['general','ceo','ops','fab','sys'];
+  const notasLabels = {general:'General',ceo:'CEO',ops:'Dir. Operaciones',fab:'Fábrica',sys:'Sistemas'};
   let notasCtx = '';
   notasSecciones.forEach(s => {
     const n = notesCache[s];
@@ -1568,6 +1576,21 @@ if (procesosSeleccionados) {
 
   // Add VSM data if available
   ctx += getVSMReportContext();
+  
+  // Add M2ext field data
+  ctx += getM2extReportContext();
+  
+  // Add M3ext digital data
+  ctx += getM3extReportContext();
+  
+  // Add M4 governance data
+  ctx += getM4ReportContext();
+  
+  // Add M6 initiatives data
+  ctx += getM6ReportContext();
+  
+  // Add OFI summary
+  ctx += getOFIReportContext();
 
   const prompt = `Eres un experto en diagnóstico operativo industrial para pymes. Formas parte de Tecno-Fab, una consultora de digitalización industrial IT/OT especializada en empresas industriales de 50-500 empleados en España.
 
@@ -2695,7 +2718,7 @@ const SECTOR_BENCHMARKS = {
   'default': { oee:'55–75%', rechazo:'1–5%', mtbf:'300–800h', mttr:'2–5h', maint_react:'40–70%', changeover:'30–120 min', servicio:'90–97%', inv_rotation:'6–15x', stock_days:'20–60 días' }
 };
 
-function defaultF0() { return { archetype_hypothesis:'', archetype_signals:'', archetype_secondary:'', pre_kickoff_notes:'', data_requested:{ oee:false, scrap:false, mtbf:false, it_systems:false, ot_systems:false, orgchart:false } }; }
+function defaultF0() { return { archetype_hypothesis:'', archetype_signals:'', archetype_secondary:'', pre_kickoff_notes:'', data_requested:{ oee:false, scrap:false, mtbf:false, it_systems:false, ot_systems:false, orgchart:false }, stakeholders:[{name:'',role:'',profile:'CEO',availability:'',notes:''},{name:'',role:'',profile:'Dir. Operaciones',availability:'',notes:''},{name:'',role:'',profile:'IT/OT',availability:'',notes:''},{name:'',role:'',profile:'Operario',availability:'',notes:''}] }; }
 function getF0() { if(!currentClient)return defaultF0(); if(!f0Data[currentClient.id]) f0Data[currentClient.id]=defaultF0(); return f0Data[currentClient.id]; }
 
 async function loadF0Data(clientId) {
@@ -2769,6 +2792,41 @@ function renderF0() {
       <div style="font-size:12px;color:var(--text);">${c.l}</div>
     </div>`;
   });
+  html+=`</div>`;
+
+  // STAKEHOLDER TRACKING
+  html+=`<div class="vsm-section"><div class="vsm-section-title">👥 Stakeholder mapping</div><div class="vsm-section-sub">Identificar las personas clave para cada perfil de entrevista</div>`;
+  const stk=f.stakeholders||[];
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr 100px 100px 1fr;gap:6px;margin-bottom:4px;padding:4px 0;">
+    <div style="font-size:9px;color:var(--text4);font-weight:600;">NOMBRE</div>
+    <div style="font-size:9px;color:var(--text4);font-weight:600;">CARGO</div>
+    <div style="font-size:9px;color:var(--text4);font-weight:600;">PERFIL</div>
+    <div style="font-size:9px;color:var(--text4);font-weight:600;">DISPONIBILIDAD</div>
+    <div style="font-size:9px;color:var(--text4);font-weight:600;">NOTAS</div>
+  </div>`;
+  stk.forEach((s,i)=>{
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr 100px 100px 1fr;gap:6px;align-items:center;margin-bottom:4px;">
+      <input class="vsm-input" style="font-size:11px;padding:5px;" placeholder="Nombre" value="${s.name||''}" oninput="getF0().stakeholders[${i}].name=this.value;f0Changed()">
+      <input class="vsm-input" style="font-size:11px;padding:5px;" placeholder="Cargo" value="${s.role||''}" oninput="getF0().stakeholders[${i}].role=this.value;f0Changed()">
+      <select class="vsm-select" style="font-size:10px;padding:4px;" onchange="getF0().stakeholders[${i}].profile=this.value;f0Changed()">
+        <option ${s.profile==='CEO'?'selected':''}>CEO</option>
+        <option ${s.profile==='Dir. Operaciones'?'selected':''}>Dir. Operaciones</option>
+        <option ${s.profile==='IT/OT'?'selected':''}>IT/OT</option>
+        <option ${s.profile==='Operario'?'selected':''}>Operario</option>
+        <option ${s.profile==='Calidad'?'selected':''}>Calidad</option>
+        <option ${s.profile==='Mantenimiento'?'selected':''}>Mantenimiento</option>
+        <option ${s.profile==='Otro'?'selected':''}>Otro</option>
+      </select>
+      <select class="vsm-select" style="font-size:10px;padding:4px;" onchange="getF0().stakeholders[${i}].availability=this.value;f0Changed()">
+        <option value="">—</option>
+        <option ${s.availability==='Confirmado'?'selected':''}>Confirmado</option>
+        <option ${s.availability==='Pendiente'?'selected':''}>Pendiente</option>
+        <option ${s.availability==='No disponible'?'selected':''}>No disponible</option>
+      </select>
+      <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Notas" value="${s.notes||''}" oninput="getF0().stakeholders[${i}].notes=this.value;f0Changed()">
+    </div>`;
+  });
+  html+=`<div class="vsm-add-btn" onclick="getF0().stakeholders.push({name:'',role:'',profile:'Otro',availability:'',notes:''});renderF0();f0Changed();" style="margin-top:6px;">+ Añadir stakeholder</div>`;
   html+=`</div>`;
 
   // PRE-KICKOFF NOTES
@@ -2861,25 +2919,42 @@ function renderM4(){
 // ══════════════════════════════════════════════════════
 
 async function openM5(){currentSession='m5';document.getElementById('main-content').scrollTop=0;showScreen('m5');
-  await loadF0Data(currentClient.id);await loadM4Data(currentClient.id);await loadVSMData(currentClient.id);
+  await loadF0Data(currentClient.id);await loadM4Data(currentClient.id);await loadVSMData(currentClient.id);await loadM3extData(currentClient.id);await loadM2extData(currentClient.id);
   renderM5();renderSidebarRoadmap();
 }
 
 function calcOFI_D1(){
-  // D1: Rendimiento operativo — from Sesión Fábrica & VSM
+  // D1: Rendimiento operativo — prefer M2ext data if available, blend with session fab
   let score=0,count=0;
   const a=key=>allAnswers[`${currentClient.id}_fab_${key}`]||allAnswers[`${currentClient.id}_sys_${key}`]||'';
   
-  // Downtime hours
+  // Check M2ext for richer data
+  const m2=m2extData[currentClient?.id];
+  if(m2){
+    // 5S score (if filled)
+    const fiveSDims=['seiri','seiton','seiso','seiketsu','shitsuke'];
+    const fiveSVals=fiveSDims.map(k=>parseInt(m2.fiveS?.[k])||0).filter(v=>v>0);
+    if(fiveSVals.length>=3){
+      const avg5S=fiveSVals.reduce((a,b)=>a+b,0)/fiveSVals.length;
+      score+=Math.round((avg5S/5)*25); count++;
+    }
+    // Loss tree — count how many categories have data (observability indicator)
+    if(m2.losses){
+      const filledLosses=Object.values(m2.losses).filter(v=>v && parseFloat(v)>0).length;
+      if(filledLosses>=3){
+        // More categories identified = better observability = higher D1
+        score+=Math.min(25, Math.round((filledLosses/9)*25)); count++;
+      }
+    }
+  }
+  
+  // Session fab data (original)
   const dt=a('downtime_hours_week');
   if(dt){if(dt.includes('menos de 2'))score+=22;else if(dt.includes('2h - 5'))score+=18;else if(dt.includes('5h - 10'))score+=13;else if(dt.includes('10h - 20'))score+=8;else if(dt.includes('más de 20'))score+=4;else score+=10;count++;}
-  // Scrap
   const sc=a('scrap_pct');
   if(sc){if(sc.includes('menos del 2'))score+=22;else if(sc.includes('2% - 5'))score+=17;else if(sc.includes('5% - 10'))score+=12;else if(sc.includes('10% - 20'))score+=7;else if(sc.includes('más del 20'))score+=3;else score+=10;count++;}
-  // OEE
   const oee=a('oee_current');
   if(oee&&!oee.includes('No lo saben')){if(oee.includes('más del 85'))score+=24;else if(oee.includes('75% - 85'))score+=20;else if(oee.includes('65% - 75'))score+=15;else if(oee.includes('50% - 65'))score+=10;else if(oee.includes('menos del 50'))score+=5;count++;}
-  // Maintenance type
   const mt=a('maintenance_type_pct');
   if(mt){if(mt.includes('Casi todo preventivo'))score+=23;else if(mt.includes('Mayoría preventivo'))score+=18;else if(mt.includes('Mitad'))score+=13;else if(mt.includes('Mayoría reactivo'))score+=8;else if(mt.includes('Casi todo reactivo'))score+=4;count++;}
   
@@ -2904,7 +2979,17 @@ function calcOFI_D2(){
 }
 
 function calcOFI_D3(){
-  // D3: Madurez digital — from Sesión Sistemas
+  // D3: Madurez digital — prefer M3ext 7 dimensions if available, fallback to session sys
+  const m3=m3extData[currentClient?.id];
+  if(m3 && m3.digital_dims){
+    const vals=Object.values(m3.digital_dims).filter(v=>v>0);
+    if(vals.length>=3){
+      // Scale from 1-5 avg to 0-25
+      const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+      return Math.round((avg/5)*25);
+    }
+  }
+  // Fallback to original session sys calculation
   let score=0,count=0;
   const a=key=>allAnswers[`${currentClient.id}_sys_${key}`]||'';
   
@@ -4296,6 +4381,186 @@ function getVSMReportContext() {
   ctx += `Almacén MP: ${vsm.inventories.mp||'?'} días\n`;
   ctx += `Almacén PT: ${vsm.inventories.pt||'?'} uds${demandDay ? ' (' + (ptUnits/demandDay).toFixed(1) + ' días)' : ''}\n`;
   ctx += `Sistema de planificación: ${vsm.planning.type||'?'} — programa ${vsm.planning.frequency||'?'}\n`;
+  
+  return ctx;
+}
+
+function getM2extReportContext() {
+  const m2=m2extData[currentClient?.id];
+  if(!m2)return '';
+  let ctx='\n=== M2 · DIAGNÓSTICO OPERATIVO DE CAMPO ===\n';
+  
+  // Gemba
+  if(m2.gemba){
+    const g=m2.gemba;
+    if(g.wip_station)ctx+=`Estación con mayor WIP: ${g.wip_station}\n`;
+    if(g.wt_visible)ctx+=`WT visible (operario esperando): ${g.wt_visible}\n`;
+    if(g.flow_interrupted)ctx+=`Flujo interrumpido: ${g.flow_interrupted}\n`;
+    if(g.pt_constraint)ctx+=`PT en constraint: ${g.pt_constraint}\n`;
+    if(g.speed_nominal&&g.speed_real)ctx+=`Velocidad nominal vs real: ${g.speed_nominal} vs ${g.speed_real} uds/h\n`;
+    if(g.info_method)ctx+=`Método info operario: ${g.info_method}\n`;
+    if(g.stops_system)ctx+=`Registro de paros: ${g.stops_system}\n`;
+    if(g.notes)ctx+=`Notas Gemba: ${g.notes}\n`;
+  }
+  
+  // Losses
+  if(m2.losses){
+    const cats=[{k:'averia',l:'Averías'},{k:'falta_material',l:'Falta material'},{k:'changeover',l:'Changeover'},{k:'microparos',l:'Microparos'},{k:'velocidad',l:'Velocidad reducida'},{k:'scrap',l:'Scrap'},{k:'retrabajo',l:'Retrabajo'},{k:'arranque',l:'Rejects arranque'}];
+    const filled=cats.filter(c=>m2.losses[c.k]);
+    if(filled.length){
+      ctx+=`\nÁrbol de pérdidas:\n`;
+      filled.forEach(c=>{ctx+=`  ${c.l}: ${m2.losses[c.k]}%${m2.losses_eur[c.k]?' ('+m2.losses_eur[c.k]+' €/año)':''} [Obs: ${m2.losses_level[c.k]||'?'}]\n`;});
+    }
+  }
+  
+  // 5S
+  if(m2.fiveS){
+    const dims=['seiri','seiton','seiso','seiketsu','shitsuke'];
+    const vals=dims.map(k=>parseInt(m2.fiveS[k])||0).filter(v=>v>0);
+    if(vals.length){
+      const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+      ctx+=`\nScore 5S: ${avg.toFixed(1)}/5\n`;
+      dims.forEach(k=>{const v=parseInt(m2.fiveS[k]);if(v)ctx+=`  ${k}: ${v}/5\n`;});
+      if(m2.fiveS.notes)ctx+=`  Notas: ${m2.fiveS.notes}\n`;
+    }
+  }
+  
+  // Root cause
+  if(m2.rootCause){
+    const filled=m2.rootCause.filter(r=>r.desc);
+    if(filled.length){
+      ctx+=`\nAnálisis causa raíz:\n`;
+      filled.forEach((r,i)=>{ctx+=`  Pérdida ${i+1}: ${r.desc} · Herramienta: ${r.tool||'?'} · Causa: ${r.cause||'?'} · Confianza: ${r.confidence||'?'} · Iniciativa: ${r.initiative||'?'} (${r.ttl||'?'})\n`;});
+    }
+  }
+  return ctx;
+}
+
+function getM3extReportContext() {
+  const m3=m3extData[currentClient?.id];
+  if(!m3)return '';
+  let ctx='\n=== M3 · DIAGNÓSTICO DIGITAL DE CAMPO ===\n';
+  
+  // Systems inventory
+  if(m3.systems){
+    const filled=m3.systems.filter(s=>s.name);
+    if(filled.length){
+      ctx+=`Inventario de sistemas:\n`;
+      filled.forEach(s=>{ctx+=`  ${s.type}: ${s.name} (${s.vendor||'?'}, ${s.age||'?'} años, uso real ${s.use_pct||'?'}%, integrado con ${s.integrated||'nada'})\n`;});
+    }
+  }
+  
+  // Digital dims
+  if(m3.digital_dims){
+    const dims=[{k:'produccion',l:'Producción'},{k:'mantenimiento',l:'Mantenimiento'},{k:'calidad',l:'Calidad'},{k:'gestion',l:'Gestión'},{k:'analytics',l:'Analytics'},{k:'arquitectura',l:'Arquitectura datos'},{k:'ciberseguridad',l:'Ciberseguridad'}];
+    const filled=dims.filter(d=>m3.digital_dims[d.k]>0);
+    if(filled.length){
+      const avg=filled.reduce((a,d)=>a+m3.digital_dims[d.k],0)/filled.length;
+      ctx+=`\nMadurez digital: ${avg.toFixed(1)}/5\n`;
+      filled.forEach(d=>{ctx+=`  ${d.l}: ${m3.digital_dims[d.k]}/5${m3.digital_evidence[d.k]?' — '+m3.digital_evidence[d.k]:''}\n`;});
+    }
+  }
+  
+  // Data flow
+  if(m3.dataflow){
+    const flows=[{k:'planta_scada',l:'Planta→SCADA'},{k:'scada_erp',l:'SCADA→ERP'},{k:'scada_historian',l:'SCADA→Historian'},{k:'erp_bi',l:'ERP→BI'},{k:'calidad_erp',l:'Calidad→ERP'},{k:'maint_erp',l:'Maint→ERP'},{k:'planning_prod',l:'Plan→Prod'}];
+    const filled=flows.filter(f=>m3.dataflow[f.k]);
+    if(filled.length){
+      ctx+=`\nFlujo de datos IT/OT:\n`;
+      filled.forEach(f=>{ctx+=`  ${f.l}: ${m3.dataflow[f.k]}${m3.dataflow_breach[f.k]?' — Brecha: '+m3.dataflow_breach[f.k]:''}\n`;});
+    }
+  }
+  
+  // Cybersecurity
+  if(m3.cyber){
+    const checks=[{k:'net_separation',l:'Separación OT/IT'},{k:'mfa_scada',l:'MFA en SCADA'},{k:'default_passwords',l:'Passwords por defecto'},{k:'firmware_updated',l:'Firmware al día'},{k:'policy_documented',l:'Política documentada'}];
+    const filled=checks.filter(c=>m3.cyber[c.k]);
+    if(filled.length){
+      ctx+=`\nCiberseguridad OT:\n`;
+      filled.forEach(c=>{ctx+=`  ${c.l}: ${m3.cyber[c.k]}${m3.cyber_notes[c.k]?' — '+m3.cyber_notes[c.k]:''}\n`;});
+      const criticalNos=m3.cyber.net_separation==='No'||m3.cyber.mfa_scada==='No';
+      if(criticalNos)ctx+=`  ⚠ RIESGO CRÍTICO: señales de ciberseguridad no cumplidas\n`;
+    }
+  }
+  return ctx;
+}
+
+function getM4ReportContext() {
+  const m4=m4Data[currentClient?.id];
+  if(!m4)return '';
+  let ctx='\n=== M4 · DIAGNÓSTICO ORGANIZACIONAL ===\n';
+  
+  // Dimensions
+  const filled=M4_DIMENSIONS.filter(d=>(m4.dimensions[d.k]||0)>0);
+  if(filled.length){
+    const avg=filled.reduce((a,d)=>a+m4.dimensions[d.k],0)/filled.length;
+    ctx+=`Readiness organizacional: ${avg.toFixed(1)}/5\n`;
+    filled.forEach(d=>{ctx+=`  ${d.name}: ${m4.dimensions[d.k]}/5${m4.evidence?.[d.k]?' — '+m4.evidence[d.k]:''}\n`;});
+  }
+  
+  // Governance
+  if(m4.governance){
+    const govKPIs=['oee','rechazo','mtbf','servicio','plan_real','stock'];
+    const filledGov=govKPIs.filter(k=>m4.governance[k]?.owner);
+    if(filledGov.length){
+      ctx+=`\nMapa de gobernanza:\n`;
+      filledGov.forEach(k=>{const g=m4.governance[k];ctx+=`  ${k}: propietario ${g.owner}, revisión ${g.review||'?'}, ante desviación: ${g.deviation||'?'}\n`;});
+    }
+    const withoutReview=govKPIs.filter(k=>m4.governance[k]?.review==='Nada');
+    if(withoutReview.length)ctx+=`  ⚠ KPIs sin revisión periódica: ${withoutReview.join(', ')}\n`;
+  }
+  
+  if(m4.archetype_signals)ctx+=`Señales arquetipo M4: ${m4.archetype_signals}\n`;
+  return ctx;
+}
+
+function getM6ReportContext() {
+  const m6=m6Data[currentClient?.id];
+  if(!m6||!m6.backlog||!m6.backlog.length)return '';
+  let ctx='\n=== M6 · INICIATIVAS Y PRIORIZACIÓN ===\n';
+  
+  const backlog=m6.backlog;
+  ctx+=`Total iniciativas en backlog: ${backlog.length}\n`;
+  
+  const withROI=backlog.filter(b=>b.investment>0&&b.savings>0);
+  if(withROI.length){
+    const totalInv=withROI.reduce((a,b)=>a+(b.investment||0),0);
+    const totalSav=withROI.reduce((a,b)=>a+(b.savings||0),0);
+    ctx+=`Inversión total estimada: ${totalInv}€ · Ahorro anual estimado: ${totalSav}€ · Payback: ${Math.round(totalInv/totalSav*12)} meses\n`;
+  }
+  
+  ctx+=`\nIniciativas priorizadas:\n`;
+  backlog.forEach((b,i)=>{
+    const zone=b.impact&&b.readiness?getRIMZone(b.impact,b.readiness).zone:'Sin evaluar';
+    ctx+=`  ${i+1}. [${b.layer}] ${b.name} — Impacto: ${b.impact||'?'}/10, Readiness: ${b.readiness||'?'}/10, RIM: ${zone}${b.investment?' · Inv: '+b.investment+'€':''}${b.savings?' · Ahorro: '+b.savings+'€/año':''}\n`;
+  });
+  
+  return ctx;
+}
+
+function getOFIReportContext() {
+  if(!currentClient)return '';
+  const d1=calcOFI_D1(),d2=calcOFI_D2(),d3=calcOFI_D3(),d4=calcOFI_D4();
+  const ofi=Math.round(d1*0.30+d2*0.25+d3*0.25+d4*0.20);
+  if(ofi===0)return '';
+  
+  const zone=ofi>=75?'Optimización avanzada':ofi>=50?'Mejora estructurada':ofi>=25?'Estabilización necesaria':'Intervención urgente';
+  const ttl=ofi<15?'L1 Stabilize':ofi<30?'L2 Measure':ofi<45?'L3 Connect':ofi<60?'L4 Govern':ofi<75?'L5 Optimize':'L6 Intelligence';
+  
+  const f0=f0Data[currentClient.id];
+  const archKey=f0?.archetype_hypothesis;
+  const arch=archKey?ARCHETYPES[archKey]:null;
+  
+  let ctx='\n=== OFI™ — OPERATIONAL FRICTION INDEX ===\n';
+  ctx+=`OFI: ${ofi}/100 — Zona: ${zone}\n`;
+  ctx+=`D1 Rendimiento: ${d1}/25 (30%) · D2 Datos: ${d2}/25 (25%) · D3 Digital: ${d3}/25 (25%) · D4 Organización: ${d4}/25 (20%)\n`;
+  ctx+=`Posición TTL™: ${ttl}\n`;
+  if(arch)ctx+=`Arquetipo cliente: ${arch.name} — ${arch.desc}\n`;
+  
+  // Vector de fricción
+  const dims=[{n:'D1 Rendimiento',s:d1},{n:'D2 Datos',s:d2},{n:'D3 Digital',s:d3},{n:'D4 Organización',s:d4}];
+  dims.sort((a,b)=>a.s-b.s);
+  ctx+=`Vector de fricción principal: ${dims[0].n} (${dims[0].s}/25)\n`;
   
   return ctx;
 }
