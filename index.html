@@ -3016,6 +3016,102 @@ function calcOFI_D4(){
 }
 
 function renderM5(){
+  // Auto-detect archetype signals from all sessions
+  function detectArchetypeSignals(){
+    if(!currentClient)return[];
+    const sigs=[];
+    const a=(sid,qid)=>allAnswers[`${currentClient.id}_${sid}_${qid}`]||'';
+    
+    // ── REACTIVE FACTORY signals ──
+    const mt=a('fab','maintenance_type_pct');
+    if(mt.includes('Casi todo reactivo'))sigs.push({archetype:'reactive',signal:'Mantenimiento casi 100% reactivo',source:'M2 Fábrica'});
+    else if(mt.includes('Mayoría reactivo'))sigs.push({archetype:'reactive',signal:'Mantenimiento mayoritariamente reactivo (50-80%)',source:'M2 Fábrica'});
+    
+    const oee=a('fab','oee_current')||a('sys','oee_current');
+    if(oee.includes('No lo saben'))sigs.push({archetype:'reactive',signal:'OEE no medido — sin visibilidad de rendimiento',source:'M2 Fábrica'});
+    else if(oee.includes('menos del 50'))sigs.push({archetype:'reactive',signal:'OEE < 50% — rendimiento muy bajo',source:'M2 Fábrica'});
+    
+    const dt=a('fab','downtime_hours_week');
+    if(dt.includes('más de 20'))sigs.push({archetype:'reactive',signal:'Paradas no planificadas > 20h/semana',source:'M2 Fábrica'});
+    
+    const scrap=a('fab','scrap_pct');
+    if(scrap.includes('más del 20'))sigs.push({archetype:'reactive',signal:'Tasa de rechazo > 20%',source:'M2 Fábrica'});
+    
+    const opDep=a('ops','single_person_dependency');
+    if(opDep&&opDep.length>10)sigs.push({archetype:'reactive',signal:'Dependencia de personas clave detectada: "'+opDep.substring(0,60)+'..."',source:'M1 Dir.Ops'});
+    
+    const opSearch=a('operario','search_time_per_shift');
+    if(opSearch.includes('Más de 1 hora'))sigs.push({archetype:'reactive',signal:'Operario pierde >1h/turno buscando herramientas o información',source:'M1 Operario'});
+    
+    // ── LEGACY DIGITALIZATION TRAP signals ──
+    const sysSt=a('sys','system_type');
+    const untrust=a('itot','untrusted_data');
+    if(untrust&&untrust.length>10)sigs.push({archetype:'legacy',signal:'Datos del sistema no confiables: "'+untrust.substring(0,60)+'..."',source:'M1 IT/OT'});
+    
+    const digUse=a('operario','digital_usage');
+    if(digUse&&(digUse.toLowerCase().includes('evit')||digUse.toLowerCase().includes('no us')))sigs.push({archetype:'legacy',signal:'Operarios evitan sistemas digitales',source:'M1 Operario'});
+    
+    const oeCalc=a('sys','oee_calculation');
+    if(oeCalc&&oeCalc.includes('No calculan')&&sysSt&&!sysSt.includes('Nada'))sigs.push({archetype:'legacy',signal:'Tienen sistemas pero no calculan OEE — adopción baja',source:'M3 Sistemas'});
+    
+    // M3ext signals
+    const m3=m3extData[currentClient.id];
+    if(m3&&m3.systems){
+      const lowUse=m3.systems.filter(s=>s.name&&s.use_pct&&parseInt(s.use_pct)<50);
+      lowUse.forEach(s=>{sigs.push({archetype:'legacy',signal:`${s.type} (${s.name}) con uso real < 50%`,source:'M3 Inventario'});});
+    }
+    
+    // ── EXCEL-DRIVEN OPERATION signals ──
+    const erp=a('sys','erp_system');
+    if(erp.includes('No tienen'))sigs.push({archetype:'excel',signal:'No tienen ERP',source:'M3 Sistemas'});
+    
+    const infoFlow=a('ops','info_flow_to_desk');
+    if(infoFlow.includes('Excel'))sigs.push({archetype:'excel',signal:'Información de producción llega por Excel',source:'M1 Dir.Ops'});
+    
+    const prodReport=a('sys','production_report');
+    if(prodReport&&prodReport.includes('Excel'))sigs.push({archetype:'excel',signal:'Parte de producción en Excel',source:'M3 Sistemas'});
+    
+    const bomLoc=a('fab','bom_location');
+    if(bomLoc&&bomLoc.includes('Excel'))sigs.push({archetype:'excel',signal:'BOM en Excel',source:'M2 Fábrica'});
+    
+    const wh=a('sys','warehouse_management');
+    if(wh&&wh.includes('Excel'))sigs.push({archetype:'excel',signal:'Gestión almacén en Excel',source:'M3 Sistemas'});
+    
+    // ── GROWING COMPLEXITY signals ──
+    const failures=a('fab','major_failures_month');
+    if(failures&&parseInt(failures)>8)sigs.push({archetype:'growing',signal:`${failures} averías graves/mes — procesos desbordados`,source:'M2 Fábrica'});
+    
+    const lines=a('fab','production_lines_total');
+    if(lines&&parseInt(lines)>5)sigs.push({archetype:'growing',signal:`${lines} líneas de producción — complejidad operativa alta`,source:'M2 Fábrica'});
+    
+    // ── GOVERNANCE FRAGMENTED signals ──
+    const missingDecision=a('ops','missing_data_decision');
+    if(missingDecision&&missingDecision.length>10)sigs.push({archetype:'governance',signal:'Decisiones sin dato: "'+missingDecision.substring(0,60)+'..."',source:'M1 Dir.Ops'});
+    
+    const infoFlowOp=a('ops','info_flow_to_desk');
+    if(infoFlowOp.includes('Me bajo a planta'))sigs.push({archetype:'governance',signal:'Director baja a planta a preguntar — sin flujo de información',source:'M1 Dir.Ops'});
+    
+    const shiftHandover=a('operario','shift_handover_reality');
+    if(shiftHandover&&(shiftHandover.toLowerCase().includes('nadie')||shiftHandover.toLowerCase().includes('no me enter')))sigs.push({archetype:'governance',signal:'Sin comunicación formal entre turnos',source:'M1 Operario'});
+    
+    // M4 signals
+    const m4=m4Data[currentClient.id];
+    if(m4&&m4.dimensions){
+      if((m4.dimensions.sponsor||0)<=2)sigs.push({archetype:'governance',signal:'Sponsor ejecutivo pasivo/ausente (score ≤2)',source:'M4 Readiness'});
+      if((m4.dimensions.ownership||0)<=2)sigs.push({archetype:'governance',signal:'Sin ownership de procesos (score ≤2)',source:'M4 Readiness'});
+      if((m4.dimensions.collaboration||0)<=2)sigs.push({archetype:'governance',signal:'Silos departamentales fuertes (score ≤2)',source:'M4 Readiness'});
+      if((m4.dimensions.data_trust||0)<=2)sigs.push({archetype:'legacy',signal:'Baja confianza en los datos (score ≤2)',source:'M4 Readiness'});
+      if((m4.dimensions.absorption||0)<=2)sigs.push({archetype:'growing',signal:'Organización saturada sin capacidad de absorción (score ≤2)',source:'M4 Readiness'});
+    }
+    
+    // Cybersecurity signals
+    if(m3&&m3.cyber){
+      if(m3.cyber.net_separation==='No')sigs.push({archetype:'reactive',signal:'Redes OT/IT no separadas — riesgo crítico',source:'M3 Ciberseguridad'});
+      if(m3.cyber.mfa_scada==='No')sigs.push({archetype:'reactive',signal:'Acceso SCADA sin MFA — riesgo crítico',source:'M3 Ciberseguridad'});
+    }
+    
+    return sigs;
+  }
   const d1=calcOFI_D1(),d2=calcOFI_D2(),d3=calcOFI_D3(),d4=calcOFI_D4();
   const ofi=Math.round(d1*0.30+d2*0.25+d3*0.25+d4*0.20);
   
@@ -3075,6 +3171,39 @@ function renderM5(){
       <div style="font-size:22px;margin-bottom:6px;">${arch.emoji} <span style="font-size:15px;font-weight:600;color:var(--text);">${arch.name}</span></div>
       <div style="font-size:12px;color:var(--text2);line-height:1.5;">${arch.desc}</div>
     </div></div>`;
+  }
+  
+  // AUTO-DETECTED ARCHETYPE SIGNALS
+  const signals=detectArchetypeSignals();
+  if(signals.length){
+    html+=`<div class="vsm-section"><div class="vsm-section-title">🔎 Señales de arquetipo detectadas en entrevistas</div><div class="vsm-section-sub">Detección automática a partir de las respuestas de M1–M4</div>`;
+    // Group by archetype
+    const byArch={};
+    signals.forEach(s=>{if(!byArch[s.archetype])byArch[s.archetype]=[];byArch[s.archetype].push(s);});
+    // Sort by count descending
+    const sorted=Object.entries(byArch).sort((a,b)=>b[1].length-a[1].length);
+    sorted.forEach(([archKey,sigs])=>{
+      const a=ARCHETYPES[archKey];
+      if(!a)return;
+      const isSelected=archKey===f0?.archetype_hypothesis;
+      html+=`<div style="padding:12px;background:${isSelected?'rgba(0,173,181,0.06)':'var(--s2)'};border:0.5px solid ${isSelected?'var(--teal)':'var(--border)'};border-radius:var(--r);margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:16px;">${a.emoji}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text);">${a.name}</span>
+          <span style="padding:2px 8px;background:var(--teal);color:white;border-radius:10px;font-size:9px;font-weight:700;">${sigs.length} señal${sigs.length!==1?'es':''}</span>
+          ${isSelected?'<span style="font-size:9px;color:var(--teal);font-weight:600;">✓ Seleccionado en F0</span>':''}
+        </div>
+        ${sigs.map(s=>`<div style="display:flex;align-items:flex-start;gap:6px;margin-left:24px;margin-bottom:3px;">
+          <span style="color:var(--amber);font-size:10px;margin-top:1px;">▸</span>
+          <div><span style="font-size:11px;color:var(--text);">${s.signal}</span><span style="font-size:9px;color:var(--text4);margin-left:6px;">[${s.source}]</span></div>
+        </div>`).join('')}
+      </div>`;
+    });
+    // Recommendation if detected != selected
+    if(sorted.length&&f0?.archetype_hypothesis&&sorted[0][0]!==f0.archetype_hypothesis){
+      html+=`<div style="padding:8px 12px;background:rgba(245,158,11,0.06);border-left:3px solid var(--amber);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:11px;color:var(--text2);">⚠ El arquetipo con más señales detectadas (<strong>${ARCHETYPES[sorted[0][0]]?.name}</strong>) no coincide con la hipótesis de F0 (<strong>${arch?.name||'?'}</strong>). Considerar ajustar.</div>`;
+    }
+    html+=`</div>`;
   }
   
   // DATA COMPLETENESS
@@ -3208,7 +3337,7 @@ function renderM6(){
           </div>
           <button onclick="removeFromBacklog(${i})" style="background:none;border:none;color:var(--text4);cursor:pointer;font-size:14px;">✕</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
           <div style="display:flex;flex-direction:column;gap:3px;">
             <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Impacto (1-10)</span>
             <input type="number" min="1" max="10" value="${b.impact||''}" placeholder="0" onchange="getM6().backlog[${i}].impact=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
@@ -3217,18 +3346,40 @@ function renderM6(){
             <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Readiness (1-10)</span>
             <input type="number" min="1" max="10" value="${b.readiness||''}" placeholder="0" onchange="getM6().backlog[${i}].readiness=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
           </div>
-          <div style="display:flex;flex-direction:column;gap:3px;">
-            <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Inversión (€)</span>
-            <input type="number" value="${b.investment||''}" placeholder="0" onchange="getM6().backlog[${i}].investment=parseInt(this.value);m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
+        </div>
+        <div style="margin-top:10px;padding:10px;background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-sm);">
+          <div style="font-size:9px;color:var(--text4);text-transform:uppercase;margin-bottom:8px;font-weight:600;">💰 ROI — 3 Escenarios</div>
+          <div style="display:grid;grid-template-columns:100px 1fr 1fr 1fr 80px;gap:6px;align-items:center;">
+            <div style="font-size:9px;color:var(--text4);">Inversión (€)</div>
+            <div style="grid-column:span 3;"><input type="number" value="${b.investment||''}" placeholder="0" onchange="getM6().backlog[${i}].investment=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--text);font-size:12px;font-family:var(--mono);text-align:center;outline:none;width:100%;"></div>
+            <div></div>
+            <div style="font-size:9px;color:var(--text4);">Ahorro €/año</div>
+            <div style="text-align:center;font-size:9px;color:var(--red);">Conservador</div>
+            <div style="text-align:center;font-size:9px;color:var(--teal);">Base</div>
+            <div style="text-align:center;font-size:9px;color:var(--green);">Optimista</div>
+            <div style="text-align:center;font-size:9px;color:var(--text4);">Confianza</div>
+            <div></div>
+            <input type="number" value="${b.savings_low||''}" placeholder="0" onchange="getM6().backlog[${i}].savings_low=parseInt(this.value);getM6().backlog[${i}].savings=parseInt(this.value)||getM6().backlog[${i}].savings;renderM6();m6Changed();" style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--red);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
+            <input type="number" value="${b.savings||''}" placeholder="0" onchange="getM6().backlog[${i}].savings=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s2);border:0.5px solid var(--teal);border-radius:var(--r-xs);padding:5px;color:var(--teal);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
+            <input type="number" value="${b.savings_high||''}" placeholder="0" onchange="getM6().backlog[${i}].savings_high=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--green);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
+            <select style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--text);font-size:11px;font-family:var(--mono);outline:none;text-align:center;" onchange="getM6().backlog[${i}].confidence=parseInt(this.value);m6Changed();">
+              <option value="">—</option>
+              <option value="1" ${b.confidence===1?'selected':''}>1</option>
+              <option value="2" ${b.confidence===2?'selected':''}>2</option>
+              <option value="3" ${b.confidence===3?'selected':''}>3</option>
+              <option value="4" ${b.confidence===4?'selected':''}>4</option>
+              <option value="5" ${b.confidence===5?'selected':''}>5</option>
+            </select>
           </div>
-          <div style="display:flex;flex-direction:column;gap:3px;">
-            <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Ahorro €/año</span>
-            <input type="number" value="${b.savings||''}" placeholder="0" onchange="getM6().backlog[${i}].savings=parseInt(this.value);m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
-          </div>
+          <div style="font-size:8px;color:var(--text4);margin-top:4px;">Confianza: 1=Estimación sin datos · 2=Benchmark sector · 3=Datos parciales · 4=Datos sólidos · 5=Medición directa</div>
+          ${b.investment>0&&b.savings>0?`<div style="margin-top:8px;display:flex;gap:12px;font-size:10px;font-family:var(--mono);">
+            <span style="color:var(--red);">Conserv: ${b.savings_low?Math.round(b.investment/(b.savings_low)*12)+'m payback':'—'}</span>
+            <span style="color:var(--teal);">Base: ${Math.round(b.investment/b.savings*12)}m payback · ${Math.round(b.savings/b.investment*100)}% ROI</span>
+            <span style="color:var(--green);">Optim: ${b.savings_high?Math.round(b.investment/(b.savings_high)*12)+'m payback':'—'}</span>
+          </div>`:''}
         </div>
         ${(b.impact&&b.readiness)?`<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
           <span style="padding:3px 10px;background:${rim.bg};border:1px solid ${rim.col};border-radius:10px;font-size:10px;font-weight:600;color:${rim.col};">${rim.zone}</span>
-          ${(b.investment&&b.savings)?`<span style="font-size:10px;color:var(--text3);font-family:var(--mono);">ROI: ${b.investment>0?Math.round((b.savings/b.investment)*100)+'%':'—'} · Payback: ${b.savings>0?Math.round(b.investment/b.savings*12)+' meses':'—'}</span>`:''}
         </div>`:''}
       </div>`;
     });
@@ -3247,15 +3398,80 @@ function renderM6(){
   const withROI=backlog.filter(b=>b.investment>0&&b.savings>0);
   if(withROI.length){
     const totalInv=withROI.reduce((a,b)=>a+(b.investment||0),0);
-    const totalSav=withROI.reduce((a,b)=>a+(b.savings||0),0);
-    html+=`<div class="vsm-section"><div class="vsm-section-title">💰 Resumen ROI</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px;">
-        <div class="vsm-result-card"><div class="vsm-result-val">${withROI.length}</div><div class="vsm-result-label">Iniciativas con ROI</div></div>
+    const totalLow=withROI.reduce((a,b)=>a+(b.savings_low||0),0);
+    const totalBase=withROI.reduce((a,b)=>a+(b.savings||0),0);
+    const totalHigh=withROI.reduce((a,b)=>a+(b.savings_high||0),0);
+    const avgConf=withROI.filter(b=>b.confidence).length?Math.round(withROI.reduce((a,b)=>a+(b.confidence||0),0)/withROI.filter(b=>b.confidence).length*10)/10:0;
+    html+=`<div class="vsm-section"><div class="vsm-section-title">💰 Resumen ROI — 3 escenarios</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
+        <div style="padding:14px;background:var(--s2);border:1px solid rgba(226,75,74,0.3);border-radius:var(--r);text-align:center;">
+          <div style="font-size:9px;color:var(--red);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Conservador</div>
+          <div style="font-size:20px;font-weight:700;color:var(--red);font-family:var(--mono);">${totalLow>0?(totalLow/1000).toFixed(0)+'k€':'—'}</div>
+          <div style="font-size:9px;color:var(--text3);">ahorro/año</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${totalLow>0?Math.round(totalInv/totalLow*12)+'m payback':'—'}</div>
+        </div>
+        <div style="padding:14px;background:var(--s2);border:1px solid var(--teal);border-radius:var(--r);text-align:center;">
+          <div style="font-size:9px;color:var(--teal);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Base</div>
+          <div style="font-size:20px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${(totalBase/1000).toFixed(0)}k€</div>
+          <div style="font-size:9px;color:var(--text3);">ahorro/año</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${Math.round(totalInv/totalBase*12)}m payback · ${Math.round(totalBase/totalInv*100)}% ROI</div>
+        </div>
+        <div style="padding:14px;background:var(--s2);border:1px solid rgba(16,185,129,0.3);border-radius:var(--r);text-align:center;">
+          <div style="font-size:9px;color:var(--green);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Optimista</div>
+          <div style="font-size:20px;font-weight:700;color:var(--green);font-family:var(--mono);">${totalHigh>0?(totalHigh/1000).toFixed(0)+'k€':'—'}</div>
+          <div style="font-size:9px;color:var(--text3);">ahorro/año</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${totalHigh>0?Math.round(totalInv/totalHigh*12)+'m payback':'—'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;">
+        <div class="vsm-result-card"><div class="vsm-result-val">${withROI.length}</div><div class="vsm-result-label">Iniciativas</div></div>
         <div class="vsm-result-card"><div class="vsm-result-val">${(totalInv/1000).toFixed(0)}k€</div><div class="vsm-result-label">Inversión total</div></div>
-        <div class="vsm-result-card"><div class="vsm-result-val">${(totalSav/1000).toFixed(0)}k€</div><div class="vsm-result-label">Ahorro anual</div></div>
-        <div class="vsm-result-card"><div class="vsm-result-val ${totalInv>0&&(totalSav/totalInv)>1?'':'warn'}">${totalInv>0?Math.round(totalInv/totalSav*12):0}m</div><div class="vsm-result-label">Payback</div></div>
+        <div class="vsm-result-card"><div class="vsm-result-val ${avgConf<3?'warn':''}">${avgConf>0?avgConf+'/5':'—'}</div><div class="vsm-result-label">Factor confianza medio</div></div>
       </div>
     </div>`;
+  }
+
+  // ── ROADMAP BY TTL LAYERS ──
+  if(backlog.length){
+    const layers=['L1','L2','L3','L4','L5','L6'];
+    const layerNames={'L1':'Stabilize','L2':'Measure','L3':'Connect','L4':'Govern','L5':'Optimize','L6':'Intelligence'};
+    const byLayer={};
+    layers.forEach(l=>{byLayer[l]=backlog.filter(b=>b.layer===l);});
+    const hasContent=layers.some(l=>byLayer[l].length>0);
+    
+    if(hasContent){
+      html+=`<div class="vsm-section"><div class="vsm-section-title">🗺️ Roadmap por capas TTL™</div><div class="vsm-section-sub">Secuencia de implementación — no saltar capas. Capa actual del cliente: ${clientTTL}</div>`;
+      html+=`<div style="display:flex;flex-direction:column;gap:6px;margin-top:12px;">`;
+      
+      layers.forEach(l=>{
+        const items=byLayer[l];
+        if(!items.length)return;
+        const col=getTTLColor(l);
+        const isCurrentOrBelow=parseInt(l.replace('L',''))<=parseInt(clientTTL.replace('L',''));
+        const isCurrent=l===clientTTL;
+        const isAbove=parseInt(l.replace('L',''))>parseInt(clientTTL.replace('L',''));
+        
+        html+=`<div style="border-left:3px solid ${col};padding:10px 14px;background:${isCurrent?col+'11':'var(--s2)'};border-radius:0 var(--r-sm) var(--r-sm) 0;${isAbove?'opacity:0.5;':''}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="padding:2px 8px;background:${col}22;color:${col};border-radius:10px;font-size:10px;font-weight:700;">${l}</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">${layerNames[l]}</span>
+            ${isCurrent?'<span style="font-size:9px;color:var(--teal);font-weight:600;padding:2px 8px;background:rgba(0,173,181,0.1);border-radius:10px;">← CAPA ACTUAL</span>':''}
+            ${isAbove?'<span style="font-size:9px;color:var(--red);">🔒 Requiere completar capas anteriores</span>':''}
+            <span style="font-size:10px;color:var(--text3);margin-left:auto;">${items.length} iniciativa${items.length!==1?'s':''}</span>
+          </div>
+          ${items.map(b=>{
+            const rim=b.impact&&b.readiness?getRIMZone(b.impact,b.readiness):{zone:'—',col:'var(--text4)'};
+            return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;margin-left:16px;border-bottom:0.5px solid var(--border);">
+              <div style="flex:1;font-size:11px;color:var(--text);">${b.name}</div>
+              <span style="font-size:9px;color:${rim.col};font-weight:600;">${rim.zone}</span>
+              ${b.savings?`<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">${(b.savings/1000).toFixed(0)}k€/año</span>`:''}
+              ${b.ttm?`<span style="font-size:9px;color:var(--text4);">${b.ttm}</span>`:''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      });
+      html+=`</div></div>`;
+    }
   }
 
   document.getElementById('m6-content').innerHTML=html;
@@ -3364,7 +3580,23 @@ function renderRIMMatrix(backlog){
 // ══════════════════════════════════════════════════════
 
 let m2extData={};let m2extSaveTimer=null;let m2extTab='gemba';
-function defaultM2ext(){return{gemba:{wip_station:'',wt_visible:'',flow_interrupted:'',pt_constraint:'',wt_constraint:'',speed_nominal:'',speed_real:'',info_method:'',realtime_screens:'',stops_system:'',notes:''},losses:{'averia':'','falta_material':'','changeover':'','otros_disp':'','microparos':'','velocidad':'','scrap':'','retrabajo':'','arranque':''},losses_eur:{'averia':'','falta_material':'','changeover':'','otros_disp':'','microparos':'','velocidad':'','scrap':'','retrabajo':'','arranque':''},losses_level:{'averia':'','falta_material':'','changeover':'','otros_disp':'','microparos':'','velocidad':'','scrap':'','retrabajo':'','arranque':''},fiveS:{seiri:0,seiton:0,seiso:0,seiketsu:0,shitsuke:0,notes:''},rootCause:[{desc:'',tool:'',cause:'',confidence:'',initiative:'',ttl:''},{desc:'',tool:'',cause:'',confidence:'',initiative:'',ttl:''},{desc:'',tool:'',cause:'',confidence:'',initiative:'',ttl:''}]};}
+function defaultM2ext(){return{gemba:{wip_station:'',wt_visible:'',flow_interrupted:'',pt_constraint:'',wt_constraint:'',speed_nominal:'',speed_real:'',info_method:'',realtime_screens:'',stops_system:'',notes:''},losses:{'averia':'','falta_material':'','changeover':'','otros_disp':'','microparos':'','velocidad':'','scrap':'','retrabajo':'','arranque':''},losses_eur:{'averia':'','falta_material':'','changeover':'','otros_disp':'','microparos':'','velocidad':'','scrap':'','retrabajo':'','arranque':''},losses_level:{'averia':'','falta_material':'','changeover':'','otros_disp':'','microparos':'','velocidad':'','scrap':'','retrabajo':'','arranque':''},fiveS:{seiri:0,seiton:0,seiso:0,seiketsu:0,shitsuke:0,notes:''},rootCause:[{desc:'',tool:'',cause:'',confidence:'',initiative:'',ttl:''},{desc:'',tool:'',cause:'',confidence:'',initiative:'',ttl:''},{desc:'',tool:'',cause:'',confidence:'',initiative:'',ttl:''}],kpiBaseline:[
+    {id:'oee_global',name:'OEE global',unit:'%',value:'',source:'',obs:'',notes:''},
+    {id:'oee_line1',name:'OEE línea crítica 1',unit:'%',value:'',source:'',obs:'',notes:''},
+    {id:'oee_line2',name:'OEE línea crítica 2',unit:'%',value:'',source:'',obs:'',notes:''},
+    {id:'rechazo',name:'Tasa rechazo global',unit:'%',value:'',source:'',obs:'',notes:''},
+    {id:'mtbf',name:'MTBF equipos críticos',unit:'h',value:'',source:'',obs:'',notes:''},
+    {id:'mttr',name:'MTTR equipos críticos',unit:'h',value:'',source:'',obs:'',notes:''},
+    {id:'maint_correctivo',name:'% Mantenimiento correctivo',unit:'%',value:'',source:'',obs:'',notes:''},
+    {id:'changeover',name:'Tiempo cambio promedio',unit:'min',value:'',source:'',obs:'',notes:''},
+    {id:'servicio',name:'Nivel de servicio',unit:'%',value:'',source:'',obs:'',notes:''},
+    {id:'rotacion_inv',name:'Rotación inventario',unit:'x/año',value:'',source:'',obs:'',notes:''},
+    {id:'dias_stock',name:'Días stock promedio',unit:'días',value:'',source:'',obs:'',notes:''},
+    {id:'energia',name:'Consumo energético / unidad',unit:'',value:'',source:'',obs:'',notes:''},
+    {id:'horas_extra',name:'Horas extra mensuales',unit:'h',value:'',source:'',obs:'',notes:''},
+    {id:'ausentismo',name:'Ausentismo',unit:'%',value:'',source:'',obs:'',notes:''},
+    {id:'accidentalidad',name:'Tasa accidentalidad',unit:'',value:'',source:'',obs:'',notes:''}
+  ]};}
 function getM2ext(){if(!currentClient)return defaultM2ext();if(!m2extData[currentClient.id])m2extData[currentClient.id]=defaultM2ext();return m2extData[currentClient.id];}
 async function loadM2extData(cid){try{const k=`${cid}_m2ext_config`;if(allAnswers[k]){m2extData[cid]=JSON.parse(allAnswers[k]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',cid).eq('session','m2ext').eq('question_id','config').single();if(data?.answer){m2extData[cid]=JSON.parse(data.answer);allAnswers[k]=data.answer;}}}catch(e){}}
 async function saveM2ext(){if(!currentClient)return;const j=JSON.stringify(getM2ext());allAnswers[`${currentClient.id}_m2ext_config`]=j;try{await sb.from('diop_answers').upsert({client_id:currentClient.id,session:'m2ext',question_id:'config',answer:j,updated_at:new Date().toISOString()});}catch(e){}}
@@ -3377,7 +3609,7 @@ function renderM2ext(){
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">📋</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M2 · Herramientas de campo</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Gemba Walk · Árbol de pérdidas · 5S · Causa raíz</div></div></div>`;
   // Tabs
   html+=`<div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;">`;
-  [{k:'gemba',l:'🔍 Gemba Walk'},{k:'losses',l:'📉 Árbol pérdidas'},{k:'fiveS',l:'🧹 5S'},{k:'rootcause',l:'🔬 Causa raíz'}].forEach(t=>{
+  [{k:'gemba',l:'🔍 Gemba Walk'},{k:'losses',l:'📉 Árbol pérdidas'},{k:'fiveS',l:'🧹 5S'},{k:'rootcause',l:'🔬 Causa raíz'},{k:'kpi',l:'📊 KPI Baseline'}].forEach(t=>{
     const sel=m2extTab===t.k;
     html+=`<button onclick="m2extTab='${t.k}';renderM2ext();" style="padding:8px 16px;border:1px solid ${sel?'var(--teal)':'var(--border2)'};background:${sel?'rgba(0,173,181,0.1)':'var(--s2)'};color:${sel?'var(--teal-l)':'var(--text2)'};border-radius:20px;font-size:12px;font-weight:${sel?'600':'400'};cursor:pointer;font-family:var(--font);">${t.l}</button>`;
   });
@@ -3452,6 +3684,48 @@ function renderM2ext(){
           <div class="vsm-field"><div class="vsm-label">Iniciativa recomendada</div><input class="vsm-input" value="${rc.initiative||''}" oninput="getM2ext().rootCause[${i}].initiative=this.value;m2extChanged()"></div>
           <div class="vsm-field"><div class="vsm-label">Capa TTL™</div><select class="vsm-select" onchange="getM2ext().rootCause[${i}].ttl=this.value;m2extChanged()"><option value="">—</option><option ${rc.ttl==='L1'?'selected':''}>L1</option><option ${rc.ttl==='L2'?'selected':''}>L2</option><option ${rc.ttl==='L3'?'selected':''}>L3</option><option ${rc.ttl==='L4'?'selected':''}>L4</option><option ${rc.ttl==='L5'?'selected':''}>L5</option></select></div>
         </div>
+      </div>`;
+    }
+    html+=`</div>`;
+  }
+  
+  if(m2extTab==='kpi'){
+    html+=`<div class="vsm-section"><div class="vsm-section-title">📊 KPI Baseline — con nivel de observabilidad</div>
+      <div class="vsm-section-sub">Registrar valor actual, fuente y calidad del dato. Obs: A=Automático fiable · B=Mayoritariamente fiable · C=Manual/inconsistente · D=Inexistente</div>`;
+    const kpis=d.kpiBaseline||[];
+    html+=`<div style="display:grid;grid-template-columns:160px 80px 40px 100px 55px 1fr;gap:4px;padding:4px 0;margin-bottom:4px;">
+      <div style="font-size:9px;color:var(--text4);font-weight:600;">KPI</div>
+      <div style="font-size:9px;color:var(--text4);font-weight:600;">VALOR</div>
+      <div style="font-size:9px;color:var(--text4);font-weight:600;">UD</div>
+      <div style="font-size:9px;color:var(--text4);font-weight:600;">FUENTE</div>
+      <div style="font-size:9px;color:var(--text4);font-weight:600;">OBS</div>
+      <div style="font-size:9px;color:var(--text4);font-weight:600;">NOTAS</div>
+    </div>`;
+    kpis.forEach((kpi,i)=>{
+      const obsCol=kpi.obs==='A'?'var(--green)':kpi.obs==='B'?'var(--teal)':kpi.obs==='C'?'var(--amber)':kpi.obs==='D'?'var(--red)':'var(--text4)';
+      html+=`<div style="display:grid;grid-template-columns:160px 80px 40px 100px 55px 1fr;gap:4px;align-items:center;margin-bottom:3px;">
+        <div style="font-size:11px;color:var(--text);font-weight:500;">${kpi.name}</div>
+        <input class="vsm-input" style="font-size:11px;padding:5px;text-align:right;" placeholder="—" value="${kpi.value||''}" oninput="getM2ext().kpiBaseline[${i}].value=this.value;m2extChanged()">
+        <div style="font-size:10px;color:var(--text3);text-align:center;">${kpi.unit}</div>
+        <input class="vsm-input" style="font-size:10px;padding:4px;" placeholder="SCADA, ERP..." value="${kpi.source||''}" oninput="getM2ext().kpiBaseline[${i}].source=this.value;m2extChanged()">
+        <select class="vsm-select" style="font-size:10px;padding:4px;color:${obsCol};font-weight:600;" onchange="getM2ext().kpiBaseline[${i}].obs=this.value;renderM2ext();m2extChanged()">
+          <option value="">—</option>
+          <option value="A" ${kpi.obs==='A'?'selected':''} style="color:var(--green);">A</option>
+          <option value="B" ${kpi.obs==='B'?'selected':''} style="color:var(--teal);">B</option>
+          <option value="C" ${kpi.obs==='C'?'selected':''} style="color:var(--amber);">C</option>
+          <option value="D" ${kpi.obs==='D'?'selected':''} style="color:var(--red);">D</option>
+        </select>
+        <input class="vsm-input" style="font-size:10px;padding:4px;" placeholder="Notas / lagunas" value="${kpi.notes||''}" oninput="getM2ext().kpiBaseline[${i}].notes=this.value;m2extChanged()">
+      </div>`;
+    });
+    // Summary
+    const filled=kpis.filter(k=>k.value);
+    const obsD=kpis.filter(k=>k.obs==='D').length;
+    const obsC=kpis.filter(k=>k.obs==='C').length;
+    if(filled.length||obsD||obsC){
+      html+=`<div style="margin-top:12px;padding:10px 14px;background:rgba(0,173,181,0.05);border-left:3px solid var(--teal);border-radius:0 var(--r-sm) var(--r-sm) 0;">
+        <div style="font-size:11px;color:var(--text);">${filled.length}/${kpis.length} KPIs con valor · ${obsD} nivel D (inexistente) · ${obsC} nivel C (manual/inconsistente)</div>
+        ${obsD>5?'<div style="font-size:10px;color:var(--red);margin-top:4px;">⚠ Más del 30% de KPIs sin dato → activar protocolo Gemba de 2 turnos con registro manual</div>':''}
       </div>`;
     }
     html+=`</div>`;
@@ -4433,6 +4707,17 @@ function getM2extReportContext() {
       filled.forEach((r,i)=>{ctx+=`  Pérdida ${i+1}: ${r.desc} · Herramienta: ${r.tool||'?'} · Causa: ${r.cause||'?'} · Confianza: ${r.confidence||'?'} · Iniciativa: ${r.initiative||'?'} (${r.ttl||'?'})\n`;});
     }
   }
+  
+  // KPI Baseline
+  if(m2.kpiBaseline){
+    const filled=m2.kpiBaseline.filter(k=>k.value);
+    if(filled.length){
+      ctx+=`\nKPI Baseline:\n`;
+      filled.forEach(k=>{ctx+=`  ${k.name}: ${k.value} ${k.unit} (fuente: ${k.source||'?'}, obs: ${k.obs||'?'})${k.notes?' — '+k.notes:''}\n`;});
+      const obsD=m2.kpiBaseline.filter(k=>k.obs==='D').length;
+      if(obsD>0)ctx+=`  ⚠ ${obsD} KPIs con nivel D (inexistente)\n`;
+    }
+  }
   return ctx;
 }
 
@@ -4532,7 +4817,11 @@ function getM6ReportContext() {
   ctx+=`\nIniciativas priorizadas:\n`;
   backlog.forEach((b,i)=>{
     const zone=b.impact&&b.readiness?getRIMZone(b.impact,b.readiness).zone:'Sin evaluar';
-    ctx+=`  ${i+1}. [${b.layer}] ${b.name} — Impacto: ${b.impact||'?'}/10, Readiness: ${b.readiness||'?'}/10, RIM: ${zone}${b.investment?' · Inv: '+b.investment+'€':''}${b.savings?' · Ahorro: '+b.savings+'€/año':''}\n`;
+    ctx+=`  ${i+1}. [${b.layer}] ${b.name} — Impacto: ${b.impact||'?'}/10, Readiness: ${b.readiness||'?'}/10, RIM: ${zone}`;
+    if(b.investment)ctx+=` · Inv: ${b.investment}€`;
+    if(b.savings_low||b.savings||b.savings_high)ctx+=` · Ahorro: ${b.savings_low||'?'}€(conserv) / ${b.savings||'?'}€(base) / ${b.savings_high||'?'}€(optim)/año`;
+    if(b.confidence)ctx+=` · Confianza: ${b.confidence}/5`;
+    ctx+=`\n`;
   });
   
   return ctx;
