@@ -3278,10 +3278,106 @@ async function saveM6(){if(!currentClient)return;const j=JSON.stringify(getM6())
 function scheduleM6Save(){clearTimeout(m6SaveTimer);m6SaveTimer=setTimeout(saveM6,800);}
 function m6Changed(){scheduleM6Save();renderSidebarRoadmap();}
 
-async function openM6(){currentSession='m6';document.getElementById('main-content').scrollTop=0;showScreen('m6');await loadM6Data(currentClient.id);renderM6();renderSidebarRoadmap();}
+async function openM6(){currentSession='m6';document.getElementById('main-content').scrollTop=0;showScreen('m6');await loadM6Data(currentClient.id);await loadM2extData(currentClient.id);await loadM3extData(currentClient.id);await loadM4Data(currentClient.id);await loadVSMData(currentClient.id);renderM6();renderSidebarRoadmap();}
 
 function getFullCatalogue(){const m=getM6();return[...TTL_CATALOGUE_DEFAULT,...(m.custom_catalogue||[])];}
 
+function generateSuggestions(currentBacklog){
+  if(!currentClient)return[];
+  const sug=[];
+  const already=new Set(currentBacklog.map(b=>b.name));
+  const add=(name,reason)=>{if(already.has(name))return;const cat=getFullCatalogue().find(c=>c.name===name);if(cat)sug.push({...cat,reason});};
+  
+  const a=(sid,qid)=>allAnswers[`${currentClient.id}_${sid}_${qid}`]||'';
+  const m2=m2extData[currentClient.id];
+  const m3=m3extData[currentClient.id];
+  const m4=m4Data[currentClient.id];
+  
+  // ── From maintenance data ──
+  const mt=a('fab','maintenance_type_pct');
+  if(mt.includes('Casi todo reactivo')||mt.includes('Mayoría reactivo')){
+    add('PM básico en equipos críticos','Mantenimiento mayoritariamente reactivo detectado en M2');
+  }
+  
+  // ── From 5S ──
+  if(m2&&m2.fiveS){
+    const dims=['seiri','seiton','seiso','seiketsu','shitsuke'];
+    const vals=dims.map(k=>parseInt(m2.fiveS[k])||0).filter(v=>v>0);
+    if(vals.length){
+      const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+      if(avg<2.5)add('5S en área de producción','Score 5S = '+avg.toFixed(1)+'/5 — por debajo del umbral 2.5');
+    }
+  }
+  
+  // ── From loss tree ──
+  if(m2&&m2.losses){
+    if(parseFloat(m2.losses.changeover)>15)add('SMED básico — reducción de changeover','Changeover = '+m2.losses.changeover+'% de las pérdidas');
+    if(parseFloat(m2.losses.averia)>20)add('PM básico en equipos críticos','Averías = '+m2.losses.averia+'% de las pérdidas');
+  }
+  
+  // ── From OEE ──
+  const oee=a('fab','oee_current');
+  if(oee.includes('No lo saben'))add('Cálculo OEE automatizado','OEE no medido — sin baseline de rendimiento');
+  else if(oee.includes('menos del 50')||oee.includes('50% - 65'))add('Cálculo OEE automatizado','OEE bajo — necesita medición fiable para mejorar');
+  
+  // ── From downtime capture ──
+  const dc=a('sys','downtime_capture');
+  if(dc.includes('mano')||dc.includes('No se'))add('Captura de paros por línea','Paros no se capturan automáticamente');
+  
+  // ── From production report ──
+  const pr=a('sys','production_report');
+  if(pr&&(pr.includes('Papel')||pr.includes('Excel')))add('Registro digital de producción por turno','Parte de producción en papel/Excel');
+  
+  // ── From ERP ──
+  const erp=a('sys','erp_system');
+  if(erp.includes('No tienen'))add('Gestión visual de producción (tablero de turno)','Sin ERP — empezar por visibilidad básica');
+  
+  // ── From traceability ──
+  const lt=a('sys','lot_tracking');
+  if(lt&&(lt.includes('No hay')||lt.includes('parcial')))add('Trazabilidad de lotes (MP → PT)','Trazabilidad inexistente o parcial');
+  
+  // ── From warehouse ──
+  const wh=a('sys','warehouse_management');
+  if(wh&&(wh.includes('Excel')||wh.includes('Papel')||wh.includes('Sin sistema')))add('Registro digital de producción por turno','Gestión almacén sin sistema formal');
+  
+  // ── From cybersecurity ──
+  if(m3&&m3.cyber){
+    if(m3.cyber.net_separation==='No')add('Segmentación red OT/IT','Redes OT/IT no separadas — riesgo crítico');
+  }
+  
+  // ── From digital maturity ──
+  if(m3&&m3.digital_dims){
+    const prodDim=parseInt(m3.digital_dims.produccion)||0;
+    if(prodDim>=3)add('Dashboard operativo en tiempo real','Madurez producción nivel '+prodDim+' — listo para dashboard RT');
+    const maintDim=parseInt(m3.digital_dims.mantenimiento)||0;
+    if(maintDim<=2)add('Registro digital de mantenimiento (GMAO)','Madurez mantenimiento nivel '+maintDim+' — necesita GMAO');
+  }
+  
+  // ── From M4 readiness ──
+  if(m4&&m4.dimensions){
+    if((m4.dimensions.ownership||0)<=2)add('Ownership de KPIs por proceso','Ownership organizacional score ≤2');
+    if((m4.dimensions.sponsor||0)<=2&&(m4.dimensions.collaboration||0)<=2)add('Rutinas de gestión operativa (reuniones tier)','Sponsor pasivo + silos — necesita governance básica');
+  }
+  
+  // ── From VSM ──
+  const vsm=vsmData[currentClient.id];
+  if(vsm&&vsm.processes&&vsm.processes.length){
+    const procs=vsm.processes;
+    const highCO=procs.filter(p=>parseFloat(p.co)>20).sort((a,b)=>parseFloat(b.co)-parseFloat(a.co));
+    if(highCO.length)add('SMED básico — reducción de changeover','VSM: '+highCO[0].name+' tiene C/O de '+highCO[0].co+' min');
+  }
+  
+  // ── From root cause ──
+  if(m2&&m2.rootCause){
+    m2.rootCause.forEach(rc=>{
+      if(rc.initiative&&rc.ttl&&!already.has(rc.initiative)){
+        sug.push({layer:rc.ttl,name:rc.initiative,desc:'Iniciativa de causa raíz',cat:'A',ttm:'TBD',reason:'Causa raíz: "'+rc.desc?.substring(0,50)+'..."'});
+      }
+    });
+  }
+  
+  return sug;
+}
 function getTTLColor(layer){const c={'L1':'#E24B4A','L2':'#F59E0B','L3':'#3B82F6','L4':'#8B5CF6','L5':'#06B6D4','L6':'#10B981'};return c[layer]||'#6B7280';}
 function getRIMZone(impact,readiness){if(impact>=7&&readiness>=7)return{zone:'LANZAR AHORA',col:'var(--green)',bg:'rgba(16,185,129,0.1)'};if(impact>=7&&readiness>=4)return{zone:'PREPARAR',col:'var(--amber)',bg:'rgba(245,158,11,0.1)'};if(impact>=4&&readiness>=7)return{zone:'LANZAR AHORA',col:'var(--green)',bg:'rgba(16,185,129,0.1)'};if(impact>=4&&readiness>=4)return{zone:'PREPARAR',col:'var(--teal)',bg:'rgba(0,173,181,0.1)'};if(impact>=7)return{zone:'VISIÓN',col:'var(--blue)',bg:'rgba(59,130,246,0.1)'};if(impact<4&&readiness<4)return{zone:'DESCARTAR',col:'var(--red)',bg:'rgba(226,75,74,0.1)'};return{zone:'EVALUAR',col:'var(--text3)',bg:'var(--s2)'};}
 
@@ -3294,8 +3390,30 @@ function renderM6(){
 
   // ── ADD FROM CATALOGUE ──
   html+=`<div class="vsm-section"><div class="vsm-section-title">📚 Catálogo TTL™ <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;">${getFullCatalogue().length} iniciativas</span></div>
-    <div class="vsm-section-sub">Selecciona iniciativas del catálogo para añadir al backlog. Las que están por encima de la capa actual (${clientTTL}) se marcan como bloqueadas.</div>
-    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">`;
+    <div class="vsm-section-sub">Selecciona iniciativas del catálogo para añadir al backlog. Las que están por encima de la capa actual (${clientTTL}) se marcan como bloqueadas.</div>`;
+
+  // ── AUTO-SUGGESTIONS ──
+  const suggestions=generateSuggestions(backlog);
+  if(suggestions.length){
+    html+=`<div style="margin-bottom:14px;padding:14px;background:rgba(0,173,181,0.04);border:1px solid var(--teal);border-radius:var(--r);">
+      <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;">💡 Sugerencias automáticas — basadas en el diagnóstico</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">El sistema detecta iniciativas recomendadas a partir de los datos de M1–M4. Acepta las que apliquen.</div>
+      ${suggestions.map(s=>{
+        const inBacklog=backlog.some(b=>b.name===s.name);
+        const col=getTTLColor(s.layer);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:var(--r-sm);margin-bottom:4px;border-left:3px solid ${col};">
+          <span style="padding:2px 6px;background:${col}22;color:${col};border-radius:8px;font-size:9px;font-weight:700;flex-shrink:0;">${s.layer}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:11px;color:var(--text);font-weight:500;">${s.name}</div>
+            <div style="font-size:9px;color:var(--amber);">↳ ${s.reason}</div>
+          </div>
+          ${inBacklog?'<span style="font-size:9px;color:var(--teal);">✓ añadida</span>':`<button onclick="addToBacklog('${s.name.replace(/'/g,"\\'")}')" style="padding:4px 12px;background:var(--teal);color:white;border:none;border-radius:var(--r-xs);font-size:10px;cursor:pointer;flex-shrink:0;font-family:var(--font);font-weight:600;">Aceptar</button>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  html+=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">`;
   ['L1','L2','L3','L4','L5','L6'].forEach(l=>{
     html+=`<button onclick="filterCatalogue('${l}')" style="padding:4px 12px;border:1px solid ${getTTLColor(l)};background:${getTTLColor(l)}22;color:${getTTLColor(l)};border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${l}</button>`;
   });
