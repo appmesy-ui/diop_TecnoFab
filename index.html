@@ -1592,121 +1592,62 @@ if (procesosSeleccionados) {
   // Add OFI summary
   ctx += getOFIReportContext();
 
-  const prompt = `Eres un experto en diagnóstico operativo industrial para pymes. Formas parte de Tecno-Fab, una consultora de digitalización industrial IT/OT especializada en empresas industriales de 50-500 empleados en España.
+  const prompt = `Eres un consultor senior de Tecno-Fab, consultora de digitalización industrial IT/OT y eficiencia operacional. Especializados en pymes industriales de 50-500 empleados.
 
-Has completado un diagnóstico DIOP completo de una empresa industrial. Aquí están todas las respuestas recogidas en las tres sesiones:
+Has completado un diagnóstico DIOP completo. Aquí están TODOS los datos recogidos:
 
 ${ctx}
 
-El framework DIOP de Tecno-Fab tiene tres verticales:
-- PERFORMANCE: OEE, paradas, cambios de formato, planificación
-- MATERIA PRIMA: trazabilidad, mermas, calidad
-- OVERHEADS: energía, labor, mantenimiento
+FRAMEWORKS DE TECNO-FAB:
 
-Y tres impactos de negocio: RENTABILIDAD Y MARGEN, CRECER Y ESCALAR, PROTECCIÓN DEL NEGOCIO.
-REGLAS DE ANÁLISIS (CRÍTICO):
+1. OFI™ (Operational Friction Index): Score 0-100 con 4 dimensiones (D1 Rendimiento 30%, D2 Datos 25%, D3 Digital 25%, D4 Organización 20%). El OFI clasifica al cliente en zonas: <25 Intervención urgente, 25-50 Estabilización, 50-75 Mejora estructurada, >75 Optimización.
 
-1. COHERENCIA ECONÓMICA:
-- El impacto_total_estimado debe ser coherente con los quick_wins y el ahorro_estimado_anual.
-- El ahorro_estimado_anual debe ser una parte razonable del impacto total, no una cifra arbitraria.
-- El ROI debe derivarse de inversión vs ahorro. No inventes números sin relación.
-- El impacto_total_estimado debe dividirse implícitamente en:
-  (a) quick wins (impacto inmediato)
-  (b) oportunidades estructurales (no incluidas en quick wins)
-- La suma de los quick_wins debe representar entre 20% y 50% del impacto_total_estimado.
-- El ahorro_estimado_anual debe ser coherente con los quick_wins (no inferior sin explicación).
-- Si el impacto_total_estimado es alto pero los quick wins no capturan todo, debe quedar implícito que existe un potencial adicional no capturado en el corto plazo.
-- No utilices cifras redondas sin lógica. Prioriza rangos si hay incertidumbre.
-- Si no hay suficiente información para estimar con precisión, usa rangos y deja claro que es una estimación orientativa.
+2. TTL™ (Transformation Through Layers): 6 capas secuenciales. L1 Stabilize → L2 Measure → L3 Connect → L4 Govern → L5 Optimize → L6 Intelligence. NO SE PUEDEN SALTAR CAPAS.
 
-2. USO DE DATOS:
-- Basa TODAS las conclusiones en las respuestas proporcionadas.
-- Si un dato clave no está disponible (ej: OEE), indícalo claramente.
-- NO inventes datos específicos si no hay evidencia suficiente.
+3. RIM™ (Readiness-Impact Matrix): 3×3 matrix que cruza impacto potencial con readiness organizacional. Zonas: Lanzar, Preparar, Visión, Evaluar, Descartar.
 
-3. BENCHMARK:
-- Solo usa benchmark sectorial si hay base suficiente.
-- Si no hay datos suficientes, indícalo como "estimación orientativa" o "no medido".
-- No inventes gap_euros sin base lógica.
+4. Arquetipos: Reactive Factory, Growing Complexity, Legacy Digitalization Trap, Excel-Driven Operation, Governance Fragmented, Partially Optimized.
 
-4. QUICK WINS:
-- Deben estar directamente conectados a problemas detectados en las respuestas.
-- Deben ser accionables y específicos, no genéricos.
-- El impacto económico debe tener sentido respecto al total.
-- El campo "proceso_ref" debe contener el nombre EXACTO de uno de los procesos del array "procesos" con categoria="quick_win".
-- El titulo del quick win es lenguaje CEO (impacto de negocio). El proceso_ref es lenguaje operativo (qué ocurre en planta).
-- El campo proceso_ref debe ser una copia LITERAL del campo "nombre" de uno de los objetos del array "procesos" con categoria="quick_win". Copia el texto exacto, sin modificarlo.
-- Nunca inventes un proceso_ref. Si no encuentras un proceso quick_win adecuado, ajusta la categoria del proceso correspondiente a quick_win.
-- IMPORTANTE: Los nombres de procesos en proceso_ref deben tomarse EXCLUSIVAMENTE de la lista que aparece en "PROCESOS DE PLANTA IDENTIFICADOS" del contexto. Si esa sección no existe, toma los nombres del array "procesos" generado. Nunca uses nombres genéricos.
+REGLAS CRÍTICAS:
+1. El resumen_ejecutivo debe ser un PÁRRAFO COMPLETO de 6-8 frases en lenguaje de CEO. No jerga técnica. Identifica el driver principal de pérdida, cuantifica el impacto, y conecta con la capacidad de crecer del negocio.
+2. El analisis_detallado debe ser EXTENSO (mínimo 4 párrafos) cubriendo: diagnóstico operativo (qué encontramos en planta), diagnóstico digital (estado de sistemas y datos), diagnóstico organizacional (readiness del equipo), y visión estratégica (qué limita el crecimiento). Escribe como consultor senior hablando con el CEO.
+3. Si hay datos de VSM, dedica un párrafo específico al flujo de valor: lead time, ratio VA, cuellos de botella, y qué significa económicamente.
+4. Si hay datos de OFI, usa el score y las dimensiones para estructurar el análisis. El vector de fricción principal debe ser protagonista.
+5. Conecta SIEMPRE problemas operativos con impacto en negocio: margen, capacidad, riesgo, escalabilidad.
+6. Los quick_wins deben estar directamente vinculados a hallazgos específicos del diagnóstico, no genéricos.
+7. Coherencia económica: la suma de quick_wins debe ser 20-50% del impacto total. El resto es potencial estructural a medio plazo.
+8. Si hay iniciativas en M6, referéncialas en las recomendaciones.
+9. NO inventes datos. Si falta información, dilo. Usa rangos cuando hay incertidumbre.
+10. Herramientas realistas para pymes. No SAP ni soluciones enterprise.
+11. Tono: directo, profesional, sin florituras. Como un consultor senior que lleva 20 años en esto.
 
-5. HERRAMIENTAS:
-- Solo recomienda herramientas si están claramente alineadas con los problemas detectados.
-- Deben ser herramientas reales.
-- No recomendar herramientas genéricas sin justificación implícita.
-
-6. TONO:
-- Escribe como consultor senior.
-- Sé claro, directo y profesional.
-- Si hay incertidumbre, exprésala de forma controlada (no afirmes con seguridad lo que no sabes).
-
-7. EXPLICACIÓN DEL IMPACTO (CRÍTICO):
-- El impacto_total_estimado debe estar implícitamente desglosado en causas principales.
-- Identifica qué áreas generan mayor pérdida (ej: cambios de formato, mermas, falta de datos).
-- Refleja en el resumen ejecutivo de dónde viene el impacto (no solo cuánto es).
-- Si es posible, prioriza 1-2 drivers principales del impacto.
-
-8. NIVEL ESTRATÉGICO:
-- El diagnóstico debe ir más allá de lo operativo.
-- Explica qué limita el crecimiento o escalabilidad de la empresa.
-- Conecta los problemas operativos con impacto en negocio (margen, capacidad, riesgo).
-- Redacta como un consultor senior: claro, directo y con criterio.
-
-9. BENCHMARK (MEJORADO):
-- Si usas benchmarks, indica que son estimaciones basadas en sector industrial o prácticas comunes.
-- No presentes benchmarks como datos exactos si no hay medición real.
-- Ajusta el benchmark al tamaño de empresa (pyme, no gran corporación).
-
-10. HERRAMIENTAS (AJUSTE PYME):
-- Prioriza herramientas realistas para pymes (no grandes soluciones enterprise salvo justificación clara).
-- Evita recomendar soluciones sobredimensionadas para el tamaño de la empresa.
-- Las herramientas deben parecer implementables en 30-90 días.
-
-11. CONSISTENCIA GLOBAL:
-- Todo el informe debe contar una historia coherente:
-  problema → impacto → acción → resultado.
-- Evita contradicciones entre secciones.
-- Si hay datos de VALUE STREAM MAP disponibles (sección VSM), intégralos en el análisis: el ratio de valor añadido, el lead time, los cuellos de botella y las recomendaciones de flujo deben reflejarse en el resumen ejecutivo, los KPIs y los quick wins.
-
-12. IDENTIFICACIÓN DEL DRIVER PRINCIPAL:
-- Identifica cuál es la principal fuente de pérdida económica (1 o 2 máximo).
-- Debe ser concreta (ej: mermas en proceso, cambios de formato, falta de datos en planta).
-- Refleja este driver en el resumen ejecutivo.
-- Evita descripciones genéricas como "problemas operativos" o "ineficiencias".
-- El diagnóstico debe dejar claro dónde se está perdiendo el dinero realmente.
-
-13. CONTROL DE CAPTURA DE IMPACTO:
-- Los quick_wins NO deben capturar más del 50% del impacto_total_estimado.
-- Debe quedar claro que existe un potencial adicional más estructural no capturado en el corto plazo.
-- Si los quick_wins son altos, ajusta el impacto_total_estimado o reduce su impacto.
-
-14. HERRAMIENTAS REALISTAS (CRÍTICO):
-- NO recomendar soluciones enterprise (SAP, Infor, QAD, GE, etc.) para pymes salvo justificación explícita.
-- Priorizar herramientas ligeras, modulares y rápidas de implementar.
-- Las herramientas deben ser creíbles para una empresa de 10-50 empleados.
-- Si hay duda, prioriza soluciones SaaS o modulares frente a ERPs completos.
-
-Analiza todo y devuelve un diagnóstico completo en JSON con este formato exacto:
+Devuelve un JSON con este formato exacto:
 {
-  "resumen_ejecutivo": "2-3 frases que resumen el diagnóstico en lenguaje de CEO. Impacto económico total estimado incluido.",
+  "resumen_ejecutivo": "Párrafo completo de 6-8 frases en lenguaje CEO. Driver principal, impacto cuantificado, conexión con crecimiento del negocio.",
+  "analisis_detallado": "Texto EXTENSO (mínimo 4 párrafos) con análisis profundo: operativo, digital, organizacional y estratégico. Incluir VSM si hay datos. Mínimo 800 palabras.",
   "vertical_prioritaria": "la vertical con más impacto económico",
   "verticals_secundarias": ["otras verticales afectadas"],
-  "impacto_negocio": ["impactos principales identificados"],
+  "impacto_negocio": ["impactos principales identificados — mínimo 4"],
   "urgencia": "alta|media|baja",
   "kpis": {
     "oee_estimado": "% estimado o 'No medido'",
     "merma_pct": "% estimado",
     "coste_no_calidad": "estimación en € anuales o rango",
-    "impacto_total_estimado": "euros anuales totales de todos los problemas identificados"
+    "impacto_total_estimado": "euros anuales totales"
+  },
+  "ofi_resumen": {
+    "score": 0,
+    "zona": "Intervención urgente|Estabilización|Mejora estructurada|Optimización",
+    "vector_friccion": "dimensión más débil y por qué",
+    "ttl_capa": "L1|L2|L3|L4|L5|L6",
+    "ttl_recomendacion": "qué debe consolidar antes de avanzar",
+    "arquetipo": "nombre del arquetipo y por qué encaja"
+  },
+  "vsm_resumen": {
+    "lead_time": "X días/horas",
+    "va_ratio": "X%",
+    "cuellos_botella": ["lista"],
+    "impacto_lead_time": "qué significa económicamente para el cliente"
   },
   "madurez_digital": {
     "puntuacion": 3,
@@ -1715,55 +1656,66 @@ Analiza todo y devuelve un diagnóstico completo en JSON con este formato exacto
     "siguiente_nivel": "qué necesita para mejorar"
   },
   "benchmark_sectorial": {
-    "kpi_referencia": "KPI más relevante para este sector",
-    "valor_cliente": "valor estimado del cliente",
+    "kpi_referencia": "KPI más relevante",
+    "valor_cliente": "valor estimado",
     "valor_sector_medio": "media del sector",
-    "valor_sector_top": "top performers del sector",
-    "gap_euros": "diferencia económica estimada vs media sector"
+    "valor_sector_top": "top performers",
+    "gap_euros": "diferencia económica estimada"
   },
-"quick_wins": [
+  "quick_wins": [
     {
-      "titulo": "título corto en lenguaje CEO",
-      "descripcion": "qué hacer y por qué, en lenguaje de negocio",
+      "titulo": "título en lenguaje CEO",
+      "descripcion": "qué hacer y por qué, detallado",
       "impacto_euros": "ahorro estimado anual",
       "plazo_dias": 30,
       "prioridad": 1,
-      "proceso_ref": "nombre exacto del proceso correspondiente en el array procesos"
+      "proceso_ref": "nombre exacto del proceso",
+      "ttl_capa": "L1|L2|L3|L4"
     }
   ],
+  "roadmap_narrativo": "Párrafo describiendo la secuencia recomendada de implementación por capas TTL. Qué hacer primero, qué después, y por qué en ese orden. Mínimo 200 palabras.",
   "roi": {
-    "presupuesto_herramienta": "20-30% del presupuesto indicado",
-    "ahorro_estimado_anual": "total de ahorros identificados",
+    "presupuesto_herramienta": "estimación",
+    "ahorro_estimado_anual": "total",
     "plazo_retorno_meses": 12,
-    "base_calculo": "explicación breve"
+    "base_calculo": "explicación"
   },
   "herramientas_mercado": [
     {
-      "nombre": "nombre real de la herramienta",
-      "tipo": "SaaS|plataforma|módulo ERP|sensor|otro",
-      "precio_aproximado": "ajustado al presupuesto disponible para herramienta",
-      "para_que": "qué problema concreto resuelve",
-      "url": "web oficial real"
+      "nombre": "nombre real",
+      "tipo": "SaaS|plataforma|módulo|sensor|otro",
+      "precio_aproximado": "ajustado a pyme",
+      "para_que": "qué problema resuelve",
+      "url": "web real"
     }
   ],
-  "siguiente_pregunta_ceo": "la pregunta más importante para la próxima reunión con el CEO"
+  "riesgos_principales": [
+    {
+      "riesgo": "descripción del riesgo",
+      "probabilidad": "alta|media|baja",
+      "impacto": "qué pasa si se materializa",
+      "mitigacion": "qué hacer para prevenirlo"
+    }
+  ],
+  "siguiente_pregunta_ceo": "la pregunta más importante para la próxima reunión"
 }
 
-Para quick_wins incluye exactamente 3, ordenados por impacto económico descendente.
-Para herramientas_mercado incluye exactamente 3 herramientas reales existentes en el mercado, ajustadas al sector y presupuesto.
+Para quick_wins incluye exactamente 4, ordenados por impacto.
+Para herramientas_mercado incluye exactamente 3 herramientas reales para pymes.
+Para riesgos_principales incluye exactamente 3.
 
 15. PROCESOS:
 - Identifica entre 10 y 15 procesos concretos de planta basados en las respuestas.
 - Impacto (1-5): basado en señales activadas y coste económico estimado.
 - Esfuerzo (1-5): basado en madurez_digital detectada y conectividad de líneas.
 - categoria: quick_win (impacto≥3 Y esfuerzo≤2), big_swing (impacto≥4 Y esfuerzo≥3), nice_to_have (impacto≤3 Y esfuerzo≤2), deprioritize (impacto≤2 Y esfuerzo≥3).
-- horas_mes: horas perdidas mensuales estimadas por ese proceso.
-- Nombres concretos. Ej: "Cambio de formato manual" no "ineficiencias productivas".
+- horas_mes: horas perdidas mensuales estimadas.
+- Nombres concretos, no genéricos.
 
-Añade al JSON este campo adicional:
+Añade al JSON:
 "procesos": [
   {
-    "nombre": "nombre concreto del proceso",
+    "nombre": "nombre concreto",
     "impacto": 4,
     "esfuerzo": 2,
     "categoria": "quick_win",
@@ -1896,6 +1848,33 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="r-summary"><p>${r.resumen_ejecutivo || '—'}</p></div>
         </div>
 
+        ${r.analisis_detallado ? `<div class="r-section">
+          <div class="r-label">Análisis detallado del diagnóstico</div>
+          <div style="font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap;">${r.analisis_detallado}</div>
+        </div>` : ''}
+
+        ${r.ofi_resumen ? `<div class="r-section">
+          <div class="r-label">OFI™ — Operational Friction Index</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+            <div class="kpi-card"><div class="kpi-lbl">OFI Score</div><div class="kpi-val kv-r">${r.ofi_resumen.score || '—'}/100</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Zona</div><div class="kpi-val kv-a">${r.ofi_resumen.zona || '—'}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Capa TTL™</div><div class="kpi-val kv-t">${r.ofi_resumen.ttl_capa || '—'}</div></div>
+          </div>
+          ${r.ofi_resumen.vector_friccion ? `<div style="padding:10px 14px;background:rgba(226,75,74,0.06);border-left:3px solid var(--red);border-radius:0 4px 4px 0;margin-bottom:8px;"><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:4px;">Vector de fricción principal</div><div style="font-size:12px;color:var(--text);">${r.ofi_resumen.vector_friccion}</div></div>` : ''}
+          ${r.ofi_resumen.ttl_recomendacion ? `<div style="font-size:12px;color:var(--text2);line-height:1.6;">${r.ofi_resumen.ttl_recomendacion}</div>` : ''}
+          ${r.ofi_resumen.arquetipo ? `<div style="margin-top:8px;font-size:12px;color:var(--text2);"><strong>Arquetipo:</strong> ${r.ofi_resumen.arquetipo}</div>` : ''}
+        </div>` : ''}
+
+        ${r.vsm_resumen && r.vsm_resumen.lead_time ? `<div class="r-section">
+          <div class="r-label">Value Stream Map — Análisis de flujo</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+            <div class="kpi-card"><div class="kpi-lbl">Lead Time</div><div class="kpi-val kv-r">${r.vsm_resumen.lead_time}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Ratio VA</div><div class="kpi-val kv-a">${r.vsm_resumen.va_ratio}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Cuellos de botella</div><div class="kpi-val kv-t" style="font-size:14px;">${(r.vsm_resumen.cuellos_botella||[]).join(', ')||'—'}</div></div>
+          </div>
+          ${r.vsm_resumen.impacto_lead_time ? `<div style="font-size:12px;color:var(--text2);line-height:1.6;">${r.vsm_resumen.impacto_lead_time}</div>` : ''}
+        </div>` : ''}
+
         <div class="r-section">
           <div class="r-label">KPIs identificados</div>
           <div class="kpi-grid">
@@ -1973,6 +1952,28 @@ function renderReport(r, reportsHistoryHtml = '') {
               </div>`).join('')}
           </div>
         </div>
+
+        ${r.roadmap_narrativo ? `<div class="r-section">
+          <div class="r-label">Roadmap de implementación</div>
+          <div style="font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap;">${r.roadmap_narrativo}</div>
+        </div>` : ''}
+
+        ${r.riesgos_principales && r.riesgos_principales.length ? `<div class="r-section">
+          <div class="r-label">Riesgos principales identificados</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${r.riesgos_principales.map(rk => {
+              const rkCol = rk.probabilidad === 'alta' ? 'var(--red)' : rk.probabilidad === 'media' ? 'var(--amber)' : 'var(--green)';
+              return `<div style="padding:10px 14px;background:var(--s2);border-left:3px solid ${rkCol};border-radius:0 4px 4px 0;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                  <span style="font-size:12px;font-weight:600;color:var(--text);">${rk.riesgo}</span>
+                  <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:${rkCol}22;color:${rkCol};font-weight:600;">P: ${rk.probabilidad}</span>
+                </div>
+                <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Impacto: ${rk.impacto}</div>
+                <div style="font-size:11px;color:var(--teal);">Mitigación: ${rk.mitigacion}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
 
         <div class="r-section">
           <div class="next-q-box">
@@ -2506,7 +2507,7 @@ function getProgress(client) {
   };
 }
 
-function openClient(clientId) {
+async function openClient(clientId) {
   currentClient = clients.find(c => String(c.id) === String(clientId));
   if (!currentClient) {
     console.error('Cliente no encontrado. clientId:', clientId, 'clients:', clients);
@@ -2518,6 +2519,16 @@ function openClient(clientId) {
   (currentClient.answers || []).forEach(a => {
     allAnswers[`${currentClient.id}_${a.session}_${a.question_id}`] = a.answer;
   });
+
+  // Preload all module data
+  await Promise.all([
+    loadF0Data(currentClient.id),
+    loadM2extData(currentClient.id),
+    loadM3extData(currentClient.id),
+    loadM4Data(currentClient.id),
+    loadM6Data(currentClient.id),
+    loadVSMData(currentClient.id)
+  ]);
 
   document.getElementById('topbar-client').textContent = currentClient.name;
   document.getElementById('topbar-back').classList.add('visible');
@@ -2532,7 +2543,7 @@ renderSidebarRoadmap();
   document.querySelectorAll('.notes-tab').forEach((b,i) => b.classList.toggle('active', i===0));
   loadNotes(currentClient.id);
   const prog = getProgress(currentClient);
-  const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
+  const allDone = ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done');
   const reportOutdated = prog.reportOutdated;
   const nextSess = SESSION_ORDER.find(s => prog.sessions[s] !== 'done') || 'ceo';
 
@@ -2739,6 +2750,8 @@ async function openF0() {
 }
 
 function renderF0() {
+  const mainContent=document.getElementById('main-content');
+  const scrollPos=mainContent?mainContent.scrollTop:0;
   const f=getF0();
   const sector=currentClient?.sector||'';
   const bench=SECTOR_BENCHMARKS[sector]||SECTOR_BENCHMARKS['default'];
@@ -2833,6 +2846,7 @@ function renderF0() {
   html+=`<div class="vsm-section"><div class="vsm-section-title">📝 Notas pre-engagement</div><textarea class="vsm-input" style="min-height:80px;resize:vertical;" placeholder="Contexto de la oportunidad comercial, origen del contacto, urgencias detectadas..." oninput="getF0().pre_kickoff_notes=this.value;f0Changed()">${f.pre_kickoff_notes||''}</textarea></div>`;
 
   document.getElementById('f0-content').innerHTML=html;
+  if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
 }
 
 // ══════════════════════════════════════════════════════
@@ -2863,6 +2877,8 @@ function m4Changed(){scheduleM4Save();renderSidebarRoadmap();}
 async function openM4(){currentSession='m4';document.getElementById('main-content').scrollTop=0;showScreen('m4');await loadM4Data(currentClient.id);renderM4();renderSidebarRoadmap();}
 
 function renderM4(){
+  const mainContent=document.getElementById('main-content');
+  const scrollPos=mainContent?mainContent.scrollTop:0;
   const m=getM4();
   const avg=M4_DIMENSIONS.reduce((a,d)=>a+(parseInt(m.dimensions[d.k])||0),0)/M4_DIMENSIONS.length;
   
@@ -2912,6 +2928,7 @@ function renderM4(){
   html+=`<div class="vsm-section"><div class="vsm-section-title">🔮 Señales de arquetipo observadas en M4</div><textarea class="vsm-input" style="min-height:60px;resize:vertical;" placeholder="¿Qué arquetipo confirman las observaciones organizacionales?" oninput="getM4().archetype_signals=this.value;m4Changed();">${m.archetype_signals||''}</textarea></div>`;
   
   document.getElementById('m4-content').innerHTML=html;
+  if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
 }
 
 // ══════════════════════════════════════════════════════
@@ -3723,6 +3740,8 @@ function m2extChanged(){scheduleM2extSave();renderSidebarRoadmap();}
 async function openM2ext(){currentSession='m2ext';document.getElementById('main-content').scrollTop=0;showScreen('m2ext');await loadM2extData(currentClient.id);renderM2ext();renderSidebarRoadmap();}
 
 function renderM2ext(){
+  const mainContent=document.getElementById('main-content');
+  const scrollPos=mainContent?mainContent.scrollTop:0;
   const d=getM2ext();
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">📋</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M2 · Herramientas de campo</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Gemba Walk · Árbol de pérdidas · 5S · Causa raíz</div></div></div>`;
   // Tabs
@@ -3849,6 +3868,7 @@ function renderM2ext(){
     html+=`</div>`;
   }
   document.getElementById('m2ext-content').innerHTML=html;
+  if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
 }
 
 // ══════════════════════════════════════════════════════
@@ -3865,6 +3885,8 @@ function m3extChanged(){scheduleM3extSave();renderSidebarRoadmap();}
 async function openM3ext(){currentSession='m3ext';document.getElementById('main-content').scrollTop=0;showScreen('m3ext');await loadM3extData(currentClient.id);renderM3ext();renderSidebarRoadmap();}
 
 function renderM3ext(){
+  const mainContent=document.getElementById('main-content');
+  const scrollPos=mainContent?mainContent.scrollTop:0;
   const d=getM3ext();
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">💻</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M3 · Herramientas digitales de campo</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Inventario sistemas · 7 dimensiones digitales · Flujo datos · Ciberseguridad OT</div></div></div>`;
   html+=`<div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;">`;
@@ -3943,6 +3965,7 @@ function renderM3ext(){
     html+=`</div>`;
   }
   document.getElementById('m3ext-content').innerHTML=html;
+  if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
 }
 
 // ── EXTEND M4 WITH GOVERNANCE MAP ──
