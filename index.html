@@ -1743,7 +1743,14 @@ Devuelve SOLO el JSON, sin texto adicional.`;
       throw new Error(data?.error || 'Error al generar informe');
     }
 
-    const text = (data.content || '').replace(/```json|```/g, '').trim();
+    let text = (data.content || '').replace(/```json|```/g, '').trim();
+    // Sanitize control characters inside JSON string values
+    text = text.replace(/[\x00-\x1F\x7F]/g, (c) => {
+      if (c === '\n') return '\\n';
+      if (c === '\r') return '\\r';
+      if (c === '\t') return '\\t';
+      return '';
+    });
     const r = JSON.parse(text);
 
     await sb.from('diop_reports').insert([
