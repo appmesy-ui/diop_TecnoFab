@@ -1744,14 +1744,21 @@ Devuelve SOLO el JSON, sin texto adicional.`;
     }
 
     let text = (data.content || '').replace(/```json|```/g, '').trim();
-    // Sanitize control characters inside JSON string values
-    text = text.replace(/[\x00-\x1F\x7F]/g, (c) => {
-      if (c === '\n') return '\\n';
-      if (c === '\r') return '\\r';
-      if (c === '\t') return '\\t';
-      return '';
-    });
-    const r = JSON.parse(text);
+    // Sanitize control characters ONLY inside JSON string values
+    let cleaned = '', inStr = false, esc = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (esc) { cleaned += c; esc = false; continue; }
+      if (c === '\\' && inStr) { cleaned += c; esc = true; continue; }
+      if (c === '"') { inStr = !inStr; cleaned += c; continue; }
+      if (inStr) {
+        if (c === '\n') { cleaned += '\\n'; continue; }
+        if (c === '\r') { cleaned += '\\r'; continue; }
+        if (c === '\t') { cleaned += '\\t'; continue; }
+      }
+      cleaned += c;
+    }
+    const r = JSON.parse(cleaned);
 
     await sb.from('diop_reports').insert([
       {
