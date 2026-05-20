@@ -2357,6 +2357,27 @@ function exportPDF() {
   <div class="summary-box"><p>${r.resumen_ejecutivo||'—'}</p></div>
 </div>
 
+${r.ofi_resumen ? `<div class="section no-break">
+  <h2>OFI™ — Operational Friction Index</h2>
+  <div class="grid3">
+    <div class="card"><div class="card-lbl">OFI Score</div><div class="card-val" style="color:#E24B4A;">${r.ofi_resumen.score||'—'}/100</div></div>
+    <div class="card"><div class="card-lbl">Zona</div><div class="card-val" style="color:#BA7517;font-size:10pt;">${r.ofi_resumen.zona||'—'}</div></div>
+    <div class="card"><div class="card-lbl">Capa TTL™</div><div class="card-val" style="color:#00706e;">${r.ofi_resumen.ttl_capa||'—'}</div></div>
+  </div>
+  ${r.ofi_resumen.vector_friccion?`<div style="background:#fef0f0;border-left:3px solid #E24B4A;padding:3mm 4mm;border-radius:0 4px 4px 0;margin-top:3mm;"><div style="font-size:7pt;color:#E24B4A;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin-bottom:1mm;">Vector de fricción</div><div style="font-size:9pt;color:#0f1a2e;">${r.ofi_resumen.vector_friccion}</div></div>`:''}
+  ${r.ofi_resumen.arquetipo?`<div style="font-size:8.5pt;color:#4a7080;margin-top:2mm;"><strong>Arquetipo:</strong> ${r.ofi_resumen.arquetipo}</div>`:''}
+</div>` : ''}
+
+${r.vsm_resumen && r.vsm_resumen.lead_time ? `<div class="section no-break">
+  <h2>Value Stream Map — Análisis de flujo</h2>
+  <div class="grid3">
+    <div class="card"><div class="card-lbl">Lead Time</div><div class="card-val" style="color:#E24B4A;">${r.vsm_resumen.lead_time}</div></div>
+    <div class="card"><div class="card-lbl">Ratio Valor Añadido</div><div class="card-val" style="color:#BA7517;">${r.vsm_resumen.va_ratio}</div></div>
+    <div class="card"><div class="card-lbl">Cuellos de botella</div><div class="card-val" style="color:#00706e;font-size:9pt;">${(r.vsm_resumen.cuellos_botella||[]).join(', ')||'—'}</div></div>
+  </div>
+  ${r.vsm_resumen.impacto_lead_time?`<div style="font-size:8.5pt;color:#4a7080;margin-top:2mm;line-height:1.5;">${r.vsm_resumen.impacto_lead_time}</div>`:''}
+</div>` : ''}
+
 <div class="section no-break">
   <h2>KPIs identificados</h2>
   <div class="grid3">
@@ -2437,7 +2458,62 @@ function exportPDF() {
 <div class="header-bar">
   <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
   <div class="hb-client">${client.name} · Informe DIOP</div>
-  <div class="hb-page">Página 4 de 4</div>
+  <div class="hb-page">Página 4</div>
+</div>
+
+${r.analisis_detallado ? `<div class="section no-break">
+  <h2>Análisis detallado del diagnóstico</h2>
+  <div style="font-size:9pt;color:#0f1a2e;line-height:1.7;white-space:pre-wrap;text-align:justify;">${r.analisis_detallado}</div>
+</div>` : ''}
+
+<div class="footer">
+  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
+  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
+</div>
+</div>
+
+${r.roadmap_narrativo || (r.riesgos_principales && r.riesgos_principales.length) ? `
+<!-- PÁG 5: ROADMAP + RIESGOS -->
+<div style="margin-top:8mm;" class="no-break">
+<div class="header-bar">
+  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
+  <div class="hb-client">${client.name} · Informe DIOP</div>
+  <div class="hb-page">Página 5</div>
+</div>
+
+${r.roadmap_narrativo ? `<div class="section no-break">
+  <h2>Roadmap de implementación por capas TTL™</h2>
+  <div style="font-size:9pt;color:#0f1a2e;line-height:1.7;white-space:pre-wrap;text-align:justify;">${r.roadmap_narrativo}</div>
+</div>` : ''}
+
+${r.riesgos_principales && r.riesgos_principales.length ? `<div class="section no-break">
+  <h2>Riesgos principales identificados</h2>
+  ${r.riesgos_principales.map(rk => {
+    const rkCol = rk.probabilidad==='alta'?'#E24B4A':rk.probabilidad==='media'?'#BA7517':'#1D9E75';
+    return `<div style="padding:3mm 4mm;border-left:3px solid ${rkCol};background:${rkCol}08;border-radius:0 4px 4px 0;margin-bottom:2mm;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1mm;">
+        <div style="font-size:9pt;font-weight:bold;color:#0f1a2e;">${rk.riesgo}</div>
+        <div style="font-size:7pt;padding:1px 6px;border-radius:3px;background:${rkCol}20;color:${rkCol};font-weight:bold;">P: ${rk.probabilidad}</div>
+      </div>
+      <div style="font-size:8pt;color:#4a7080;">Impacto: ${rk.impacto}</div>
+      <div style="font-size:8pt;color:#00706e;margin-top:1mm;">Mitigación: ${rk.mitigacion}</div>
+    </div>`;
+  }).join('')}
+</div>` : ''}
+
+<div class="footer">
+  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
+  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
+</div>
+</div>
+` : ''}
+
+<!-- PÁG 6: HERRAMIENTAS + SIGUIENTE PASO -->
+<div style="margin-top:8mm;" class="no-break">
+<div class="header-bar">
+  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
+  <div class="hb-client">${client.name} · Informe DIOP</div>
+  <div class="hb-page">Página final</div>
 </div>
 
 <div class="section no-break">
@@ -2463,7 +2539,7 @@ function exportPDF() {
 </div>
 
 <div class="disclaimer no-break">
-  <p>Este informe ha sido elaborado por Tecno-Fab mediante la metodología DIOP. Los datos y estimaciones están basados en la información recogida durante las sesiones de diagnóstico con el equipo de ${client.name}. Las cifras de ROI son estimaciones orientativas basadas en benchmarks del sector industrial.</p>
+  <p>Este informe ha sido elaborado por Tecno-Fab mediante la metodología DIOP (Diagnóstico de Impacto Operativo), incorporando los frameworks propietarios OFI™, TTL™ y RIM™. Los datos y estimaciones están basados en la información recogida durante las sesiones de diagnóstico, observación directa en planta (Gemba Walk), Value Stream Mapping y evaluación de madurez digital y organizacional del equipo de ${client.name}. Las cifras de ROI son estimaciones orientativas basadas en benchmarks del sector industrial y los 3 escenarios (conservador, base, optimista) con su factor de confianza asociado.</p>
 </div>
 
 <div class="footer">
