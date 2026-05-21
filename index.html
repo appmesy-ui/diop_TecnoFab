@@ -469,6 +469,34 @@ select.fi{cursor:pointer;}
 /* Compact screens still preserve readability */
 @media(max-width:1100px){.content{padding:28px 30px}.sidebar{width:230px}}
 
+
+
+/* ─────────────────────────────────────────────
+   DIOP UI REFRESH v2 — REAL VISUAL REWORK
+   Scope: stronger sidebar, premium cards, readable workbench
+   ───────────────────────────────────────────── */
+:root{
+  --bg:#050A11; --s1:#08111d; --s2:#0d1a2b; --s3:#12243a;
+  --border:rgba(87, 208, 217, 0.10);
+  --border2:rgba(87, 208, 217, 0.22);
+  --text:#eefbfc; --text2:#a7cbd0; --text3:#628f98;
+}
+body{background:radial-gradient(circle at top left,rgba(0,173,181,.09),transparent 34%),var(--bg);} 
+.topbar{height:60px;padding:0 24px;background:rgba(8,17,29,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(87,208,217,.12);} 
+.topbar-logo{width:34px;height:34px}.topbar-brand{font-size:15px}.topbar-version{font-size:11px;padding:4px 9px;background:rgba(0,173,181,.08);border-color:rgba(0,173,181,.25);color:var(--teal-l)}
+.app-body{background:linear-gradient(90deg,rgba(0,173,181,.025),transparent 35%);} 
+.sidebar{width:306px;background:linear-gradient(180deg,#07101c 0%,#050a11 100%);border-right:1px solid rgba(87,208,217,.12);box-shadow:18px 0 50px rgba(0,0,0,.22);} 
+.sidebar-section{padding:22px 20px 12px}.sidebar-label{font-size:10px;color:#5f8b93}.sidebar-client-name{font-size:16px;letter-spacing:-.015em}.sidebar-client-meta{font-size:12px;color:#6f9fa7;margin-top:4px}.sidebar-divider{margin:12px 20px;background:rgba(87,208,217,.12)}
+.rm-list{padding:10px 16px 22px;overflow:auto}.rm-phase{border:1px solid rgba(87,208,217,.11);background:rgba(255,255,255,.018);border-radius:16px;margin:0 0 12px;overflow:hidden;box-shadow:0 14px 32px rgba(0,0,0,.10)}
+.rm-phase-head{display:flex;align-items:center;gap:10px;padding:14px 14px 10px;cursor:default;background:linear-gradient(135deg,rgba(0,173,181,.075),rgba(0,173,181,.015));border-bottom:1px solid rgba(87,208,217,.07)}
+.rm-phase-icon{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(0,173,181,.10);border:1px solid rgba(0,173,181,.18);font-size:14px;flex-shrink:0}.rm-phase-title{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.10em;color:#9bc4ca}.rm-phase-sub{font-size:10.5px;color:#5e8c94;margin-top:2px}.rm-phase-pct{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--teal-l);background:rgba(0,173,181,.09);border:1px solid rgba(0,173,181,.16);border-radius:999px;padding:4px 8px}.rm-phase-bar{height:3px;background:#122235;overflow:hidden}.rm-phase-fill{height:100%;background:linear-gradient(90deg,var(--teal-d),var(--teal-l));border-radius:4px}.rm-phase-body{padding:8px 8px 10px}.rm-item{position:relative;gap:10px;padding:10px 10px;border-radius:12px;margin-bottom:3px;border:1px solid transparent}.rm-item:hover{background:rgba(0,173,181,.07);border-color:rgba(0,173,181,.10);transform:translateX(1px)}.rm-item.rm-active{background:rgba(0,173,181,.12);border-color:rgba(0,173,181,.32);box-shadow:0 0 0 1px rgba(0,173,181,.04) inset,0 8px 20px rgba(0,173,181,.04)}.rm-circle{width:24px;height:24px;border-width:1px;font-size:10px}.rm-label{font-size:12.5px;color:#b9d8dc}.rm-label-sub{font-size:12px;color:#7ea8af}.rm-item-sub{padding-left:10px}.rm-item-sub:before{content:'';position:absolute;left:20px;top:-3px;bottom:-3px;width:1px;background:rgba(87,208,217,.06);z-index:0}.rm-item-sub .rm-circle{width:20px;height:20px;font-size:9px;z-index:1}.rm-item-sub .rm-label{z-index:1}
+.content{padding:42px 56px;max-width:none;background:radial-gradient(circle at top right,rgba(0,173,181,.06),transparent 30%)}.page-header{margin-bottom:34px}.page-title{font-size:28px;font-weight:650;letter-spacing:-.035em}.page-sub{font-size:14px;max-width:780px;line-height:1.6}.session-hero{padding:26px 28px;border-radius:20px;background:linear-gradient(135deg,rgba(13,26,43,.96),rgba(8,17,29,.94));border:1px solid rgba(87,208,217,.16);box-shadow:0 22px 60px rgba(0,0,0,.22);margin-bottom:28px}.sh-icon{width:54px;height:54px;border-radius:16px}.sh-title,.session-hero [style*="font-size:15px"]{font-size:20px!important;font-weight:650!important;letter-spacing:-.025em}.sh-sub,.session-hero [style*="font-size:12px"]{font-size:13.5px!important;color:#84aeb6!important;line-height:1.55}.sh-time{padding:6px 11px;border-radius:999px}
+.vsm-section,.q-block{max-width:1180px}.vsm-section{padding:28px;border-radius:18px;background:rgba(8,17,29,.72);border:1px solid rgba(87,208,217,.13);box-shadow:0 18px 44px rgba(0,0,0,.17);margin-bottom:22px}.vsm-section-title{font-size:17px;font-weight:650;letter-spacing:-.025em;margin-bottom:7px}.vsm-section-sub{font-size:12.8px;line-height:1.6;color:#6f9fa7;margin-bottom:20px}.q-card{border-radius:16px;background:rgba(8,17,29,.72);border:1px solid rgba(87,208,217,.10);margin-bottom:12px}.q-top{padding:18px 20px}.q-text{font-size:14.5px;line-height:1.58}.q-meta{margin-bottom:8px}.opt-grid{gap:8px}.opt-btn,.yn-btn,.vsm-input,.vsm-select,.num-input,.txt-input{border-radius:12px;padding:10px 12px}.opt-btn{font-size:12.5px}.save-bar{padding:16px 56px;margin-left:-56px;margin-right:-56px;background:rgba(5,10,17,.92);backdrop-filter:blur(8px)}
+.kpi-grid,.roi-grid,.bench-grid,.vsm-results-grid{gap:14px}.kpi-card,.roi-card,.bench-card,.vsm-result-card{border-radius:16px;padding:18px;background:rgba(13,26,43,.80);border:1px solid rgba(87,208,217,.12)}
+/* Strong M4/M8 click chips */
+button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;padding:8px 13px!important;font-weight:600!important;box-shadow:0 8px 18px rgba(0,0,0,.10)}
+@media(max-width:1200px){.sidebar{width:280px}.content{padding:34px 38px}.save-bar{padding-left:38px;padding-right:38px;margin-left:-38px;margin-right:-38px}}
+
 </style>
 </head>
 <body onload="init()">
@@ -2365,6 +2393,34 @@ function exportPDF() {
   .hb-brand{font-size:9pt;font-weight:bold;color:#e8f4f5;}
   .hb-client{font-size:8pt;color:#3a7a82;}
   .hb-page{font-size:7.5pt;color:#3a7a82;}
+
+
+/* ─────────────────────────────────────────────
+   DIOP UI REFRESH v2 — REAL VISUAL REWORK
+   Scope: stronger sidebar, premium cards, readable workbench
+   ───────────────────────────────────────────── */
+:root{
+  --bg:#050A11; --s1:#08111d; --s2:#0d1a2b; --s3:#12243a;
+  --border:rgba(87, 208, 217, 0.10);
+  --border2:rgba(87, 208, 217, 0.22);
+  --text:#eefbfc; --text2:#a7cbd0; --text3:#628f98;
+}
+body{background:radial-gradient(circle at top left,rgba(0,173,181,.09),transparent 34%),var(--bg);} 
+.topbar{height:60px;padding:0 24px;background:rgba(8,17,29,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(87,208,217,.12);} 
+.topbar-logo{width:34px;height:34px}.topbar-brand{font-size:15px}.topbar-version{font-size:11px;padding:4px 9px;background:rgba(0,173,181,.08);border-color:rgba(0,173,181,.25);color:var(--teal-l)}
+.app-body{background:linear-gradient(90deg,rgba(0,173,181,.025),transparent 35%);} 
+.sidebar{width:306px;background:linear-gradient(180deg,#07101c 0%,#050a11 100%);border-right:1px solid rgba(87,208,217,.12);box-shadow:18px 0 50px rgba(0,0,0,.22);} 
+.sidebar-section{padding:22px 20px 12px}.sidebar-label{font-size:10px;color:#5f8b93}.sidebar-client-name{font-size:16px;letter-spacing:-.015em}.sidebar-client-meta{font-size:12px;color:#6f9fa7;margin-top:4px}.sidebar-divider{margin:12px 20px;background:rgba(87,208,217,.12)}
+.rm-list{padding:10px 16px 22px;overflow:auto}.rm-phase{border:1px solid rgba(87,208,217,.11);background:rgba(255,255,255,.018);border-radius:16px;margin:0 0 12px;overflow:hidden;box-shadow:0 14px 32px rgba(0,0,0,.10)}
+.rm-phase-head{display:flex;align-items:center;gap:10px;padding:14px 14px 10px;cursor:default;background:linear-gradient(135deg,rgba(0,173,181,.075),rgba(0,173,181,.015));border-bottom:1px solid rgba(87,208,217,.07)}
+.rm-phase-icon{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(0,173,181,.10);border:1px solid rgba(0,173,181,.18);font-size:14px;flex-shrink:0}.rm-phase-title{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.10em;color:#9bc4ca}.rm-phase-sub{font-size:10.5px;color:#5e8c94;margin-top:2px}.rm-phase-pct{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--teal-l);background:rgba(0,173,181,.09);border:1px solid rgba(0,173,181,.16);border-radius:999px;padding:4px 8px}.rm-phase-bar{height:3px;background:#122235;overflow:hidden}.rm-phase-fill{height:100%;background:linear-gradient(90deg,var(--teal-d),var(--teal-l));border-radius:4px}.rm-phase-body{padding:8px 8px 10px}.rm-item{position:relative;gap:10px;padding:10px 10px;border-radius:12px;margin-bottom:3px;border:1px solid transparent}.rm-item:hover{background:rgba(0,173,181,.07);border-color:rgba(0,173,181,.10);transform:translateX(1px)}.rm-item.rm-active{background:rgba(0,173,181,.12);border-color:rgba(0,173,181,.32);box-shadow:0 0 0 1px rgba(0,173,181,.04) inset,0 8px 20px rgba(0,173,181,.04)}.rm-circle{width:24px;height:24px;border-width:1px;font-size:10px}.rm-label{font-size:12.5px;color:#b9d8dc}.rm-label-sub{font-size:12px;color:#7ea8af}.rm-item-sub{padding-left:10px}.rm-item-sub:before{content:'';position:absolute;left:20px;top:-3px;bottom:-3px;width:1px;background:rgba(87,208,217,.06);z-index:0}.rm-item-sub .rm-circle{width:20px;height:20px;font-size:9px;z-index:1}.rm-item-sub .rm-label{z-index:1}
+.content{padding:42px 56px;max-width:none;background:radial-gradient(circle at top right,rgba(0,173,181,.06),transparent 30%)}.page-header{margin-bottom:34px}.page-title{font-size:28px;font-weight:650;letter-spacing:-.035em}.page-sub{font-size:14px;max-width:780px;line-height:1.6}.session-hero{padding:26px 28px;border-radius:20px;background:linear-gradient(135deg,rgba(13,26,43,.96),rgba(8,17,29,.94));border:1px solid rgba(87,208,217,.16);box-shadow:0 22px 60px rgba(0,0,0,.22);margin-bottom:28px}.sh-icon{width:54px;height:54px;border-radius:16px}.sh-title,.session-hero [style*="font-size:15px"]{font-size:20px!important;font-weight:650!important;letter-spacing:-.025em}.sh-sub,.session-hero [style*="font-size:12px"]{font-size:13.5px!important;color:#84aeb6!important;line-height:1.55}.sh-time{padding:6px 11px;border-radius:999px}
+.vsm-section,.q-block{max-width:1180px}.vsm-section{padding:28px;border-radius:18px;background:rgba(8,17,29,.72);border:1px solid rgba(87,208,217,.13);box-shadow:0 18px 44px rgba(0,0,0,.17);margin-bottom:22px}.vsm-section-title{font-size:17px;font-weight:650;letter-spacing:-.025em;margin-bottom:7px}.vsm-section-sub{font-size:12.8px;line-height:1.6;color:#6f9fa7;margin-bottom:20px}.q-card{border-radius:16px;background:rgba(8,17,29,.72);border:1px solid rgba(87,208,217,.10);margin-bottom:12px}.q-top{padding:18px 20px}.q-text{font-size:14.5px;line-height:1.58}.q-meta{margin-bottom:8px}.opt-grid{gap:8px}.opt-btn,.yn-btn,.vsm-input,.vsm-select,.num-input,.txt-input{border-radius:12px;padding:10px 12px}.opt-btn{font-size:12.5px}.save-bar{padding:16px 56px;margin-left:-56px;margin-right:-56px;background:rgba(5,10,17,.92);backdrop-filter:blur(8px)}
+.kpi-grid,.roi-grid,.bench-grid,.vsm-results-grid{gap:14px}.kpi-card,.roi-card,.bench-card,.vsm-result-card{border-radius:16px;padding:18px;background:rgba(13,26,43,.80);border:1px solid rgba(87,208,217,.12)}
+/* Strong M4/M8 click chips */
+button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;padding:8px 13px!important;font-weight:600!important;box-shadow:0 8px 18px rgba(0,0,0,.10)}
+@media(max-width:1200px){.sidebar{width:280px}.content{padding:34px 38px}.save-bar{padding-left:38px;padding-right:38px;margin-left:-38px;margin-right:-38px}}
+
 </style>
 </head>
 <body onload="init()">
@@ -2714,7 +2770,8 @@ function renderSidebarRoadmap() {
   const m2extHasData = currentClient && m2extData[currentClient.id];
   const m3extHasData = currentClient && m3extData[currentClient.id];
   const m8HasData = currentClient && m8Data[currentClient.id] && Object.entries(m8Data[currentClient.id]).some(([k,v]) => k !== 'notes' ? !!v : !!(v&&v.trim&&v.trim()));
-  const m5Ready = f0HasData || (prog && ['ceo','fab','sys'].some(s => prog.sessions[s] !== 'pending'));
+  const m6HasData = currentClient && m6Data[currentClient.id] && m6Data[currentClient.id].backlog && m6Data[currentClient.id].backlog.length > 0;
+  const m5Ready = f0HasData || (prog && ['ceo','fab','sys','ops','itot','operario'].some(s => prog.sessions[s] !== 'pending'));
   const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
 
   function ss(sid){ return prog?.sessions[sid]||'pending'; }
@@ -2724,9 +2781,9 @@ function renderSidebarRoadmap() {
 
   const groups = [
     {
-      title:'🔎 Discovery',
+      icon:'🔎', title:'Discovery', sub:'Contexto, dirección y voces clave',
       items:[
-        { id:'f0', label:'F0 · Pre-engagement', icon: f0HasData ? '✓' : '🎯', state: f0HasData ? 'rc-done' : 'rc-pending', labelClass: f0HasData ? 'rld' : '', action: 'openF0()' },
+        { id:'f0', label:'F0 · Pre-engagement', icon: f0HasData ? '✓' : '○', state: f0HasData ? 'rc-done' : 'rc-pending', labelClass: f0HasData ? 'rld' : '', action: 'openF0()' },
         { id:'ceo', label:'CEO', icon:ic(ss('ceo')), state:cc(ss('ceo')), labelClass:lc(ss('ceo')), action:"openSession('ceo')", sub:true },
         { id:'ops', label:'Dir. Operaciones', icon:ic(ss('ops')), state:cc(ss('ops')), labelClass:lc(ss('ops')), action:"openSession('ops')", sub:true },
         { id:'itot', label:'IT / OT', icon:ic(ss('itot')), state:cc(ss('itot')), labelClass:lc(ss('itot')), action:"openSession('itot')", sub:true },
@@ -2734,35 +2791,45 @@ function renderSidebarRoadmap() {
       ]
     },
     {
-      title:'⚙️ Operational',
+      icon:'⚙️', title:'Operational', sub:'Flujo, pérdidas y datos de planta',
       items:[
         { id:'fab', label:'Proceso + KPIs', icon:ic(ss('fab')), state:cc(ss('fab')), labelClass:lc(ss('fab')), action:"openSession('fab')", sub:true },
-        { id:'vsm', label:'Value Stream Map', icon: vsmHasData ? '✓' : '📊', state: vsmHasData ? 'rc-done' : 'rc-pending', labelClass: vsmHasData ? 'rld' : '', action: 'openVSM()', sub:true },
-        { id:'m2ext', label:'Gemba · Pérdidas · 5S', icon: m2extHasData ? '✓' : '📋', state: m2extHasData ? 'rc-done' : 'rc-pending', labelClass: m2extHasData ? 'rld' : '', action: 'openM2ext()', sub:true },
+        { id:'vsm', label:'Value Stream Map', icon: vsmHasData ? '✓' : '○', state: vsmHasData ? 'rc-done' : 'rc-pending', labelClass: vsmHasData ? 'rld' : '', action: 'openVSM()', sub:true },
+        { id:'m2ext', label:'Gemba · Pérdidas · 5S', icon: m2extHasData ? '✓' : '○', state: m2extHasData ? 'rc-done' : 'rc-pending', labelClass: m2extHasData ? 'rld' : '', action: 'openM2ext()', sub:true },
       ]
     },
     {
-      title:'🖥 Digital & Org',
+      icon:'🖥', title:'Digital & Org', sub:'Sistemas, ciber y organización',
       items:[
         { id:'sys', label:'Sistemas + ERP', icon:ic(ss('sys')), state:cc(ss('sys')), labelClass:lc(ss('sys')), action:"openSession('sys')", sub:true },
-        { id:'m3ext', label:'Madurez · Flujo · Ciber', icon: m3extHasData ? '✓' : '💻', state: m3extHasData ? 'rc-done' : 'rc-pending', labelClass: m3extHasData ? 'rld' : '', action: 'openM3ext()', sub:true },
-        { id:'m4', label:'M4 · Organizacional', icon: m4HasData ? '✓' : '🏢', state: m4HasData ? 'rc-done' : 'rc-pending', labelClass: m4HasData ? 'rld' : '', action: 'openM4()' },
+        { id:'m3ext', label:'Madurez · Flujo · Ciber', icon: m3extHasData ? '✓' : '○', state: m3extHasData ? 'rc-done' : 'rc-pending', labelClass: m3extHasData ? 'rld' : '', action: 'openM3ext()', sub:true },
+        { id:'m4', label:'M4 · Organizacional', icon: m4HasData ? '✓' : '○', state: m4HasData ? 'rc-done' : 'rc-pending', labelClass: m4HasData ? 'rld' : '', action: 'openM4()' },
       ]
     },
     {
-      title:'🧠 Intelligence',
+      icon:'🧠', title:'Intelligence', sub:'OFI, portfolio, economía e informe',
       items:[
-        { id:'m5', label:'M5 · OFI™ Dashboard', icon: '📊', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: '', action: 'openM5()' },
-        { id:'m6', label:'M6 · Portfolio + RIM™', icon: '🎯', state: 'rc-pending', labelClass: '', action: 'openM6()' },
-        { id:'m8', label:'M8 · Economic Baseline™', icon: m8HasData ? '✓' : '💶', state: m8HasData ? 'rc-done' : 'rc-pending', labelClass: m8HasData ? 'rld' : '', action: 'openM8()' },
+        { id:'m5', label:'M5 · OFI™ Dashboard', icon: m5Ready ? '→' : '○', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: m5Ready ? 'rla' : '', action: 'openM5()' },
+        { id:'m6', label:'M6 · Portfolio + RIM™', icon: m6HasData ? '✓' : '○', state: m6HasData ? 'rc-done' : 'rc-pending', labelClass: m6HasData ? 'rld' : '', action: 'openM6()' },
+        { id:'m8', label:'M8 · Economic Baseline™', icon: m8HasData ? '✓' : '○', state: m8HasData ? 'rc-done' : 'rc-pending', labelClass: m8HasData ? 'rld' : '', action: 'openM8()' },
         { id:'report', label:'M7 · Informe final', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
       ]
     }
   ];
 
+  function itemDone(it){ return it.state === 'rc-done' || it.state === 'rc-dirty'; }
   let html = '';
   groups.forEach(g => {
-    html += `<div class="rm-group"><div class="rm-group-title">${g.title}</div><div class="rm-group-line"></div>`;
+    const done = g.items.filter(itemDone).length;
+    const pct = Math.round(done / g.items.length * 100);
+    html += `<div class="rm-phase">
+      <div class="rm-phase-head">
+        <div class="rm-phase-icon">${g.icon}</div>
+        <div><div class="rm-phase-title">${g.title}</div><div class="rm-phase-sub">${g.sub}</div></div>
+        <div class="rm-phase-pct">${pct}%</div>
+      </div>
+      <div class="rm-phase-bar"><div class="rm-phase-fill" style="width:${pct}%"></div></div>
+      <div class="rm-phase-body">`;
     g.items.forEach(m => {
       const isActive = currentSession === m.id;
       html += `<div class="rm-item ${m.sub ? 'rm-item-sub' : ''} ${isActive ? 'rm-active' : ''}" onclick="${m.action}">
@@ -2770,10 +2837,11 @@ function renderSidebarRoadmap() {
         <div class="rm-label ${m.sub ? 'rm-label-sub' : ''} ${m.labelClass}">${m.label}</div>
       </div>`;
     });
-    html += `</div>`;
+    html += `</div></div>`;
   });
 
-  document.getElementById('sidebar-roadmap').innerHTML = html;
+  const target = document.getElementById('sidebar-roadmap');
+  if (target) target.innerHTML = html;
 }
 
 function renderHome() {
