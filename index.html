@@ -718,7 +718,7 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
       <div id="m5-content"></div>
     </div>
 
-    <!-- M8 ECONOMIC BASELINE -->
+    <!-- M1 ECONOMIC BASELINE -->
     <div class="screen" id="screen-m8">
       <div id="m8-content"></div>
     </div>
@@ -1857,7 +1857,7 @@ FRAMEWORKS DE TECNO-FAB:
 
 4. Human Capability™, Operating System™ y Execution Readiness™: usa estas señales para explicar dependencia de conocimiento tácito, disciplina de gestión y capacidad real de ejecutar iniciativas. No las trates como texto decorativo: deben afectar riesgos, roadmap y priorización.
 
-5. Economic Baseline™: usa M8 como baseline declarado de impacto económico. Si hay coste hora línea o rangos de paro, prioriza estos datos sobre benchmarks genéricos. Si el dato es desconocido, indícalo como hipótesis/benchmark.
+5. Economic Baseline™: usa el baseline económico de M1 como baseline declarado de impacto económico. Si hay coste hora línea o rangos de paro, prioriza estos datos sobre benchmarks genéricos. Si el dato es desconocido, indícalo como hipótesis/benchmark.
 
 4. Arquetipos: Reactive Factory, Growing Complexity, Legacy Digitalization Trap, Excel-Driven Operation, Governance Fragmented, Partially Optimized.
 
@@ -2946,38 +2946,43 @@ function renderSidebarRoadmap() {
 
   const groups = [
     {
-      icon:'🔎', title:'Discovery', sub:'Contexto, dirección y voces clave',
+      icon:'📥', title:'M1 · Evidence Collection', sub:'Entrevistas, baseline y evidencias',
       items:[
         { id:'f0', label:'F0 · Pre-engagement', icon: f0HasData ? '✓' : '○', state: f0HasData ? 'rc-done' : 'rc-pending', labelClass: f0HasData ? 'rld' : '', action: 'openF0()' },
-        { id:'ceo', label:'CEO', icon:ic(ss('ceo')), state:cc(ss('ceo')), labelClass:lc(ss('ceo')), action:"openSession('ceo')", sub:true },
+        { id:'ceo', label:'CEO / Dirección', icon:ic(ss('ceo')), state:cc(ss('ceo')), labelClass:lc(ss('ceo')), action:"openSession('ceo')", sub:true },
         { id:'ops', label:'Dir. Operaciones', icon:ic(ss('ops')), state:cc(ss('ops')), labelClass:lc(ss('ops')), action:"openSession('ops')", sub:true },
         { id:'itot', label:'IT / OT', icon:ic(ss('itot')), state:cc(ss('itot')), labelClass:lc(ss('itot')), action:"openSession('itot')", sub:true },
-        { id:'operario', label:'Operario', icon:ic(ss('operario')), state:cc(ss('operario')), labelClass:lc(ss('operario')), action:"openSession('operario')", sub:true },
+        { id:'operario', label:'Operario / Técnico', icon:ic(ss('operario')), state:cc(ss('operario')), labelClass:lc(ss('operario')), action:"openSession('operario')", sub:true },
+        { id:'m8', label:'Baseline económico', icon: m8HasData ? '✓' : '○', state: m8HasData ? 'rc-done' : 'rc-pending', labelClass: m8HasData ? 'rld' : '', action: 'openM8()', sub:true },
       ]
     },
     {
-      icon:'⚙️', title:'Operational', sub:'Flujo, pérdidas y datos de planta',
+      icon:'⚙️', title:'M2 · Operational Diagnosis', sub:'VSM, pérdidas, 5S y causa raíz',
       items:[
-        { id:'fab', label:'Proceso + KPIs', icon:ic(ss('fab')), state:cc(ss('fab')), labelClass:lc(ss('fab')), action:"openSession('fab')", sub:true },
+        { id:'fab', label:'Procesos + KPIs', icon:ic(ss('fab')), state:cc(ss('fab')), labelClass:lc(ss('fab')), action:"openSession('fab')", sub:true },
         { id:'vsm', label:'Value Stream Map', icon: vsmHasData ? '✓' : '○', state: vsmHasData ? 'rc-done' : 'rc-pending', labelClass: vsmHasData ? 'rld' : '', action: 'openVSM()', sub:true },
         { id:'m2ext', label:'Gemba · Pérdidas · 5S', icon: m2extHasData ? '✓' : '○', state: m2extHasData ? 'rc-done' : 'rc-pending', labelClass: m2extHasData ? 'rld' : '', action: 'openM2ext()', sub:true },
       ]
     },
     {
-      icon:'🖥', title:'Digital & Org', sub:'Sistemas, ciber y organización',
+      icon:'🖥', title:'M3 · Digital Diagnosis', sub:'Sistemas, datos, IT/OT y ciber',
       items:[
         { id:'sys', label:'Sistemas + ERP', icon:ic(ss('sys')), state:cc(ss('sys')), labelClass:lc(ss('sys')), action:"openSession('sys')", sub:true },
         { id:'m3ext', label:'Madurez · Flujo · Ciber', icon: m3extHasData ? '✓' : '○', state: m3extHasData ? 'rc-done' : 'rc-pending', labelClass: m3extHasData ? 'rld' : '', action: 'openM3ext()', sub:true },
-        { id:'m4', label:'M4 · Organizacional', icon: m4HasData ? '✓' : '○', state: m4HasData ? 'rc-done' : 'rc-pending', labelClass: m4HasData ? 'rld' : '', action: 'openM4()' },
       ]
     },
     {
-      icon:'🧠', title:'Intelligence', sub:'OFI, portfolio, economía e informe',
+      icon:'🧩', title:'M4 · Organizational Diagnosis', sub:'Readiness, gobernanza y cambio',
       items:[
-        { id:'m5', label:'M5 · OFI™ Dashboard', icon: m5Ready ? '→' : '○', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: m5Ready ? 'rla' : '', action: 'openM5()' },
+        { id:'m4', label:'Readiness organizacional', icon: m4HasData ? '✓' : '○', state: m4HasData ? 'rc-done' : 'rc-pending', labelClass: m4HasData ? 'rld' : '', action: 'openM4()' },
+      ]
+    },
+    {
+      icon:'🧠', title:'Intelligence & Output', sub:'Síntesis, portfolio e informe',
+      items:[
+        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Ready ? '→' : '○', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: m5Ready ? 'rla' : '', action: 'openM5()' },
         { id:'m6', label:'M6 · Portfolio + RIM™', icon: m6HasData ? '✓' : '○', state: m6HasData ? 'rc-done' : 'rc-pending', labelClass: m6HasData ? 'rld' : '', action: 'openM6()' },
-        { id:'m8', label:'M8 · Economic Baseline™', icon: m8HasData ? '✓' : '○', state: m8HasData ? 'rc-done' : 'rc-pending', labelClass: m8HasData ? 'rld' : '', action: 'openM8()' },
-        { id:'report', label:'M7 · Informe final', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
+        { id:'report', label:'M7 · Executive Report', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
       ]
     }
   ];
@@ -3764,7 +3769,7 @@ function renderM8(){
   const mainContent=document.getElementById('main-content');
   const scrollPos=mainContent?mainContent.scrollTop:0;
   const m=getM8(); const impact=m8ImpactLevel();
-  let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(186,117,23,0.1);border:0.5px solid rgba(186,117,23,0.25);">💶</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M8 · Economic Baseline™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Baseline económico ligero · Paros · Scrap · Coste línea · Presión operativa</div></div></div>`;
+  let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(186,117,23,0.1);border:0.5px solid rgba(186,117,23,0.25);">💶</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M1 · Economic Baseline™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Baseline económico ligero · Paros · Scrap · Coste línea · Presión operativa</div></div></div>`;
   html+=`<div class="vsm-section" style="text-align:center;"><div style="font-size:32px;font-weight:700;color:${impact.col};font-family:var(--mono);">${impact.txt}</div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;">Nivel de impacto económico estimado</div>${impact.score?`<div style="font-size:10px;color:var(--text4);margin-top:4px;">Score interno ${impact.score.toFixed(1)}/4</div>`:''}</div>`;
   html+=`<div class="vsm-section"><div class="vsm-section-title">📉 Impacto operativo</div><div class="vsm-section-sub">Datos rápidos para convertir dolor operativo en baseline económico defendible.</div><div style="display:grid;grid-template-columns:1fr;gap:10px;">`;
   html+=renderM8Choice('downtime_week','Horas de paro no planificado / semana','Rango estimado de indisponibilidad no planificada.',['<5h','5–10h','10–20h','>20h']);
@@ -3785,7 +3790,7 @@ function getM8ReportContext(){
   const keys=['downtime_week','scrap_rework','urgency_overtime','line_hour_cost','shifts','perceived_impact'];
   if(!keys.some(k=>m[k])&&!m.notes)return '';
   const impact=m8ImpactLevel();
-  let ctx='\n=== M8 · ECONOMIC BASELINE™ ===\n';
+  let ctx='\n=== M1 · ECONOMIC BASELINE™ ===\n';
   ctx+=`Nivel de impacto económico estimado: ${impact.txt}${impact.score?` (${impact.score.toFixed(1)}/4)`:''}\n`;
   if(m.downtime_week)ctx+=`Horas paro no planificado/semana: ${m.downtime_week}\n`;
   if(m.scrap_rework)ctx+=`Scrap/retrabajo: ${m.scrap_rework}\n`;
