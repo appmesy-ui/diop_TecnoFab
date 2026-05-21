@@ -2317,6 +2317,27 @@ function renderReport(r, reportsHistoryHtml = '') {
   }).join('');
   const flowBottleneckBlock = buildFlowBottleneckBlock(false);
 
+  // ── Executive Cockpit + Economic Story™ ──
+  const confConfirmedPct = confTotal ? Math.round(confCount('Confirmado') / confTotal * 100) : 0;
+  const confHypPct = confTotal ? Math.round(confCount('Hipótesis fuerte') / confTotal * 100) : 0;
+  const confReqPct = confTotal ? Math.round(confCount('Investigación requerida') / confTotal * 100) : 0;
+  const confidenceHeadline = confTotal ? `${confConfirmedPct}% confirmado` : 'Sin confidence';
+  const confidenceHeadlineColor = !confTotal ? 'var(--text3)' : confConfirmedPct >= 70 ? 'var(--green)' : confConfirmedPct >= 40 ? 'var(--amber)' : 'var(--red)';
+  const frictionVector = ofi.vector_friccion || ofi.vector || ofi.dimension_dominante || '—';
+  const cockpitHeadline = (r.resumen_ejecutivo || '').split(/[.!?]\s/).filter(Boolean)[0] || 'Diagnóstico ejecutivo pendiente de generación.';
+  const portfolioConfidence = econ.confidenceBand || (econ.avgConf ? `${econ.avgConf}/5` : '—');
+  const portfolioConfidenceColor = econ.avgConf >= 3.7 ? 'var(--green)' : econ.avgConf >= 2.5 ? 'var(--amber)' : econ.avgConf > 0 ? 'var(--red)' : 'var(--text3)';
+  const economicBaselineText = [
+    m8?.downtime_hours ? `Paros: ${m8.downtime_hours}` : '',
+    m8?.line_cost ? `Coste línea: ${m8.line_cost}` : '',
+    m8?.scrap_rework ? `Scrap/retrabajo: ${m8.scrap_rework}` : '',
+    m8?.urgencies ? `Urgencias: ${m8.urgencies}` : ''
+  ].filter(Boolean).join(' · ') || 'Baseline económico pendiente o incompleto';
+  const economicStoryText = econ.totalBase
+    ? `El portfolio priorizado combina inversión estimada de ${money(econ.totalInv)} con un BNA base de ${money(econ.totalBase)} al año. En escenario conservador, el BNA estimado es ${money(econ.totalLow)}; en escenario optimista, ${money(econ.totalHigh)}. El payback base estimado es ${econ.paybackBase ? econ.paybackBase + ' meses' : 'pendiente'} y la confianza media del portfolio es ${esc(portfolioConfidence)}.`
+    : `El portfolio todavía no tiene suficiente valoración económica para consolidar un business case. El informe conserva el baseline declarado y las estimaciones de impacto como hipótesis hasta completar inversión, ahorro y confianza por iniciativa.`;
+  const costOfInaction = kpis.impacto_total_estimado || impactLabel.txt || '—';
+
   const reportHtml = `
   <style>
     .diop-report-v2{max-width:980px;margin:0 auto 32px;color:var(--text);} 
@@ -2366,7 +2387,18 @@ function renderReport(r, reportsHistoryHtml = '') {
     .diop-list-desc{font-size:12px;color:var(--text2);line-height:1.55;}
     .diop-risk{border-left:3px solid var(--amber);}
     .diop-method{background:rgba(0,173,181,0.035);border:0.5px dashed var(--border2);border-radius:12px;padding:15px;font-size:12px;color:var(--text2);line-height:1.65;}
-    @media(max-width:900px){.diop-grid-4,.diop-grid-3,.diop-grid-2,.diop-opp-row{grid-template-columns:1fr}.diop-title{font-size:24px}.diop-report-body,.diop-cover-v2{padding:20px}}
+    .diop-cockpit{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:4px;}
+    .diop-cockpit-main{background:rgba(0,173,181,0.055);border:1px solid rgba(0,173,181,0.20);border-radius:16px;padding:18px;min-height:142px;}
+    .diop-cockpit-headline{font-size:16px;line-height:1.5;color:var(--text);font-weight:650;margin-bottom:12px;}
+    .diop-cockpit-tags{display:flex;gap:8px;flex-wrap:wrap;}
+    .diop-cockpit-side{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .diop-cockpit-tile{background:rgba(8,17,29,.58);border:1px solid rgba(87,208,217,.12);border-radius:14px;padding:13px;min-height:66px;}
+    .diop-cockpit-tile .label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:6px;}
+    .diop-cockpit-tile .value{font-size:20px;font-weight:800;line-height:1.05;}
+    .diop-econ-story{background:linear-gradient(135deg,rgba(29,158,117,.08),rgba(0,173,181,.035));border:1px solid rgba(29,158,117,.22);border-radius:16px;padding:18px;}
+    .diop-econ-story p{font-size:13px;color:var(--text2);line-height:1.65;margin-top:10px;}
+    .diop-econ-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px;}
+    @media(max-width:900px){.diop-grid-4,.diop-grid-3,.diop-grid-2,.diop-opp-row,.diop-cockpit,.diop-cockpit-side,.diop-econ-metrics{grid-template-columns:1fr}.diop-title{font-size:24px}.diop-report-body,.diop-cover-v2{padding:20px}}
   </style>
 
   <div class="diop-report-v2" id="diop-report-v2">
@@ -2385,11 +2417,23 @@ function renderReport(r, reportsHistoryHtml = '') {
           </div>
           <svg class="rh-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="44" height="44"><rect width="128" height="128" rx="28" fill="#0B1220"/><g transform="translate(15,36)" stroke="#2ED3C9" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M26 6 L4 28 L26 50"/><path d="M42 50 L56 6"/><path d="M72 6 L94 28 L72 50"/></g></svg>
         </div>
-        <div class="diop-grid-4">
-          <div class="diop-metric"><div class="diop-metric-label">OFI™</div><div class="diop-metric-value" style="color:var(--teal-l);">${esc(ofi.score || '—')}<span style="font-size:12px;color:var(--text3);font-weight:500;">/100</span></div><div class="diop-metric-note">${esc(ofi.zona || 'Zona no indicada')}</div></div>
-          <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:var(--text3);font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
-          <div class="diop-metric"><div class="diop-metric-label">Impacto estimado</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark</div></div>
-          <div class="diop-metric"><div class="diop-metric-label">Portfolio base</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">BNA anual estimado</div></div>
+        <div class="diop-cockpit">
+          <div class="diop-cockpit-main">
+            <div class="diop-kicker">Executive Cockpit™</div>
+            <div class="diop-cockpit-headline">${esc(cockpitHeadline)}</div>
+            <div class="diop-cockpit-tags">
+              ${chip(`Vector: ${esc(frictionVector)}`, 'var(--amber)')}
+              ${chip(`Confidence: ${esc(confidenceHeadline)}`, confidenceHeadlineColor)}
+              ${chip(`Portfolio: ${money(econ.totalBase)}`, 'var(--green)')}
+              ${chip(`Coste no actuar: ${esc(costOfInaction)}`, 'var(--red)')}
+            </div>
+          </div>
+          <div class="diop-cockpit-side">
+            <div class="diop-cockpit-tile"><div class="label">OFI™</div><div class="value" style="color:var(--teal-l);">${esc(ofi.score || '—')}<span style="font-size:11px;color:var(--text3);font-weight:500;">/100</span></div><div class="diop-metric-note">${esc(ofi.zona || 'Zona no indicada')}</div></div>
+            <div class="diop-cockpit-tile"><div class="label">TTL™</div><div class="value" style="color:var(--teal-l);">${esc(ofi.ttl_capa || '—')}</div><div class="diop-metric-note">Capa actual</div></div>
+            <div class="diop-cockpit-tile"><div class="label">Digital</div><div class="value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:11px;color:var(--text3);font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
+            <div class="diop-cockpit-tile"><div class="label">Payback</div><div class="value" style="color:var(--green);">${econ.paybackBase ? econ.paybackBase + 'm' : esc(roi.plazo_retorno_meses || '—') + 'm'}</div><div class="diop-metric-note">Escenario base</div></div>
+          </div>
         </div>
       </div>
 
@@ -2455,7 +2499,24 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>07 · Opportunity Matrix + Portfolio económico</h3></div>
+          <div class="diop-section-title"><h3>07 · Economic Story™</h3></div>
+          <div class="diop-econ-story">
+            <div class="diop-tagline">Business case consolidado · M1 + M6</div>
+            <strong style="font-size:16px;color:var(--text);">De fricción operativa a decisión de inversión</strong>
+            <p>${economicStoryText}</p>
+            <div class="diop-muted" style="margin-top:8px;">Baseline declarado: ${esc(economicBaselineText)}</div>
+            <div class="diop-econ-metrics">
+              <div class="diop-metric"><div class="diop-metric-label">Inversión</div><div class="diop-metric-value" style="font-size:16px;color:var(--teal-l);">${money(econ.totalInv)}</div></div>
+              <div class="diop-metric"><div class="diop-metric-label">BNA conservador</div><div class="diop-metric-value" style="font-size:16px;color:var(--amber);">${money(econ.totalLow)}</div></div>
+              <div class="diop-metric"><div class="diop-metric-label">BNA base</div><div class="diop-metric-value" style="font-size:16px;color:var(--green);">${money(econ.totalBase)}</div></div>
+              <div class="diop-metric"><div class="diop-metric-label">BNA optimista</div><div class="diop-metric-value" style="font-size:16px;color:var(--green);">${money(econ.totalHigh)}</div></div>
+              <div class="diop-metric"><div class="diop-metric-label">Confidence</div><div class="diop-metric-value" style="font-size:16px;color:${portfolioConfidenceColor};">${esc(portfolioConfidence)}</div><div class="diop-metric-note">${econ.riskCount ? `${econ.riskCount} riesgo(s) Cat D` : 'Sin Cat D'}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="diop-section">
+          <div class="diop-section-title"><h3>08 · Opportunity Matrix + Portfolio económico</h3></div>
           <div class="diop-opp-row">${opportunitySummary}</div>
           <div class="diop-grid-4" style="margin-bottom:12px;">
             <div class="diop-metric"><div class="diop-metric-label">Inversión portfolio</div><div class="diop-metric-value" style="font-size:17px;color:var(--teal-l);">${money(econ.totalInv)}</div></div>
@@ -2469,12 +2530,12 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>08 · Transformation Blueprint + Roadmap TTL™</h3></div>
+          <div class="diop-section-title"><h3>09 · Transformation Blueprint + Roadmap TTL™</h3></div>
           <div class="diop-text">${textBlock(r.roadmap_narrativo || 'Roadmap pendiente de generación.')}</div>
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>09 · Methodology + Next Steps</h3></div>
+          <div class="diop-section-title"><h3>10 · Methodology + Next Steps</h3></div>
           <div class="diop-grid-2">
             <div class="diop-method">
               <strong style="color:var(--text);">DIOP Methodology</strong><br>
