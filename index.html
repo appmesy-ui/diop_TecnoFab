@@ -2749,6 +2749,31 @@ function exportPDF() {
   const tools = r.herramientas_mercado||[];
   const pdfFlowBottleneckBlock = buildFlowBottleneckBlock(true);
 
+  // PDF-safe Executive Cockpit™ + Economic Story™
+  const m6Pdf = (typeof getM6 === 'function') ? getM6() : { backlog: [] };
+  const econPdf = (typeof calcPortfolioEconomics === 'function') ? calcPortfolioEconomics(m6Pdf?.backlog || []) : { totalInv:0,totalLow:0,totalBase:0,totalHigh:0,paybackBase:0,avgConf:0,confidenceBand:'—',riskCount:0 };
+  const m8Pdf = (typeof getM8 === 'function') ? getM8() : {};
+  const ofiPdf = r.ofi_resumen || {};
+  const moneyPdf = (v) => { const n = Number(v || 0); return n ? n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + '€' : '—'; };
+  const confPdfItems = (typeof getConfidence === 'function' ? (getConfidence().findings || []) : []).filter(f => f && (f.finding || f.confidence));
+  const confCountsPdf = confPdfItems.reduce((a,f)=>{ const k=f.confidence||'Sin clasificar'; a[k]=(a[k]||0)+1; return a; },{});
+  const confTotalPdf = confPdfItems.length || 0;
+  const confProfilePdf = confTotalPdf
+    ? ['Confirmado','Hipótesis fuerte','Investigación requerida'].map(k => `${k}: ${Math.round(((confCountsPdf[k]||0)/confTotalPdf)*100)}%`).join(' · ')
+    : 'Pendiente de clasificar';
+  const portfolioConfidencePdf = econPdf.confidenceBand || (econPdf.avgConf ? `${econPdf.avgConf}/5` : '—');
+  const economicBaselinePdf = [
+    m8Pdf?.downtime_hours ? `Paros: ${m8Pdf.downtime_hours}` : '',
+    m8Pdf?.scrap_level ? `Scrap/retrabajo: ${m8Pdf.scrap_level}` : '',
+    m8Pdf?.line_cost ? `Coste hora línea: ${m8Pdf.line_cost}` : '',
+    m8Pdf?.shifts ? `Turnos: ${m8Pdf.shifts}` : '',
+    m8Pdf?.perceived_impact ? `Impacto percibido: ${m8Pdf.perceived_impact}` : ''
+  ].filter(Boolean).join(' · ') || 'Baseline económico pendiente o incompleto';
+  const cockpitHeadlinePdf = (r.resumen_ejecutivo || '').split(/[.!?]/)[0] || 'El diagnóstico DIOP consolida fricción operativa, madurez digital, readiness organizacional y portfolio económico en una lectura ejecutiva.';
+  const economicStoryPdf = econPdf.totalBase
+    ? `El portfolio priorizado combina una inversión estimada de ${moneyPdf(econPdf.totalInv)} con un BNA base de ${moneyPdf(econPdf.totalBase)} al año. En escenario conservador, el BNA estimado es ${moneyPdf(econPdf.totalLow)}; en escenario optimista, ${moneyPdf(econPdf.totalHigh)}. El payback base estimado es ${econPdf.paybackBase ? econPdf.paybackBase + ' meses' : 'pendiente'} y la confianza media del portfolio es ${portfolioConfidencePdf}.`
+    : 'El portfolio todavía no tiene suficiente valoración económica para consolidar un business case. El baseline declarado y las estimaciones de impacto deben tratarse como hipótesis hasta completar inversión, ahorro y confianza por iniciativa.';
+
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2903,7 +2928,51 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
     <div class="urgency">Urgencia ${r.urgencia||'—'}</div>
   </div>
 </div>
-<!-- PÁG 2: MATRIZ DE OPORTUNIDAD -->
+<!-- PÁG 2: EXECUTIVE COCKPIT + ECONOMIC STORY -->
+<div class="no-break page-break">
+<div class="header-bar">
+  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
+  <div class="hb-client">${client.name} · Informe DIOP</div>
+  <div class="hb-page">Executive Cockpit</div>
+</div>
+
+<div class="section no-break">
+  <h2>Executive Cockpit™</h2>
+  <div class="summary-box" style="margin-bottom:4mm;"><p>${cockpitHeadlinePdf}</p></div>
+  <div class="grid3" style="margin-bottom:3mm;">
+    <div class="card"><div class="card-lbl">OFI™</div><div class="card-val" style="color:#007c82;">${ofiPdf.score || '—'}<span style="font-size:8pt;color:#7ab0b8;font-weight:normal;">/100</span></div><div style="font-size:8pt;color:#4a7080;">${ofiPdf.zona || 'Zona no indicada'}</div></div>
+    <div class="card"><div class="card-lbl">TTL™</div><div class="card-val" style="color:#007c82;">${ofiPdf.ttl_capa || '—'}</div><div style="font-size:8pt;color:#4a7080;">Capa actual</div></div>
+    <div class="card"><div class="card-lbl">Arquetipo</div><div class="card-val" style="font-size:10pt;color:#0f1a2e;">${ofiPdf.arquetipo || '—'}</div><div style="font-size:8pt;color:#4a7080;">Patrón dominante</div></div>
+  </div>
+  <div class="grid3">
+    <div class="card"><div class="card-lbl">Digital</div><div class="card-val" style="color:${scoreColor};">${mad.puntuacion || '—'}<span style="font-size:8pt;color:#7ab0b8;font-weight:normal;">/10</span></div><div style="font-size:8pt;color:#4a7080;">${mad.nivel || ''}</div></div>
+    <div class="card"><div class="card-lbl">Payback</div><div class="card-val" style="color:#1D9E75;">${econPdf.paybackBase ? econPdf.paybackBase + 'm' : (roi.plazo_retorno_meses || '—') + 'm'}</div><div style="font-size:8pt;color:#4a7080;">Escenario base</div></div>
+    <div class="card"><div class="card-lbl">Confidence</div><div class="card-val" style="font-size:10pt;color:#0f1a2e;">${portfolioConfidencePdf}</div><div style="font-size:8pt;color:#4a7080;">${confProfilePdf}</div></div>
+  </div>
+</div>
+
+<div class="section no-break">
+  <h2>Economic Story™</h2>
+  <div class="summary-box" style="border-left-color:#1D9E75;background:#eef8f3;"><p>${economicStoryPdf}</p></div>
+  <div style="font-size:8pt;color:#4a7080;margin:2mm 0 4mm;"><strong>Baseline declarado:</strong> ${economicBaselinePdf}</div>
+  <div class="grid3" style="margin-bottom:3mm;">
+    <div class="card"><div class="card-lbl">Inversión</div><div class="card-val" style="font-size:12pt;color:#007c82;">${moneyPdf(econPdf.totalInv)}</div></div>
+    <div class="card"><div class="card-lbl">BNA conservador</div><div class="card-val" style="font-size:12pt;color:#BA7517;">${moneyPdf(econPdf.totalLow)}</div></div>
+    <div class="card"><div class="card-lbl">BNA base</div><div class="card-val" style="font-size:12pt;color:#1D9E75;">${moneyPdf(econPdf.totalBase)}</div></div>
+  </div>
+  <div class="grid3">
+    <div class="card"><div class="card-lbl">BNA optimista</div><div class="card-val" style="font-size:12pt;color:#1D9E75;">${moneyPdf(econPdf.totalHigh)}</div></div>
+    <div class="card"><div class="card-lbl">Confidence portfolio</div><div class="card-val" style="font-size:12pt;color:#0f1a2e;">${portfolioConfidencePdf}</div></div>
+    <div class="card"><div class="card-lbl">Riesgos Cat D</div><div class="card-val" style="font-size:12pt;color:${econPdf.riskCount ? '#E24B4A' : '#1D9E75'};">${econPdf.riskCount || 0}</div></div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
+  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
+</div>
+</div>
+<!-- PÁG 3: MATRIZ DE OPORTUNIDAD -->
 <div class="no-break page-break">
 <div class="header-bar">
   <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
