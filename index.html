@@ -3326,7 +3326,22 @@ function renderSidebarRoadmap() {
   const m3extHasData = currentClient && m3extData[currentClient.id];
   const m8HasData = currentClient && m8Data[currentClient.id] && Object.entries(m8Data[currentClient.id]).some(([k,v]) => k !== 'notes' ? !!v : !!(v&&v.trim&&v.trim()));
   const m6HasData = currentClient && m6Data[currentClient.id] && m6Data[currentClient.id].backlog && m6Data[currentClient.id].backlog.length > 0;
+
+  // M5 is not a normal interview session. Its visible manual work is the Confidence Layer™.
+  // Therefore the sidebar progress must follow the same completion logic the user sees in M5:
+  // all default confidence findings classified = M5 completed. Previously M5 stayed "active",
+  // so the Intelligence phase showed 67% even when all 6 confidence items were selected.
+  const confForProgress = currentClient && (confidenceData[currentClient.id] || null);
+  const confFindingsForProgress = confForProgress?.findings || [];
+  const confExpectedForProgress = (typeof defaultConfidence === 'function' ? defaultConfidence().findings.length : 6);
+  const confClassifiedForProgress = confFindingsForProgress.filter(f => f && f.confidence).length;
+  const m5ConfidenceComplete = confFindingsForProgress.length >= confExpectedForProgress && confClassifiedForProgress >= confExpectedForProgress;
+
   const m5Ready = f0HasData || (prog && ['ceo','fab','sys','ops','itot','operario'].some(s => prog.sessions[s] !== 'pending'));
+  const m5State = m5ConfidenceComplete ? 'rc-done' : m5Ready ? 'rc-active' : 'rc-pending';
+  const m5Icon = m5ConfidenceComplete ? '✓' : m5Ready ? '→' : '○';
+  const m5LabelClass = m5ConfidenceComplete ? 'rld' : m5Ready ? 'rla' : '';
+
   const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
 
   function ss(sid){ return prog?.sessions[sid]||'pending'; }
@@ -3370,7 +3385,7 @@ function renderSidebarRoadmap() {
     {
       icon:'🧠', title:'Intelligence & Output', sub:'Síntesis, portfolio e informe',
       items:[
-        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Ready ? '→' : '○', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: m5Ready ? 'rla' : '', action: 'openM5()' },
+        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Icon, state: m5State, labelClass: m5LabelClass, action: 'openM5()' },
         { id:'m6', label:'M6 · Portfolio + RIM™', icon: m6HasData ? '✓' : '○', state: m6HasData ? 'rc-done' : 'rc-pending', labelClass: m6HasData ? 'rld' : '', action: 'openM6()' },
         { id:'report', label:'M7 · Executive Report', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
       ]
