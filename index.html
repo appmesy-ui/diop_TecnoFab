@@ -497,6 +497,24 @@ body{background:radial-gradient(circle at top left,rgba(0,173,181,.09),transpare
 button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;padding:8px 13px!important;font-weight:600!important;box-shadow:0 8px 18px rgba(0,0,0,.10)}
 @media(max-width:1200px){.sidebar{width:280px}.content{padding:34px 38px}.save-bar{padding-left:38px;padding-right:38px;margin-left:-38px;margin-right:-38px}}
 
+
+
+/* ── SCROLL FIX v1 ──
+   El sidebar debe desplazarse de forma independiente porque el body usa overflow:hidden. */
+.sidebar{
+  height:calc(100vh - 52px) !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  min-height:0 !important;
+}
+.sidebar-footer{
+  margin-top:20px !important;
+}
+.sidebar::-webkit-scrollbar{width:7px;}
+.sidebar::-webkit-scrollbar-track{background:rgba(255,255,255,0.02);}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(0,173,181,0.28);border-radius:999px;}
+.sidebar::-webkit-scrollbar-thumb:hover{background:rgba(0,173,181,0.45);}
+#sidebar-client-content,#sidebar-home-content,#sidebar-notes{min-height:0;}
 </style>
 </head>
 <body onload="init()">
