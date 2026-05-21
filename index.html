@@ -515,6 +515,31 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
 .sidebar::-webkit-scrollbar-thumb{background:rgba(0,173,181,0.28);border-radius:999px;}
 .sidebar::-webkit-scrollbar-thumb:hover{background:rgba(0,173,181,0.45);}
 #sidebar-client-content,#sidebar-home-content,#sidebar-notes{min-height:0;}
+
+
+/* ── FIX v2 · sidebar notes + roadmap layout ── */
+.rm-list{overflow:visible!important;padding-bottom:10px!important;}
+.sidebar-notes{
+  flex:0 0 auto!important;
+  margin:16px!important;
+  padding:0!important;
+  border:1px solid rgba(87,208,217,.14)!important;
+  border-radius:16px!important;
+  background:rgba(255,255,255,.018)!important;
+  position:relative!important;
+  z-index:1!important;
+  clear:both!important;
+  overflow:hidden!important;
+  box-shadow:0 14px 32px rgba(0,0,0,.10)!important;
+}
+.sidebar-notes .sidebar-divider{display:none!important;}
+.notes-toggle{padding:12px 14px!important;background:linear-gradient(135deg,rgba(0,173,181,.055),rgba(0,173,181,.012));}
+.notes-toggle-label{font-size:10px!important;color:#8fb9c0!important;}
+.notes-body{padding:0 12px 12px!important;max-height:270px;overflow:auto;}
+.notes-tab-row{margin-top:10px!important;}
+.notes-area{min-height:112px!important;max-height:160px!important;}
+.sidebar-footer{flex:0 0 auto!important;margin-top:6px!important;}
+
 </style>
 </head>
 <body onload="init()">
@@ -1364,11 +1389,66 @@ function switchReportTab(tab) {
   if (tab === 'matriz') renderMatrixTab();
 }
 
+function normalizeReportProcesos(r) {
+  if (!r) return r;
+  if (Array.isArray(r.procesos) && r.procesos.length) return r;
+  const procesos = [];
+
+  // 1) Preferir iniciativas M6 reales si existen
+  const backlog = currentClient && m6Data[currentClient.id]?.backlog ? m6Data[currentClient.id].backlog : [];
+  backlog.forEach((b, i) => {
+    const impactRaw = Number(b.impact || 0);
+    const readRaw = Number(b.readiness || 0);
+    const impacto = Math.max(1, Math.min(5, Math.round(impactRaw / 2) || 3));
+    const esfuerzo = Math.max(1, Math.min(5, Math.round((10 - readRaw) / 2) || 3));
+    let categoria = 'nice_to_have';
+    if (impacto >= 3 && esfuerzo <= 2) categoria = 'quick_win';
+    else if (impacto >= 4 && esfuerzo >= 3) categoria = 'big_swing';
+    else if (impacto <= 2 && esfuerzo >= 3) categoria = 'deprioritize';
+    procesos.push({
+      nombre: b.name || `Iniciativa ${i+1}`,
+      impacto, esfuerzo, categoria,
+      horas_mes: b.hours || b.horas_mes || 20,
+      ttl_capa: b.layer || 'L1',
+      fuente: 'M6'
+    });
+  });
+
+  // 2) Complemento desde quick wins del informe
+  (r.quick_wins || []).forEach((q, i) => {
+    const name = q.proceso_ref || q.titulo || `Quick win ${i+1}`;
+    if (!procesos.some(p => (p.nombre || '').toLowerCase() === String(name).toLowerCase())) {
+      procesos.push({
+        nombre: name,
+        impacto: 4,
+        esfuerzo: 2,
+        categoria: 'quick_win',
+        horas_mes: 20,
+        ttl_capa: q.ttl_capa || 'L1',
+        fuente: 'quick_win'
+      });
+    }
+  });
+
+  // 3) Fallback desde procesos seleccionados en FAB
+  const selected = currentClient ? allAnswers[`${currentClient.id}_fab_procesos_planta`] : '';
+  if (selected) {
+    selected.split('||').map(x => x.trim()).filter(Boolean).forEach((name) => {
+      if (!procesos.some(p => (p.nombre || '').toLowerCase() === name.toLowerCase())) {
+        procesos.push({nombre:name, impacto:3, esfuerzo:3, categoria:'big_swing', horas_mes:15, ttl_capa:'L1', fuente:'detectado'});
+      }
+    });
+  }
+
+  r.procesos = procesos;
+  return r;
+}
+
 function renderMatrixTab() {
   const container = document.getElementById('matrix-body');
-  const r = window._lastReport;
+  const r = normalizeReportProcesos(window._lastReport);
   if (!r || !r.procesos || !r.procesos.length) {
-    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">No hay procesos en este informe. Regenera el informe para obtener la matriz.</div>';
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">Todavía no hay procesos suficientes para construir la matriz. Añade iniciativas en M6 o genera un informe nuevo.</div>';
     return;
   }
   const procesos = r.procesos;
@@ -1863,7 +1943,7 @@ Devuelve SOLO el JSON, sin texto adicional.`;
       }
       cleaned += c;
     }
-    const r = JSON.parse(cleaned);
+    const r = normalizeReportProcesos(JSON.parse(cleaned));
 
     await sb.from('diop_reports').insert([
       {
@@ -1942,6 +2022,7 @@ Devuelve SOLO el JSON, sin texto adicional.`;
 }
 
 function renderReport(r, reportsHistoryHtml = '') {
+  r = normalizeReportProcesos(r);
   window._lastReport = r;
   const urgColor = r.urgencia === 'alta' ? 'var(--red)' : r.urgencia === 'media' ? 'var(--amber)' : 'var(--green)';
   const scoreColor = r.madurez_digital?.puntuacion <= 3 ? 'var(--red)' : r.madurez_digital?.puntuacion <= 6 ? 'var(--amber)' : 'var(--green)';
