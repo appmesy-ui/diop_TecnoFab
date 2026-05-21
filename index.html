@@ -535,6 +535,11 @@ select.fi{cursor:pointer;}
       <div id="m5-content"></div>
     </div>
 
+    <!-- M8 ECONOMIC BASELINE -->
+    <div class="screen" id="screen-m8">
+      <div id="m8-content"></div>
+    </div>
+
     <!-- M6 INITIATIVE BACKLOG + RIM + ROI -->
     <div class="screen" id="screen-m6">
       <div id="m6-content"></div>
@@ -1551,6 +1556,7 @@ async function generateReport() {
   await loadM2extData(currentClient.id);
   await loadM3extData(currentClient.id);
   await loadM4Data(currentClient.id);
+  await loadM8Data(currentClient.id);
   await loadM6Data(currentClient.id);
   await loadF0Data(currentClient.id);
 
@@ -1588,6 +1594,9 @@ if (procesosSeleccionados) {
   // Add M4 governance data
   ctx += getM4ReportContext();
   
+  // Add M8 economic baseline
+  ctx += getM8ReportContext();
+  
   // Add M6 initiatives data
   ctx += getM6ReportContext();
   
@@ -1607,6 +1616,10 @@ FRAMEWORKS DE TECNO-FAB:
 2. TTL™ (Transformation Through Layers): 6 capas secuenciales. L1 Stabilize → L2 Measure → L3 Connect → L4 Govern → L5 Optimize → L6 Intelligence. NO SE PUEDEN SALTAR CAPAS.
 
 3. RIM™ (Readiness-Impact Matrix): 3×3 matrix que cruza impacto potencial con readiness organizacional. Zonas: Lanzar, Preparar, Visión, Evaluar, Descartar.
+
+4. Human Capability™, Operating System™ y Execution Readiness™: usa estas señales para explicar dependencia de conocimiento tácito, disciplina de gestión y capacidad real de ejecutar iniciativas. No las trates como texto decorativo: deben afectar riesgos, roadmap y priorización.
+
+5. Economic Baseline™: usa M8 como baseline declarado de impacto económico. Si hay coste hora línea o rangos de paro, prioriza estos datos sobre benchmarks genéricos. Si el dato es desconocido, indícalo como hipótesis/benchmark.
 
 4. Arquetipos: Reactive Factory, Growing Complexity, Legacy Digitalization Trap, Excel-Driven Operation, Governance Fragmented, Partially Optimized.
 
@@ -2621,6 +2634,7 @@ async function openClient(clientId) {
     loadM2extData(currentClient.id),
     loadM3extData(currentClient.id),
     loadM4Data(currentClient.id),
+    loadM8Data(currentClient.id),
     loadM6Data(currentClient.id),
     loadVSMData(currentClient.id)
   ]);
@@ -2653,6 +2667,7 @@ function renderSidebarRoadmap() {
   const m4HasData = currentClient && m4Data[currentClient.id] && m4Data[currentClient.id].dimensions && Object.values(m4Data[currentClient.id].dimensions).some(v => v > 0);
   const m2extHasData = currentClient && m2extData[currentClient.id];
   const m3extHasData = currentClient && m3extData[currentClient.id];
+  const m8HasData = currentClient && m8Data[currentClient.id] && Object.entries(m8Data[currentClient.id]).some(([k,v]) => k !== 'notes' ? !!v : !!(v&&v.trim&&v.trim()));
   const m5Ready = f0HasData || (prog && ['ceo','fab','sys'].some(s => prog.sessions[s] !== 'pending'));
   const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
 
@@ -2682,6 +2697,7 @@ function renderSidebarRoadmap() {
     { id:'m4', label:'M4 · Dx organizacional', icon: m4HasData ? '✓' : '🏢', state: m4HasData ? 'rc-done' : 'rc-pending', labelClass: m4HasData ? 'rld' : '', action: 'openM4()' },
     null,
     { id:'m5', label:'M5 · OFI™ Dashboard', icon: '📊', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: '', action: 'openM5()' },
+    { id:'m8', label:'M8 · Economic Baseline™', icon: m8HasData ? '✓' : '💶', state: m8HasData ? 'rc-done' : 'rc-pending', labelClass: m8HasData ? 'rld' : '', action: 'openM8()' },
     { id:'m6', label:'M6 · Iniciativas + RIM™', icon: '🎯', state: 'rc-pending', labelClass: '', action: 'openM6()' },
     { id:'report', label:'M7 · Informe final', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
   ];
@@ -2961,7 +2977,18 @@ const M4_DIMENSIONS=[
   {k:'collaboration',name:'Colaboración inter-departamental',low:'Silos que se culpan mutuamente',high:'Colaboración sistémica y proactiva',signal:'¿Producción, mantenimiento y calidad se reúnen periódicamente?'}
 ];
 
-function defaultM4(){const d={};M4_DIMENSIONS.forEach(dim=>d[dim.k]=0);return{dimensions:d,evidence:{},governance:{oee:{owner:'',review:'',deviation:''},rechazo:{owner:'',review:'',deviation:''},mtbf:{owner:'',review:'',deviation:''},servicio:{owner:'',review:'',deviation:''},plan_real:{owner:'',review:'',deviation:''},stock:{owner:'',review:'',deviation:''}},archetype_signals:''};}
+function defaultM4(){
+  const d={};M4_DIMENSIONS.forEach(dim=>d[dim.k]=0);
+  return{
+    dimensions:d,
+    evidence:{},
+    governance:{oee:{owner:'',review:'',deviation:''},rechazo:{owner:'',review:'',deviation:''},mtbf:{owner:'',review:'',deviation:''},servicio:{owner:'',review:'',deviation:''},plan_real:{owner:'',review:'',deviation:''},stock:{owner:'',review:'',deviation:''}},
+    human:{key_people:'',info_search:'',troubleshooting:'',coordination:'',reactive_planning:''},
+    operating:{kpi_ownership:'',routines:'',action_followup:'',escalation:'',continuous_improvement:''},
+    execution:{sponsor:'',execution_capacity:'',team_time:'',skills:'',change_openness:''},
+    archetype_signals:''
+  };
+}
 function getM4(){if(!currentClient)return defaultM4();if(!m4Data[currentClient.id])m4Data[currentClient.id]=defaultM4();return m4Data[currentClient.id];}
 
 async function loadM4Data(clientId){try{const key=`${clientId}_m4_m4_config`;if(allAnswers[key]){m4Data[clientId]=JSON.parse(allAnswers[key]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','m4').eq('question_id','m4_config').single();if(data?.answer){m4Data[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}}}catch(e){}}
@@ -2970,6 +2997,39 @@ function scheduleM4Save(){clearTimeout(m4SaveTimer);m4SaveTimer=setTimeout(saveM
 function m4Changed(){scheduleM4Save();renderSidebarRoadmap();}
 
 async function openM4(){currentSession='m4';document.getElementById('main-content').scrollTop=0;showScreen('m4');await loadM4Data(currentClient.id);renderM4();renderSidebarRoadmap();}
+
+function m4EnsureV2(){
+  const m=getM4();
+  if(!m.human)m.human={key_people:'',info_search:'',troubleshooting:'',coordination:'',reactive_planning:''};
+  if(!m.operating)m.operating={kpi_ownership:'',routines:'',action_followup:'',escalation:'',continuous_improvement:''};
+  if(!m.execution)m.execution={sponsor:'',execution_capacity:'',team_time:'',skills:'',change_openness:''};
+  return m;
+}
+function m4LevelScore(v){return v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0;}
+function m4LevelColor(v){return v==='Alto'?'var(--green)':v==='Medio'?'var(--amber)':v==='Bajo'?'var(--red)':'var(--border)';}
+function m4SetLevel(section,key,val){const m=m4EnsureV2();m[section][key]=val;renderM4();m4Changed();}
+function renderM4QuickBlock(title,sub,section,items){
+  const m=m4EnsureV2();
+  const vals=items.map(i=>m4LevelScore(m[section]?.[i.k])).filter(v=>v>0);
+  const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+  const avgText=avg?`${avg.toFixed(1)}/3`:'Pendiente';
+  const avgCol=avg>=2.4?'var(--green)':avg>=1.7?'var(--amber)':avg>0?'var(--red)':'var(--text3)';
+  let html=`<div class="vsm-section"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px;"><div><div class="vsm-section-title">${title}</div><div class="vsm-section-sub">${sub}</div></div><div style="font-size:20px;font-weight:700;color:${avgCol};font-family:var(--mono);white-space:nowrap;">${avgText}</div></div>`;
+  html+=`<div style="display:flex;flex-direction:column;gap:8px;">`;
+  items.forEach(it=>{
+    const val=m[section]?.[it.k]||'';
+    html+=`<div style="padding:12px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);">
+      <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;">
+        <div style="min-width:0;"><div style="font-size:12px;font-weight:600;color:var(--text);">${it.l}</div><div style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.35;">${it.h}</div></div>
+        <div style="display:flex;gap:5px;flex-shrink:0;">
+          ${['Bajo','Medio','Alto'].map(opt=>{const sel=val===opt;const col=m4LevelColor(opt);return `<button onclick="m4SetLevel('${section}','${it.k}','${opt}')" style="padding:6px 9px;border-radius:var(--r-xs);border:1px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${opt}</button>`;}).join('')}
+        </div>
+      </div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+  return html;
+}
 
 function renderM4(){
   const mainContent=document.getElementById('main-content');
@@ -3019,6 +3079,30 @@ function renderM4(){
     </div>`;
   });
   html+=`</div>`;
+
+  html+=renderM4QuickBlock('🧠 Human Capability™','5 señales rápidas sobre dependencia de personas, conocimiento tácito y trabajo cognitivo.','human',[
+    {k:'key_people',l:'Dependencia de personas clave',h:'¿La operación depende de 1–2 personas con conocimiento difícil de sustituir?'},
+    {k:'info_search',l:'Búsqueda manual de información',h:'¿Se pierde tiempo buscando datos, documentos o información fiable?'},
+    {k:'troubleshooting',l:'Troubleshooting experto',h:'¿Las incidencias se resuelven más por experiencia personal que por procedimientos?'},
+    {k:'coordination',l:'Coordinación / silos',h:'¿La coordinación entre áreas genera fricción, esperas o retrabajo?'},
+    {k:'reactive_planning',l:'Planificación reactiva',h:'¿Las prioridades cambian constantemente por urgencias?'},
+  ]);
+
+  html+=renderM4QuickBlock('⚙️ Operating System™','Disciplina de gestión diaria: ownership, rutinas, seguimiento y mejora continua.','operating',[
+    {k:'kpi_ownership',l:'Ownership de KPIs',h:'¿Los KPIs críticos tienen responsables claros y seguimiento definido?'},
+    {k:'routines',l:'Rutinas operativas',h:'¿Existen reuniones periódicas con agenda y revisión de acciones?'},
+    {k:'action_followup',l:'Seguimiento de acciones',h:'¿Las acciones de mejora se cierran y se sostienen en el tiempo?'},
+    {k:'escalation',l:'Escalado de problemas',h:'¿Los problemas se escalan y resuelven con rapidez y claridad?'},
+    {k:'continuous_improvement',l:'Cultura de mejora continua',h:'¿La mejora continua vive en el día a día o solo en iniciativas puntuales?'},
+  ]);
+
+  html+=renderM4QuickBlock('🚀 Execution Readiness™','Capacidad real de ejecutar iniciativas sin que mueran después del diagnóstico.','execution',[
+    {k:'sponsor',l:'Sponsor / liderazgo visible',h:'¿Existe un líder claro impulsando la mejora o transformación?'},
+    {k:'execution_capacity',l:'Capacidad de ejecución',h:'¿La organización suele implementar cambios con éxito?'},
+    {k:'team_time',l:'Disponibilidad equipo / tiempo',h:'¿Hay tiempo y recursos mínimos para ejecutar mejoras?'},
+    {k:'skills',l:'Skills / competencias',h:'¿El equipo tiene capacidades suficientes o facilidad para adquirirlas?'},
+    {k:'change_openness',l:'Apertura al cambio',h:'¿La organización muestra disposición al cambio o resistencia significativa?'},
+  ]);
 
   html+=`<div class="vsm-section"><div class="vsm-section-title">🔮 Señales de arquetipo observadas en M4</div><textarea class="vsm-input" style="min-height:60px;resize:vertical;" placeholder="¿Qué arquetipo confirman las observaciones organizacionales?" oninput="getM4().archetype_signals=this.value;m4Changed();">${m.archetype_signals||''}</textarea></div>`;
   
@@ -3339,6 +3423,87 @@ function renderM5(){
   document.getElementById('m5-content').innerHTML=html;
 }
 
+
+// ══════════════════════════════════════════════════════
+// ── M8 · ECONOMIC BASELINE™ ──
+// ══════════════════════════════════════════════════════
+
+let m8Data={};
+let m8SaveTimer=null;
+
+function defaultM8(){return{downtime_week:'',scrap_rework:'',urgency_overtime:'',line_hour_cost:'',shifts:'',perceived_impact:'',notes:''};}
+function getM8(){if(!currentClient)return defaultM8();if(!m8Data[currentClient.id])m8Data[currentClient.id]=defaultM8();return m8Data[currentClient.id];}
+async function loadM8Data(clientId){try{const key=`${clientId}_m8_m8_config`;if(allAnswers[key]){m8Data[clientId]=JSON.parse(allAnswers[key]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','m8').eq('question_id','m8_config').single();if(data?.answer){m8Data[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}}}catch(e){}}
+async function saveM8(){if(!currentClient)return;const j=JSON.stringify(getM8());allAnswers[`${currentClient.id}_m8_m8_config`]=j;try{await sb.from('diop_answers').upsert({client_id:currentClient.id,session:'m8',question_id:'m8_config',answer:j,updated_at:new Date().toISOString()});}catch(e){}}
+function scheduleM8Save(){clearTimeout(m8SaveTimer);m8SaveTimer=setTimeout(saveM8,800);}
+function m8Changed(){scheduleM8Save();renderSidebarRoadmap();}
+function m8Set(key,val){getM8()[key]=val;renderM8();m8Changed();}
+function m8FieldScore(k,v){
+  if(!v)return 0;
+  const maps={
+    downtime_week:{'<5h':1,'5–10h':2,'10–20h':3,'>20h':4},
+    scrap_rework:{'Bajo (<2%)':1,'Medio (2–5%)':2,'Alto (>5%)':3,'No disponible':2},
+    urgency_overtime:{'Bajo':1,'Medio':2,'Alto':3},
+    line_hour_cost:{'<250€':1,'250–500€':2,'500–1.000€':3,'>1.000€':4,'Desconocido':2},
+    shifts:{'1 turno':1,'2 turnos':2,'3 turnos':3,'Continuo':4},
+    perceived_impact:{'Bajo':1,'Medio':2,'Alto':3,'Crítico':4}
+  };
+  return maps[k]?.[v]||0;
+}
+function m8ImpactLevel(){
+  const m=getM8();
+  const keys=['downtime_week','scrap_rework','urgency_overtime','line_hour_cost','shifts','perceived_impact'];
+  const vals=keys.map(k=>m8FieldScore(k,m[k])).filter(v=>v>0);
+  if(!vals.length)return{txt:'Pendiente',col:'var(--text3)',score:0};
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  return avg>=3.2?{txt:'Crítico',col:'var(--red)',score:avg}:avg>=2.4?{txt:'Alto',col:'var(--amber)',score:avg}:avg>=1.6?{txt:'Medio',col:'var(--teal)',score:avg}:{txt:'Bajo',col:'var(--green)',score:avg};
+}
+async function openM8(){currentSession='m8';document.getElementById('main-content').scrollTop=0;showScreen('m8');await loadM8Data(currentClient.id);renderM8();renderSidebarRoadmap();}
+function renderM8Choice(key,label,sub,opts){
+  const m=getM8(); const val=m[key]||'';
+  return `<div style="padding:14px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;">${label}</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:10px;line-height:1.35;">${sub}</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">${opts.map(opt=>{const sel=val===opt;return `<button onclick="m8Set('${key}','${opt}')" style="padding:7px 10px;border-radius:var(--r-xs);border:1px solid ${sel?'var(--teal)':'var(--border)'};background:${sel?'rgba(0,173,181,0.14)':'var(--s1)'};color:${sel?'var(--teal-l)':'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);">${opt}</button>`;}).join('')}</div>
+  </div>`;
+}
+function renderM8(){
+  const mainContent=document.getElementById('main-content');
+  const scrollPos=mainContent?mainContent.scrollTop:0;
+  const m=getM8(); const impact=m8ImpactLevel();
+  let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(186,117,23,0.1);border:0.5px solid rgba(186,117,23,0.25);">💶</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M8 · Economic Baseline™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Baseline económico ligero · Paros · Scrap · Coste línea · Presión operativa</div></div></div>`;
+  html+=`<div class="vsm-section" style="text-align:center;"><div style="font-size:32px;font-weight:700;color:${impact.col};font-family:var(--mono);">${impact.txt}</div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;">Nivel de impacto económico estimado</div>${impact.score?`<div style="font-size:10px;color:var(--text4);margin-top:4px;">Score interno ${impact.score.toFixed(1)}/4</div>`:''}</div>`;
+  html+=`<div class="vsm-section"><div class="vsm-section-title">📉 Impacto operativo</div><div class="vsm-section-sub">Datos rápidos para convertir dolor operativo en baseline económico defendible.</div><div style="display:grid;grid-template-columns:1fr;gap:10px;">`;
+  html+=renderM8Choice('downtime_week','Horas de paro no planificado / semana','Rango estimado de indisponibilidad no planificada.',['<5h','5–10h','10–20h','>20h']);
+  html+=renderM8Choice('scrap_rework','Scrap / retrabajo','Nivel estimado de pérdida de material, producto o reproceso.',['Bajo (<2%)','Medio (2–5%)','Alto (>5%)','No disponible']);
+  html+=renderM8Choice('urgency_overtime','Urgencias / overtime / cambios de plan','Presión operativa generada por urgencias, cambios o horas extra.',['Bajo','Medio','Alto']);
+  html+=`</div></div>`;
+  html+=`<div class="vsm-section"><div class="vsm-section-title">💰 Baseline económico ligero</div><div class="vsm-section-sub">No es contabilidad: son rangos para mejorar la trazabilidad del ROI.</div><div style="display:grid;grid-template-columns:1fr;gap:10px;">`;
+  html+=renderM8Choice('line_hour_cost','Coste aproximado de 1h de línea parada','Rango estimado. Si no se conoce, seleccionar desconocido y DIOP usará benchmark.',['<250€','250–500€','500–1.000€','>1.000€','Desconocido']);
+  html+=renderM8Choice('shifts','Turnos de operación','Nivel de utilización de la planta.',['1 turno','2 turnos','3 turnos','Continuo']);
+  html+=renderM8Choice('perceived_impact','Impacto económico percibido','Si estos problemas continúan 12 meses, ¿cómo impactan el negocio?',['Bajo','Medio','Alto','Crítico']);
+  html+=`</div></div>`;
+  html+=`<div class="vsm-section"><div class="vsm-section-title">📝 Observación económica del consultor</div><textarea class="vsm-input" style="min-height:70px;resize:vertical;" placeholder="Ej: coste real no disponible; producción estima que el horno parado impacta en toda la línea; overtime recurrente en cierre de semana..." oninput="getM8().notes=this.value;m8Changed();">${m.notes||''}</textarea></div>`;
+  document.getElementById('m8-content').innerHTML=html;
+  if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
+}
+function getM8ReportContext(){
+  const m=m8Data[currentClient?.id]; if(!m)return '';
+  const keys=['downtime_week','scrap_rework','urgency_overtime','line_hour_cost','shifts','perceived_impact'];
+  if(!keys.some(k=>m[k])&&!m.notes)return '';
+  const impact=m8ImpactLevel();
+  let ctx='\n=== M8 · ECONOMIC BASELINE™ ===\n';
+  ctx+=`Nivel de impacto económico estimado: ${impact.txt}${impact.score?` (${impact.score.toFixed(1)}/4)`:''}\n`;
+  if(m.downtime_week)ctx+=`Horas paro no planificado/semana: ${m.downtime_week}\n`;
+  if(m.scrap_rework)ctx+=`Scrap/retrabajo: ${m.scrap_rework}\n`;
+  if(m.urgency_overtime)ctx+=`Urgencias/overtime/cambios de plan: ${m.urgency_overtime}\n`;
+  if(m.line_hour_cost)ctx+=`Coste aproximado 1h línea parada: ${m.line_hour_cost}\n`;
+  if(m.shifts)ctx+=`Turnos operación: ${m.shifts}\n`;
+  if(m.perceived_impact)ctx+=`Impacto económico percibido a 12 meses: ${m.perceived_impact}\n`;
+  if(m.notes)ctx+=`Observación económica consultor: ${m.notes}\n`;
+  return ctx;
+}
+
 // ══════════════════════════════════════════════════════
 // ── M6 · INITIATIVE BACKLOG + RIM™ + ROI ──
 // ══════════════════════════════════════════════════════
@@ -3390,7 +3555,7 @@ async function saveM6(){if(!currentClient)return;const j=JSON.stringify(getM6())
 function scheduleM6Save(){clearTimeout(m6SaveTimer);m6SaveTimer=setTimeout(saveM6,800);}
 function m6Changed(){scheduleM6Save();renderSidebarRoadmap();}
 
-async function openM6(){currentSession='m6';document.getElementById('main-content').scrollTop=0;showScreen('m6');await loadM6Data(currentClient.id);await loadM2extData(currentClient.id);await loadM3extData(currentClient.id);await loadM4Data(currentClient.id);await loadVSMData(currentClient.id);renderM6();renderSidebarRoadmap();}
+async function openM6(){currentSession='m6';document.getElementById('main-content').scrollTop=0;showScreen('m6');await loadM6Data(currentClient.id);await loadM8Data(currentClient.id);await loadM2extData(currentClient.id);await loadM3extData(currentClient.id);await loadM4Data(currentClient.id);await loadVSMData(currentClient.id);renderM6();renderSidebarRoadmap();}
 
 function getFullCatalogue(){const m=getM6();return[...TTL_CATALOGUE_DEFAULT,...(m.custom_catalogue||[])];}
 
