@@ -552,6 +552,60 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
 .sidebar-footer{position:relative!important;z-index:1!important;margin:16px!important;border-top:1px solid rgba(87,208,217,.12)!important;}
 .rm-item.rm-active{outline:1px solid rgba(0,222,232,.35);}
 
+
+
+/* ── SIDEBAR FINAL STRUCTURE FIX v4 ──
+   Root cause: el sidebar usaba flex + footer con margin-top:auto + cards con overflow hidden.
+   Eso hacía que el footer y los items activos se montaran sobre el roadmap.
+   Solución: sidebar como contenedor scroll normal, footer oculto, roadmap con overflow visible. */
+.sidebar{
+  display:block!important;
+  width:306px!important;
+  height:calc(100vh - 60px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding-bottom:28px!important;
+}
+#sidebar-client-content,
+#sidebar-home-content{
+  position:relative!important;
+  z-index:auto!important;
+  min-height:auto!important;
+}
+#sidebar-roadmap,
+.rm-list{
+  display:block!important;
+  overflow:visible!important;
+  padding-bottom:34px!important;
+}
+.rm-phase{
+  position:relative!important;
+  overflow:visible!important;
+  margin-bottom:18px!important;
+}
+.rm-phase-body{
+  position:relative!important;
+  overflow:visible!important;
+  padding-bottom:16px!important;
+}
+.rm-item{
+  position:relative!important;
+  box-sizing:border-box!important;
+}
+.rm-item:hover{
+  transform:none!important;
+}
+.rm-item.rm-active{
+  outline:none!important;
+  box-shadow:0 0 0 1px rgba(0,222,232,.38) inset,0 8px 20px rgba(0,173,181,.05)!important;
+}
+.sidebar-footer{
+  display:none!important;
+}
+#sidebar-notes{
+  display:none!important;
+}
+
 </style>
 </head>
 <body onload="init()">
