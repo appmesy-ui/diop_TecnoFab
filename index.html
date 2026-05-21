@@ -2286,6 +2286,119 @@ function renderReport(r, reportsHistoryHtml = '') {
             <div class="diop-metric"><div class="diop-metric-label">Lead Time</div><div class="diop-metric-value" style="color:var(--amber);">${esc(vsm.lead_time || '—')}</div><div class="diop-metric-note">Ratio VA: ${esc(vsm.va_ratio || '—')}</div></div>
             <div class="diop-metric"><div class="diop-metric-label">Constraint</div><div class="diop-metric-value" style="font-size:16px;color:var(--teal-l);">${esc((vsm.cuellos_botella||[]).join(', ') || '—')}</div></div>
           </div>
+          ${(() => {
+            const vd = currentClient ? vsmData[currentClient.id] : null;
+            if (!vd || !vd.processes || !vd.processes.length) return '';
+            
+            const procs = vd.processes;
+            const demandDay = parseFloat(vd.demand?.units_per_day) || 0;
+            const availMin = parseFloat(vd.demand?.available_min) || 480;
+            const plannedStops = parseFloat(vd.demand?.planned_stops) || 0;
+            const availSec = (availMin - plannedStops) * 60;
+            const takt = demandDay > 0 ? availSec / demandDay : 0;
+            
+            // Calculate effective C/T for each process
+            const procData = procs.map(p => {
+              let ctSec = parseFloat(p.ct_value) || 0;
+              if (p.ct_unit === 'min/batch' || p.ct_unit === 'min/ud') ctSec *= 60;
+              const batchSize = parseFloat(p.batch_size) || 1;
+              if (p.ct_unit?.includes('batch') && batchSize > 1) ctSec = ctSec / batchSize;
+              const uptime = (parseFloat(p.uptime) || 100) / 100;
+              const effCT = uptime > 0 ? ctSec / uptime : ctSec;
+              const isBottleneck = takt > 0 && effCT > takt;
+              const ratio = takt > 0 ? (effCT / takt * 100) : 0;
+              return { name: p.name, ct: ctSec, effCT, co: parseFloat(p.co) || 0, uptime: parseFloat(p.uptime) || 100, operators: p.operators || '—', isBottleneck, ratio };
+            });
+            
+            const maxRatio = Math.max(...procData.map(p => p.ratio), 100);
+            
+            // Build C/T vs Takt bar chart
+            let chartHtml = `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;">C/T efectivo vs Takt Time</div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">Takt: ${takt.toFixed(1)} seg/ud — Cualquier barra que supere la línea roja es cuello de botella</div>
+              <div style="position:relative;">`;
+            
+            // Takt reference line
+            const taktPct = takt > 0 ? Math.min(100, (takt / (maxRatio * takt / 100)) * 100) : 0;
+            
+            procData.forEach(p => {
+              const barPct = Math.min(100, (p.ratio / maxRatio) * 100);
+              const barCol = p.isBottleneck ? '#E24B4A' : p.ratio > 80 ? '#F59E0B' : '#1D9E75';
+              chartHtml += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <div style="width:90px;font-size:10px;color:${p.isBottleneck ? 'var(--red)' : 'var(--text2)'};font-weight:${p.isBottleneck ? '700' : '500'};text-align:right;flex-shrink:0;">${esc(p.name)}</div>
+                <div style="flex:1;height:22px;background:var(--s1);border-radius:6px;position:relative;overflow:hidden;">
+                  <div style="height:100%;width:${barPct}%;background:${barCol};border-radius:6px;transition:width .3s;"></div>
+                  <div style="position:absolute;left:${Math.min(95, 100/maxRatio*100)}%;top:0;bottom:0;width:2px;background:var(--red);opacity:0.6;"></div>
+                </div>
+                <div style="width:55px;font-size:10px;font-family:var(--mono);color:${barCol};text-align:right;flex-shrink:0;">${p.effCT.toFixed(1)}s</div>
+                ${p.isBottleneck ? '<span style="font-size:8px;color:var(--red);font-weight:700;">⚠ BN</span>' : ''}
+              </div>`;
+            });
+            chartHtml += `<div style="display:flex;align-items:center;gap:10px;margin-top:4px;"><div style="width:90px;"></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:2px;background:var(--red);opacity:0.6;"></div><span style="font-size:9px;color:var(--text4);">Takt ${takt.toFixed(1)}s</span></div></div>`;
+            chartHtml += `</div></div>`;
+            
+            // Process metrics table
+            let tableHtml = `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:10px;">Detalle por proceso</div>
+              <div style="display:grid;grid-template-columns:1fr repeat(5,auto);gap:0;font-size:10px;">
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);">Proceso</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">C/T</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">C/T eff</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">C/O</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">Uptime</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">Op</div>`;
+            procData.forEach(p => {
+              const rowBg = p.isBottleneck ? 'rgba(226,75,74,0.06)' : 'transparent';
+              tableHtml += `
+                <div style="padding:6px 8px;color:${p.isBottleneck?'var(--red)':'var(--text)'};font-weight:${p.isBottleneck?'700':'500'};background:${rowBg};">${esc(p.name)}${p.isBottleneck?' ⚠':''}</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:var(--text2);background:${rowBg};">${p.ct.toFixed(1)}s</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.isBottleneck?'var(--red)':'var(--teal-l)'};font-weight:700;background:${rowBg};">${p.effCT.toFixed(1)}s</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.co>20?'var(--amber)':'var(--text2)'};background:${rowBg};">${p.co}min</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.uptime<85?'var(--red)':p.uptime<92?'var(--amber)':'var(--text2)'};background:${rowBg};">${p.uptime}%</div>
+                <div style="padding:6px 8px;text-align:center;color:var(--text2);background:${rowBg};">${p.operators}</div>`;
+            });
+            tableHtml += `</div></div>`;
+            
+            // Process flow mini-diagram
+            let flowHtml = `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow-x:auto;">
+              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:10px;">Flujo de valor — ${esc(vd.supplier?.name||'Proveedor')} → ${esc(vd.client_info?.name||'Cliente')}</div>
+              <div style="display:flex;align-items:center;gap:4px;min-width:max-content;">
+                <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.supplier?.name||'MP')}<br><span style="font-size:8px;color:var(--text4);">${esc(vd.inventories?.mp||'?')}d</span></div>`;
+            procs.forEach((p, i) => {
+              const pd = procData[i];
+              flowHtml += `<div style="font-size:10px;color:var(--text4);">→</div>`;
+              if (i > 0 && vd.inventories?.between?.[`${i-1}_${i}`]) {
+                const inv = vd.inventories.between[`${i-1}_${i}`];
+                flowHtml += `<div style="font-size:8px;color:var(--amber);font-family:var(--mono);text-align:center;min-width:30px;">▽<br>${inv}</div>
+                <div style="font-size:10px;color:var(--text4);">→</div>`;
+              }
+              flowHtml += `<div style="padding:8px 10px;background:${pd.isBottleneck?'rgba(226,75,74,0.1)':'var(--s1)'};border:1px solid ${pd.isBottleneck?'var(--red)':'var(--border)'};border-radius:10px;text-align:center;min-width:80px;">
+                <div style="font-size:10px;font-weight:700;color:${pd.isBottleneck?'var(--red)':'var(--text)'};">${esc(p.name)}</div>
+                <div style="font-size:8px;color:var(--text3);font-family:var(--mono);margin-top:3px;">C/T ${pd.ct.toFixed(1)}s · Up ${pd.uptime}%</div>
+                ${pd.isBottleneck?'<div style="font-size:7px;color:var(--red);font-weight:700;margin-top:2px;">BOTTLENECK</div>':''}
+              </div>`;
+            });
+            flowHtml += `<div style="font-size:10px;color:var(--text4);">→</div>
+              <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.client_info?.name||'Cliente')}<br><span style="font-size:8px;color:var(--text4);">${demandDay} ud/día</span></div>
+            </div></div>`;
+            
+            // Planning info
+            let planHtml = '';
+            if (vd.planning) {
+              planHtml = `<div style="display:flex;gap:12px;margin-bottom:14px;">
+                <div style="flex:1;padding:10px 14px;background:rgba(245,158,11,0.06);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;">
+                  <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);font-family:var(--mono);font-weight:700;margin-bottom:3px;">Sistema de planificación</div>
+                  <div style="font-size:12px;color:var(--text);">${esc(vd.planning.type || '—')} — Programa ${esc(vd.planning.frequency || '—')}</div>
+                </div>
+                <div style="flex:1;padding:10px 14px;background:rgba(0,173,181,0.06);border-left:3px solid var(--teal);border-radius:0 10px 10px 0;">
+                  <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);font-family:var(--mono);font-weight:700;margin-bottom:3px;">Takt Time</div>
+                  <div style="font-size:12px;color:var(--text);">${takt.toFixed(2)} seg/ud — Demanda ${demandDay} ud/día</div>
+                </div>
+              </div>`;
+            }
+            
+            return flowHtml + chartHtml + tableHtml + planHtml;
+          })()}
           ${ofi.vector_friccion ? `<div style="background:rgba(226,75,74,0.06);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 12px 12px 0;margin-bottom:12px;">
             <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--red);font-family:var(--mono);font-weight:700;margin-bottom:4px;">Vector de fricción principal</div>
             <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(ofi.vector_friccion)}</div>
