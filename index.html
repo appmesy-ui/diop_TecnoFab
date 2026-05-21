@@ -1796,6 +1796,7 @@ async function generateReport() {
   await loadM4Data(currentClient.id);
   await loadM8Data(currentClient.id);
   await loadM6Data(currentClient.id);
+  await loadConfidenceData(currentClient.id);
   await loadF0Data(currentClient.id);
 
   const notasSecciones = ['general','ceo','ops','fab','sys'];
@@ -1838,6 +1839,9 @@ if (procesosSeleccionados) {
   // Add M6 initiatives data
   ctx += getM6ReportContext();
   
+  // Add Confidence Layer
+  ctx += getConfidenceReportContext();
+
   // Add OFI summary
   ctx += getOFIReportContext();
 
@@ -1854,6 +1858,10 @@ FRAMEWORKS DE TECNO-FAB:
 2. TTL™ (Transformation Through Layers): 6 capas secuenciales. L1 Stabilize → L2 Measure → L3 Connect → L4 Govern → L5 Optimize → L6 Intelligence. NO SE PUEDEN SALTAR CAPAS.
 
 3. RIM™ (Readiness-Impact Matrix): 3×3 matrix que cruza impacto potencial con readiness organizacional. Zonas: Lanzar, Preparar, Visión, Evaluar, Descartar.
+
+4. Confidence Layer™: cada hallazgo debe tratarse según su nivel de evidencia: Confirmado, Hipótesis fuerte o Investigación requerida. Ajusta el lenguaje del informe según ese nivel; no afirmes como hecho lo que esté marcado como hipótesis o investigación.
+
+5. Economic Bridge™: usa el portfolio económico consolidado para resumir inversión, BNA conservador/base/optimista, payback, confidence portfolio y riesgos Cat D.
 
 4. Human Capability™, Operating System™ y Execution Readiness™: usa estas señales para explicar dependencia de conocimiento tácito, disciplina de gestión y capacidad real de ejecutar iniciativas. No las trates como texto decorativo: deben afectar riesgos, roadmap y priorización.
 
@@ -2903,6 +2911,7 @@ async function openClient(clientId) {
     loadM4Data(currentClient.id),
     loadM8Data(currentClient.id),
     loadM6Data(currentClient.id),
+    loadConfidenceData(currentClient.id),
     loadVSMData(currentClient.id)
   ]);
 
@@ -3412,7 +3421,7 @@ function renderM4(){
 // ── M5 · OFI™ DASHBOARD ──
 // ══════════════════════════════════════════════════════
 
-async function openM5(){currentSession='m5';document.getElementById('main-content').scrollTop=0;showScreen('m5');
+async function openM5(){currentSession='m5';document.getElementById('main-content').scrollTop=0;showScreen('m5');await loadConfidenceData(currentClient.id);
   await loadF0Data(currentClient.id);await loadM4Data(currentClient.id);await loadVSMData(currentClient.id);await loadM3extData(currentClient.id);await loadM2extData(currentClient.id);
   renderM5();renderSidebarRoadmap();
 }
@@ -3718,9 +3727,55 @@ function renderM5(){
   });
   html+=`</div></div>`;
   
+  html+=renderConfidenceLayer();
+  
   document.getElementById('m5-content').innerHTML=html;
 }
 
+
+
+// ══════════════════════════════════════════════════════
+// ── CONFIDENCE LAYER™ · HALLAZGOS M1–M4 ──
+// ══════════════════════════════════════════════════════
+
+let confidenceData={};
+let confidenceSaveTimer=null;
+
+function defaultConfidence(){return{findings:[
+  {module:'M1',label:'Evidencia / KPI baseline',finding:'',confidence:''},
+  {module:'M2',label:'Pérdida operativa principal',finding:'',confidence:''},
+  {module:'M2',label:'Constraint / VSM',finding:'',confidence:''},
+  {module:'M3',label:'Brecha digital IT/OT',finding:'',confidence:''},
+  {module:'M4',label:'Riesgo organizacional',finding:'',confidence:''},
+  {module:'M4',label:'Arquetipo / patrón dominante',finding:'',confidence:''}
+]};}
+function getConfidence(){if(!currentClient)return defaultConfidence();if(!confidenceData[currentClient.id])confidenceData[currentClient.id]=defaultConfidence();return confidenceData[currentClient.id];}
+async function loadConfidenceData(clientId){try{const key=`${clientId}_confidence_config`;if(allAnswers[key]){confidenceData[clientId]=JSON.parse(allAnswers[key]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','confidence').eq('question_id','config').single();if(data?.answer){confidenceData[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}}}catch(e){}}
+async function saveConfidence(){if(!currentClient)return;const j=JSON.stringify(getConfidence());allAnswers[`${currentClient.id}_confidence_config`]=j;try{await sb.from('diop_answers').upsert({client_id:currentClient.id,session:'confidence',question_id:'config',answer:j,updated_at:new Date().toISOString()});}catch(e){}}
+function scheduleConfidenceSave(){clearTimeout(confidenceSaveTimer);confidenceSaveTimer=setTimeout(saveConfidence,800);}
+function confidenceChanged(){scheduleConfidenceSave();renderSidebarRoadmap();}
+function confidenceColor(v){return v==='Confirmado'?'var(--green)':v==='Hipótesis fuerte'?'var(--amber)':v==='Investigación requerida'?'var(--red)':'var(--text3)';}
+function confidenceNarrative(v){return v==='Confirmado'?'Lenguaje: la evidencia confirma / se ha verificado':v==='Hipótesis fuerte'?'Lenguaje: la evidencia sugiere / el patrón observado indica':v==='Investigación requerida'?'Lenguaje: la visibilidad actual no permite confirmar / se recomienda investigar':'Pendiente de clasificar';}
+function confidenceSummary(){const c=getConfidence();const filled=(c.findings||[]).filter(f=>f.finding||f.confidence);const total=filled.filter(f=>f.confidence).length;const count=(v)=>filled.filter(f=>f.confidence===v).length;return{total,confirmed:count('Confirmado'),hypothesis:count('Hipótesis fuerte'),research:count('Investigación requerida'),filled};}
+function renderConfidenceLayer(){const c=getConfidence(); if(!c.findings)c.findings=defaultConfidence().findings; const sum=confidenceSummary();
+  let html=`<div class="vsm-section"><div class="vsm-section-title">🧪 Confidence Layer™</div><div class="vsm-section-sub">Clasifica la defendibilidad de los hallazgos principales. Evita falsa precisión y ajusta el lenguaje del informe.</div>`;
+  html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">`;
+  [['Confirmado',sum.confirmed,'var(--green)'],['Hipótesis fuerte',sum.hypothesis,'var(--amber)'],['Investigación requerida',sum.research,'var(--red)']].forEach(x=>{const pct=sum.total?Math.round(x[1]/sum.total*100):0;html+=`<div style="padding:10px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);text-align:center;"><div style="font-size:20px;font-weight:800;color:${x[2]};font-family:var(--mono);">${pct}%</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;">${x[0]}</div></div>`;});
+  html+=`</div>`;
+  html+=`<div style="display:flex;flex-direction:column;gap:8px;">`;
+  c.findings.forEach((f,i)=>{const col=confidenceColor(f.confidence);html+=`<div style="padding:12px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);">
+    <div style="display:grid;grid-template-columns:54px 1fr 190px;gap:8px;align-items:center;">
+      <div style="font-size:10px;font-weight:800;color:var(--teal);font-family:var(--mono);">${f.module}</div>
+      <div><div style="font-size:12px;font-weight:600;color:var(--text);">${f.label}</div><input class="vsm-input" style="font-size:11px;padding:6px;margin-top:5px;" placeholder="Hallazgo clave observado..." value="${(f.finding||'').replace(/"/g,'&quot;')}" oninput="getConfidence().findings[${i}].finding=this.value;confidenceChanged()"></div>
+      <div><select class="vsm-select" style="font-size:11px;padding:6px;border-color:${col};color:${col};" onchange="getConfidence().findings[${i}].confidence=this.value;renderM5();confidenceChanged()"><option value="">Confidence...</option><option ${f.confidence==='Confirmado'?'selected':''}>Confirmado</option><option ${f.confidence==='Hipótesis fuerte'?'selected':''}>Hipótesis fuerte</option><option ${f.confidence==='Investigación requerida'?'selected':''}>Investigación requerida</option></select><div style="font-size:9px;color:var(--text4);margin-top:4px;line-height:1.3;">${confidenceNarrative(f.confidence)}</div></div>
+    </div>
+  </div>`;});
+  html+=`</div><div style="font-size:10px;color:var(--text4);margin-top:10px;line-height:1.45;">Regla TECNOFAB: Confirmado = ≥2 fuentes sólidas; Hipótesis = señales consistentes sin cierre completo; Investigación = visibilidad insuficiente.</div></div>`;
+  return html;
+}
+function getConfidenceReportContext(){const c=confidenceData[currentClient?.id];if(!c||!c.findings)return'';const filled=c.findings.filter(f=>f.finding||f.confidence);if(!filled.length)return'';const total=filled.filter(f=>f.confidence).length;const count=(v)=>filled.filter(f=>f.confidence===v).length;let ctx='\n=== CONFIDENCE LAYER™ · NIVEL DE EVIDENCIA ===\n';if(total){ctx+=`Perfil de confianza: ${count('Confirmado')}/${total} confirmados · ${count('Hipótesis fuerte')}/${total} hipótesis fuertes · ${count('Investigación requerida')}/${total} investigación requerida\n`;}
+  filled.forEach(f=>{ctx+=`  [${f.module}] ${f.label}: ${f.finding||'(sin descripción)'} · Confidence: ${f.confidence||'Pendiente'}\n`;});
+  ctx+='Regla narrativa: Confirmado=afirmar con evidencia; Hipótesis=usar lenguaje de patrón/sugerencia; Investigación=explicitar que no se puede confirmar y recomendar validación.\n';return ctx;}
 
 // ══════════════════════════════════════════════════════
 // ── M8 · ECONOMIC BASELINE™ ──
@@ -3953,6 +4008,20 @@ function generateSuggestions(currentBacklog){
   
   return sug;
 }
+
+function confidenceBandFromScore(v){return v>=4?'Alta':v>=3?'Media':v>0?'Baja':'Pendiente';}
+function calcPortfolioEconomics(backlog){
+  const list=(backlog||[]).filter(b=>b.investment>0&&(b.savings>0||b.savings_low>0||b.savings_high>0));
+  const totalInv=list.reduce((a,b)=>a+(Number(b.investment)||0),0);
+  const totalLow=list.reduce((a,b)=>a+(Number(b.savings_low)||0),0);
+  const totalBase=list.reduce((a,b)=>a+(Number(b.savings)||0),0);
+  const totalHigh=list.reduce((a,b)=>a+(Number(b.savings_high)||0),0);
+  const confs=list.map(b=>Number(b.confidence)||0).filter(Boolean);
+  const avgConf=confs.length?Math.round(confs.reduce((a,b)=>a+b,0)/confs.length*10)/10:0;
+  const riskCount=(backlog||[]).filter(b=>b.cat==='D').length;
+  return {list,totalInv,totalLow,totalBase,totalHigh,avgConf,confidenceBand:confidenceBandFromScore(avgConf),paybackLow:totalLow?Math.round(totalInv/totalLow*12):0,paybackBase:totalBase?Math.round(totalInv/totalBase*12):0,paybackHigh:totalHigh?Math.round(totalInv/totalHigh*12):0,riskCount};
+}
+
 function getTTLColor(layer){const c={'L1':'#E24B4A','L2':'#F59E0B','L3':'#3B82F6','L4':'#8B5CF6','L5':'#06B6D4','L6':'#10B981'};return c[layer]||'#6B7280';}
 function getRIMZone(impact,readiness){if(impact>=7&&readiness>=7)return{zone:'LANZAR AHORA',col:'var(--green)',bg:'rgba(16,185,129,0.1)'};if(impact>=7&&readiness>=4)return{zone:'PREPARAR',col:'var(--amber)',bg:'rgba(245,158,11,0.1)'};if(impact>=4&&readiness>=7)return{zone:'LANZAR AHORA',col:'var(--green)',bg:'rgba(16,185,129,0.1)'};if(impact>=4&&readiness>=4)return{zone:'PREPARAR',col:'var(--teal)',bg:'rgba(0,173,181,0.1)'};if(impact>=7)return{zone:'VISIÓN',col:'var(--blue)',bg:'rgba(59,130,246,0.1)'};if(impact<4&&readiness<4)return{zone:'DESCARTAR',col:'var(--red)',bg:'rgba(226,75,74,0.1)'};return{zone:'EVALUAR',col:'var(--text3)',bg:'var(--s2)'};}
 
@@ -4088,14 +4157,23 @@ function renderM6(){
   }
 
   // ── ROI SUMMARY ──
-  const withROI=backlog.filter(b=>b.investment>0&&b.savings>0);
+  const econ=calcPortfolioEconomics(backlog);
+  const withROI=econ.list;
   if(withROI.length){
-    const totalInv=withROI.reduce((a,b)=>a+(b.investment||0),0);
-    const totalLow=withROI.reduce((a,b)=>a+(b.savings_low||0),0);
-    const totalBase=withROI.reduce((a,b)=>a+(b.savings||0),0);
-    const totalHigh=withROI.reduce((a,b)=>a+(b.savings_high||0),0);
-    const avgConf=withROI.filter(b=>b.confidence).length?Math.round(withROI.reduce((a,b)=>a+(b.confidence||0),0)/withROI.filter(b=>b.confidence).length*10)/10:0;
-    html+=`<div class="vsm-section"><div class="vsm-section-title">💰 Resumen ROI — 3 escenarios</div>
+    const totalInv=econ.totalInv;
+    const totalLow=econ.totalLow;
+    const totalBase=econ.totalBase;
+    const totalHigh=econ.totalHigh;
+    const avgConf=econ.avgConf;
+    html+=`<div class="vsm-section"><div class="vsm-section-title">💰 Economic Bridge™ — Portfolio Business Case</div><div class="vsm-section-sub">Consolidación automática del portfolio: inversión, BNA 3 escenarios, payback, confidence y riesgo Cat D.</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px;">
+        <div class="vsm-result-card"><div class="vsm-result-val">${(totalInv/1000).toFixed(0)}k€</div><div class="vsm-result-label">Inversión portfolio</div></div>
+        <div class="vsm-result-card"><div class="vsm-result-val ${econ.paybackBase>12?'warn':''}">${econ.paybackBase||'—'}m</div><div class="vsm-result-label">Payback base</div></div>
+        <div class="vsm-result-card"><div class="vsm-result-val ${avgConf<3?'warn':''}">${avgConf?econ.confidenceBand:'—'}</div><div class="vsm-result-label">Confidence portfolio</div></div>
+        <div class="vsm-result-card"><div class="vsm-result-val ${econ.riskCount?'bad':''}">${econ.riskCount}</div><div class="vsm-result-label">Riesgos Cat D</div></div>
+      </div>
+      <div style="margin-top:14px;font-size:10px;color:var(--text3);font-family:var(--mono);">BNA = Beneficio Neto Anual estimado. Aplicar reglas de integridad ROI TECNOFAB antes de presentar como ahorro duro.</div>
+      <div class="vsm-section-title" style="margin-top:16px;font-size:12px;">💰 Resumen ROI — 3 escenarios</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
         <div style="padding:14px;background:var(--s2);border:1px solid rgba(226,75,74,0.3);border-radius:var(--r);text-align:center;">
           <div style="font-size:9px;color:var(--red);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Conservador</div>
