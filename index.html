@@ -2248,6 +2248,7 @@ function renderReport(r, reportsHistoryHtml = '') {
   const procesos = r.procesos || [];
 
   const m4 = currentClient && m4Data[currentClient.id] ? m4Data[currentClient.id] : null;
+  const m4Engine = calcM4ReadinessEngine(m4);
   const m8 = currentClient && m8Data[currentClient.id] ? m8Data[currentClient.id] : null;
   const m6 = currentClient && m6Data[currentClient.id] ? m6Data[currentClient.id] : null;
   const conf = currentClient && confidenceData[currentClient.id] ? confidenceData[currentClient.id] : null;
@@ -2271,22 +2272,22 @@ function renderReport(r, reportsHistoryHtml = '') {
 
   const humanKeys = [
     ['key_people','Dependencia personas clave'],
-    ['manual_info','Búsqueda manual información'],
-    ['expert_troubleshooting','Troubleshooting experto'],
-    ['coordination_silos','Coordinación / silos'],
+    ['info_search','Búsqueda manual información'],
+    ['troubleshooting','Troubleshooting experto'],
+    ['coordination','Coordinación / silos'],
     ['reactive_planning','Planificación reactiva']
   ];
   const osKeys = [
     ['kpi_ownership','Ownership KPI'],
-    ['operating_routines','Rutinas operativas'],
+    ['routines','Rutinas operativas'],
     ['action_followup','Seguimiento acciones'],
-    ['problem_escalation','Escalado problemas'],
+    ['escalation','Escalado problemas'],
     ['continuous_improvement','Mejora continua']
   ];
   const exKeys = [
-    ['visible_sponsor','Sponsor visible'],
+    ['sponsor','Sponsor visible'],
     ['execution_capacity','Capacidad ejecución'],
-    ['team_availability','Disponibilidad equipo'],
+    ['team_time','Disponibilidad equipo'],
     ['skills','Skills'],
     ['change_openness','Apertura cambio']
   ];
@@ -2478,11 +2479,29 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>05 · Organizational Readiness Premium</h3></div>
+          <div class="diop-section-title"><h3>05 · Organizational Readiness Engine™</h3></div>
+          <div class="diop-grid-4" style="margin-bottom:14px;">
+            <div class="diop-metric"><div class="diop-metric-label">ORG Readiness</div><div class="diop-metric-value" style="color:${m4Engine.band.color};">${m4Engine.org || '—'}<span style="font-size:11px;color:var(--text3);font-weight:500;">/100</span></div><div class="diop-metric-note">${m4Engine.band.label}</div></div>
+            <div class="diop-metric"><div class="diop-metric-label">Human Capability</div><div class="diop-metric-value" style="font-size:18px;color:${m4Band(m4Engine.human).color};">${m4Engine.human || '—'}</div><div class="diop-metric-note">People / knowledge risk</div></div>
+            <div class="diop-metric"><div class="diop-metric-label">Operating System</div><div class="diop-metric-value" style="font-size:18px;color:${m4Band(m4Engine.operating).color};">${m4Engine.operating || '—'}</div><div class="diop-metric-note">Management discipline</div></div>
+            <div class="diop-metric"><div class="diop-metric-label">Execution Readiness</div><div class="diop-metric-value" style="font-size:18px;color:${m4Band(m4Engine.execution).color};">${m4Engine.execution || '—'}</div><div class="diop-metric-note">Change capacity</div></div>
+          </div>
+          <div class="diop-evidence-card" style="margin-bottom:12px;border-left:3px solid ${m4Engine.band.color};">
+            <div class="diop-tagline">M4 Readiness Profile™</div>
+            <strong>${m4Engine.profile.map(esc).join(' · ') || 'Pendiente'}</strong>
+            <p style="margin-top:8px;">${esc(m4Engine.narrative)}</p>
+          </div>
           <div class="diop-grid-3">
-            <div class="diop-evidence-card"><div class="diop-tagline">Human Capability™</div>${renderSignalList(humanKeys)}</div>
-            <div class="diop-evidence-card"><div class="diop-tagline">Operating System™</div>${renderSignalList(osKeys)}</div>
-            <div class="diop-evidence-card"><div class="diop-tagline">Execution Readiness™</div>${renderSignalList(exKeys)}</div>
+            ${[
+              ['Human Capability™', m4Engine.humanFactors, true],
+              ['Operating System™', m4Engine.operatingFactors, false],
+              ['Execution Readiness™', m4Engine.executionFactors, false]
+            ].map(([title,factors,isRisk]) => `<div class="diop-evidence-card"><div class="diop-tagline">${title}</div><div class="diop-signal-list">${factors.map(f => {
+              const score = m4ValueScore(f.value, f.mode);
+              const col = score>=75?'var(--green)':score>=55?'var(--amber)':score>0?'var(--red)':'var(--text3)';
+              const label = f.value || '—';
+              return `<div class="diop-signal"><span>${esc(f.label)}</span>${chip(esc(label), col)}</div>`;
+            }).join('')}</div></div>`).join('')}
           </div>
         </div>
 
@@ -2754,6 +2773,8 @@ function exportPDF() {
   const econPdf = (typeof calcPortfolioEconomics === 'function') ? calcPortfolioEconomics(m6Pdf?.backlog || []) : { totalInv:0,totalLow:0,totalBase:0,totalHigh:0,paybackBase:0,avgConf:0,confidenceBand:'—',riskCount:0 };
   const m8Pdf = (typeof getM8 === 'function') ? getM8() : {};
   const ofiPdf = r.ofi_resumen || {};
+  const m4Pdf = (currentClient && m4Data[currentClient.id]) ? m4Data[currentClient.id] : null;
+  const m4EnginePdf = calcM4ReadinessEngine(m4Pdf);
   const moneyPdf = (v) => { const n = Number(v || 0); return n ? n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + '€' : '—'; };
   const confPdfItems = (typeof getConfidence === 'function' ? (getConfidence().findings || []) : []).filter(f => f && (f.finding || f.confidence));
   const confCountsPdf = confPdfItems.reduce((a,f)=>{ const k=f.confidence||'Sin clasificar'; a[k]=(a[k]||0)+1; return a; },{});
@@ -3022,6 +3043,21 @@ ${r.ofi_resumen ? `<div class="section no-break">
   ${r.ofi_resumen.vector_friccion?`<div style="background:#fef0f0;border-left:3px solid #E24B4A;padding:3mm 4mm;border-radius:0 4px 4px 0;margin-top:3mm;"><div style="font-size:7pt;color:#E24B4A;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin-bottom:1mm;">Vector de fricción</div><div style="font-size:9pt;color:#0f1a2e;">${r.ofi_resumen.vector_friccion}</div></div>`:''}
   ${r.ofi_resumen.arquetipo?`<div style="font-size:8.5pt;color:#4a7080;margin-top:2mm;"><strong>Arquetipo:</strong> ${r.ofi_resumen.arquetipo}</div>`:''}
 </div>` : ''}
+
+<div class="section no-break">
+  <h2>Organizational Readiness Engine™</h2>
+  <div class="grid3" style="margin-bottom:3mm;">
+    <div class="card"><div class="card-lbl">ORG Readiness</div><div class="card-val" style="color:${m4EnginePdf.band.pdfColor};">${m4EnginePdf.org || '—'}<span style="font-size:8pt;color:#7ab0b8;font-weight:normal;">/100</span></div><div style="font-size:8pt;color:#4a7080;">${m4EnginePdf.band.label}</div></div>
+    <div class="card"><div class="card-lbl">Perfil</div><div class="card-val" style="font-size:10pt;color:#0f1a2e;">${(m4EnginePdf.profile || []).join(' · ') || 'Pendiente'}</div></div>
+    <div class="card"><div class="card-lbl">Dimensión crítica</div><div class="card-val" style="font-size:10pt;color:#0f1a2e;">${[['Human',m4EnginePdf.human],['Operating',m4EnginePdf.operating],['Execution',m4EnginePdf.execution]].filter(x=>x[1]).sort((a,b)=>a[1]-b[1])[0]?.[0] || '—'}</div></div>
+  </div>
+  <div class="grid3" style="margin-bottom:3mm;">
+    <div class="card"><div class="card-lbl">Human Capability</div><div class="card-val" style="color:${m4Band(m4EnginePdf.human).pdfColor};">${m4EnginePdf.human || '—'}</div></div>
+    <div class="card"><div class="card-lbl">Operating System</div><div class="card-val" style="color:${m4Band(m4EnginePdf.operating).pdfColor};">${m4EnginePdf.operating || '—'}</div></div>
+    <div class="card"><div class="card-lbl">Execution Readiness</div><div class="card-val" style="color:${m4Band(m4EnginePdf.execution).pdfColor};">${m4EnginePdf.execution || '—'}</div></div>
+  </div>
+  <div class="summary-box" style="border-left-color:${m4EnginePdf.band.pdfColor};background:#f7fafa;"><p style="font-size:9pt;font-weight:normal;">${m4EnginePdf.narrative}</p></div>
+</div>
 
 ${pdfFlowBottleneckBlock}
 
@@ -3658,6 +3694,87 @@ function m4EnsureV2(){
   return m;
 }
 function m4LevelScore(v){return v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0;}
+
+// ── M4 READINESS ENGINE™ · deterministic scoring from DIOP inputs ──
+function m4ValueScore(v, mode='positive'){
+  // positive: Alto = good. risk: Alto = high dependency/friction, so lower score.
+  if(mode==='risk') return v==='Bajo'?100:v==='Medio'?60:v==='Alto'?25:0;
+  return v==='Alto'?100:v==='Medio'?60:v==='Bajo'?25:0;
+}
+function m4AvgScores(arr){
+  const vals=(arr||[]).filter(v=>Number(v)>0);
+  return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+}
+function m4Band(score){
+  if(!score) return {label:'Pendiente', color:'var(--text3)', pdfColor:'#7ab0b8'};
+  if(score>=75) return {label:'Fuerte', color:'var(--green)', pdfColor:'#1D9E75'};
+  if(score>=55) return {label:'Moderado', color:'var(--amber)', pdfColor:'#BA7517'};
+  return {label:'Débil', color:'var(--red)', pdfColor:'#E24B4A'};
+}
+function calcM4ReadinessEngine(m4Input){
+  const m=m4Input || {};
+  const h=m.human || {};
+  const o=m.operating || {};
+  const e=m.execution || {};
+  const dims=m.dimensions || {};
+
+  const humanFactors=[
+    {k:'key_people', label:'Dependencia personas clave', value:h.key_people, mode:'risk', weight:22},
+    {k:'info_search', label:'Búsqueda manual información', value:h.info_search, mode:'risk', weight:18},
+    {k:'troubleshooting', label:'Troubleshooting experto', value:h.troubleshooting, mode:'risk', weight:20},
+    {k:'coordination', label:'Coordinación / silos', value:h.coordination, mode:'risk', weight:20},
+    {k:'reactive_planning', label:'Planificación reactiva', value:h.reactive_planning, mode:'risk', weight:20},
+  ];
+  const operatingFactors=[
+    {k:'kpi_ownership', label:'Ownership KPI', value:o.kpi_ownership, mode:'positive', weight:22},
+    {k:'routines', label:'Rutinas operativas', value:o.routines, mode:'positive', weight:18},
+    {k:'action_followup', label:'Seguimiento acciones', value:o.action_followup, mode:'positive', weight:20},
+    {k:'escalation', label:'Escalado problemas', value:o.escalation, mode:'positive', weight:18},
+    {k:'continuous_improvement', label:'Mejora continua', value:o.continuous_improvement, mode:'positive', weight:22},
+  ];
+  const executionFactors=[
+    {k:'sponsor', label:'Sponsor visible', value:e.sponsor, mode:'positive', weight:24},
+    {k:'execution_capacity', label:'Capacidad ejecución', value:e.execution_capacity, mode:'positive', weight:22},
+    {k:'team_time', label:'Disponibilidad equipo', value:e.team_time, mode:'positive', weight:18},
+    {k:'skills', label:'Skills', value:e.skills, mode:'positive', weight:18},
+    {k:'change_openness', label:'Apertura cambio', value:e.change_openness, mode:'positive', weight:18},
+  ];
+  function weighted(factors){
+    const active=factors.filter(f=>f.value);
+    const den=active.reduce((a,f)=>a+(f.weight||1),0);
+    if(!den) return 0;
+    return Math.round(active.reduce((a,f)=>a+m4ValueScore(f.value,f.mode)*(f.weight||1),0)/den);
+  }
+  const human=weighted(humanFactors);
+  const operating=weighted(operatingFactors);
+  const execution=weighted(executionFactors);
+  let org=0;
+  const available=[];
+  if(human) available.push({score:human,w:30});
+  if(operating) available.push({score:operating,w:35});
+  if(execution) available.push({score:execution,w:35});
+  if(available.length) org=Math.round(available.reduce((a,x)=>a+x.score*x.w,0)/available.reduce((a,x)=>a+x.w,0));
+  else {
+    const dimVals=Object.values(dims).map(v=>Number(v)||0).filter(v=>v>0);
+    if(dimVals.length) org=Math.round((dimVals.reduce((a,b)=>a+b,0)/dimVals.length)/5*100);
+  }
+
+  const profile=[];
+  if(human && human<55) profile.push('Knowledge-dependent');
+  if(operating && operating<55) profile.push('Management-system weak');
+  if(execution && execution<55) profile.push('Execution-constrained');
+  if((e.sponsor==='Bajo') || ((dims.sponsor||0)>0 && (dims.sponsor||0)<=2)) profile.push('Leadership-fragile');
+  if(org>=75) profile.push('System-driven');
+  if(execution>=70 && org>=65) profile.push('Change-ready');
+  if(!profile.length && org) profile.push(org>=55?'Developing capability':'Readiness at risk');
+
+  const lowest=[{k:'Human',score:human},{k:'Operating',score:operating},{k:'Execution',score:execution}].filter(x=>x.score).sort((a,b)=>a.score-b.score)[0];
+  const narrative = !org ? 'La organización aún no tiene suficientes datos M4 para calcular un readiness defendible.' :
+    org>=75 ? `La organización muestra una base sólida para absorber cambios. El sistema de gestión y la capacidad de ejecución permiten priorizar iniciativas de mayor ambición, siempre respetando la secuencia TTL™.` :
+    org>=55 ? `La organización presenta capacidad moderada de transformación. El principal condicionante es ${lowest?.k || 'la dimensión más débil'}, por lo que el roadmap debe combinar quick wins con refuerzo explícito de gobernanza y adopción.` :
+    `La organización presenta riesgo de ejecución. Antes de escalar iniciativas complejas, DIOP debe reforzar ownership, rutinas de gestión y capacidad real de absorción del cambio.`;
+  return {human,operating,execution,org,profile,narrative,humanFactors,operatingFactors,executionFactors,band:m4Band(org)};
+}
 function m4LevelColor(v){return v==='Alto'?'var(--green)':v==='Medio'?'var(--amber)':v==='Bajo'?'var(--red)':'var(--border)';}
 function m4SetLevel(section,key,val){const m=m4EnsureV2();m[section][key]=val;renderM4();m4Changed();}
 function renderM4QuickBlock(title,sub,section,items){
@@ -5902,6 +6019,8 @@ function getM4ReportContext() {
   if(filled.length){
     const avg=filled.reduce((a,d)=>a+m4.dimensions[d.k],0)/filled.length;
     ctx+=`Readiness organizacional: ${avg.toFixed(1)}/5\n`;
+    const eng=calcM4ReadinessEngine(m4);
+    ctx+=`M4 Readiness Engine: ORG ${eng.org || '—'}/100 · Human ${eng.human || '—'} · Operating ${eng.operating || '—'} · Execution ${eng.execution || '—'} · Profile: ${(eng.profile||[]).join(', ')}\n`;
     filled.forEach(d=>{ctx+=`  ${d.name}: ${m4.dimensions[d.k]}/5${m4.evidence?.[d.k]?' — '+m4.evidence[d.k]:''}\n`;});
   }
   
