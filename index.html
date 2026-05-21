@@ -2144,29 +2144,29 @@ function renderReport(r, reportsHistoryHtml = '') {
     </div>` : `<div class="diop-muted">Sin hallazgos con confidence tag todavía.</div>`;
 
   const humanKeys = [
-    ['key_people','Dependencia personas clave'],
-    ['manual_info','Búsqueda manual información'],
-    ['expert_troubleshooting','Troubleshooting experto'],
-    ['coordination_silos','Coordinación / silos'],
-    ['reactive_planning','Planificación reactiva']
+    ['human','key_people','Dependencia personas clave'],
+    ['human','info_search','Búsqueda manual información'],
+    ['human','troubleshooting','Troubleshooting experto'],
+    ['human','coordination','Coordinación / silos'],
+    ['human','reactive_planning','Planificación reactiva']
   ];
   const osKeys = [
-    ['kpi_ownership','Ownership KPI'],
-    ['operating_routines','Rutinas operativas'],
-    ['action_followup','Seguimiento acciones'],
-    ['problem_escalation','Escalado problemas'],
-    ['continuous_improvement','Mejora continua']
+    ['operating','kpi_ownership','Ownership KPI'],
+    ['operating','routines','Rutinas operativas'],
+    ['operating','action_followup','Seguimiento acciones'],
+    ['operating','escalation','Escalado problemas'],
+    ['operating','continuous_improvement','Mejora continua']
   ];
   const exKeys = [
-    ['visible_sponsor','Sponsor visible'],
-    ['execution_capacity','Capacidad ejecución'],
-    ['team_availability','Disponibilidad equipo'],
-    ['skills','Skills'],
-    ['change_openness','Apertura cambio']
+    ['execution','sponsor','Sponsor visible'],
+    ['execution','execution_capacity','Capacidad ejecución'],
+    ['execution','team_time','Disponibilidad equipo'],
+    ['execution','skills','Skills'],
+    ['execution','change_openness','Apertura cambio']
   ];
   const levelColor = (v) => v === 'Alto' ? 'var(--green)' : v === 'Medio' ? 'var(--amber)' : v === 'Bajo' ? 'var(--red)' : 'var(--text3)';
-  const renderSignalList = (keys) => `<div class="diop-signal-list">${keys.map(([k,l]) => {
-    const v = m4?.[k] || '—';
+  const renderSignalList = (keys) => `<div class="diop-signal-list">${keys.map(([section,k,l]) => {
+    const v = m4?.[section]?.[k] || '—';
     return `<div class="diop-signal"><span>${l}</span>${chip(v, levelColor(v))}</div>`;
   }).join('')}</div>`;
 
@@ -2259,10 +2259,17 @@ function renderReport(r, reportsHistoryHtml = '') {
           <svg class="rh-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="44" height="44"><rect width="128" height="128" rx="28" fill="#0B1220"/><g transform="translate(15,36)" stroke="#2ED3C9" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M26 6 L4 28 L26 50"/><path d="M42 50 L56 6"/><path d="M72 6 L94 28 L72 50"/></g></svg>
         </div>
         <div class="diop-grid-4">
-          <div class="diop-metric"><div class="diop-metric-label">OFI™</div><div class="diop-metric-value" style="color:var(--teal-l);">${esc(ofi.score || '—')}<span style="font-size:12px;color:var(--text3);font-weight:500;">/100</span></div><div class="diop-metric-note">${esc(ofi.zona || 'Zona no indicada')}</div></div>
+          <div class="diop-metric" style="position:relative;overflow:hidden;">
+            <div style="position:absolute;top:8px;right:12px;width:56px;height:56px;border-radius:50%;border:4px solid ${ofi.score>=50?'var(--green)':ofi.score>=25?'var(--amber)':'var(--red)'}44;display:flex;align-items:center;justify-content:center;">
+              <div style="font-size:18px;font-weight:800;color:${ofi.score>=50?'var(--green)':ofi.score>=25?'var(--amber)':'var(--red)'};">${esc(ofi.score || '—')}</div>
+            </div>
+            <div class="diop-metric-label">OFI™</div>
+            <div class="diop-metric-value" style="color:var(--teal-l);font-size:14px;margin-top:4px;">${esc(ofi.zona || '—')}</div>
+            <div class="diop-metric-note">Capa TTL: <strong style="color:var(--teal-l);">${esc(ofi.ttl_capa || '—')}</strong></div>
+          </div>
           <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:var(--text3);font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
           <div class="diop-metric"><div class="diop-metric-label">Impacto estimado</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark</div></div>
-          <div class="diop-metric"><div class="diop-metric-label">Portfolio base</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">BNA anual estimado</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Portfolio base</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">${econ.paybackBase?'Payback '+econ.paybackBase+'m':'BNA anual'} · Conf. ${esc(econ.confidenceBand||'—')}</div></div>
         </div>
       </div>
 
@@ -2276,9 +2283,13 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="diop-section-title"><h3>02 · Diagnóstico operativo + Value Stream Map</h3></div>
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric"><div class="diop-metric-label">OEE estimado</div><div class="diop-metric-value" style="color:var(--red);">${esc(kpis.oee_estimado || '—')}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">Lead Time</div><div class="diop-metric-value" style="color:var(--amber);">${esc(vsm.lead_time || '—')}</div></div>
+            <div class="diop-metric"><div class="diop-metric-label">Lead Time</div><div class="diop-metric-value" style="color:var(--amber);">${esc(vsm.lead_time || '—')}</div><div class="diop-metric-note">Ratio VA: ${esc(vsm.va_ratio || '—')}</div></div>
             <div class="diop-metric"><div class="diop-metric-label">Constraint</div><div class="diop-metric-value" style="font-size:16px;color:var(--teal-l);">${esc((vsm.cuellos_botella||[]).join(', ') || '—')}</div></div>
           </div>
+          ${ofi.vector_friccion ? `<div style="background:rgba(226,75,74,0.06);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 12px 12px 0;margin-bottom:12px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--red);font-family:var(--mono);font-weight:700;margin-bottom:4px;">Vector de fricción principal</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(ofi.vector_friccion)}</div>
+          </div>` : ''}
           <div class="diop-text">${textBlock(vsm.impacto_lead_time || r.analisis_detallado || 'Sin análisis operativo detallado generado.')}</div>
         </div>
 
@@ -2306,6 +2317,21 @@ function renderReport(r, reportsHistoryHtml = '') {
 
         <div class="diop-section">
           <div class="diop-section-title"><h3>04 · Organizational Readiness Premium</h3></div>
+          ${(() => {
+            const scoreBlock = (section, label, icon, keys) => {
+              const vals = keys.map(([s,k]) => m4?.[s]?.[k]).filter(v=>v);
+              const scores = vals.map(v => v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0).filter(v=>v>0);
+              const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+              const col = avg>=2.4?'var(--green)':avg>=1.7?'var(--amber)':avg>0?'var(--red)':'var(--text3)';
+              const pct = Math.round((avg/3)*100);
+              return `<div style="text-align:center;padding:8px 0;"><div style="font-size:20px;margin-bottom:4px;">${icon}</div><div style="font-size:24px;font-weight:800;color:${col};font-family:var(--mono);">${avg?avg.toFixed(1):'—'}</div><div style="font-size:8px;color:var(--text4);">/3</div><div style="height:3px;background:var(--s2);border-radius:4px;margin:6px auto;width:80%;"><div style="height:100%;width:${pct}%;background:${col};border-radius:4px;"></div></div><div style="font-size:10px;color:var(--text3);font-weight:600;">${label}</div></div>`;
+            };
+            return `<div class="diop-grid-3" style="margin-bottom:14px;">
+              <div class="diop-metric">${scoreBlock('human','Human Capability™','🧠',humanKeys)}</div>
+              <div class="diop-metric">${scoreBlock('operating','Operating System™','⚙️',osKeys)}</div>
+              <div class="diop-metric">${scoreBlock('execution','Execution Readiness™','🚀',exKeys)}</div>
+            </div>`;
+          })()}
           <div class="diop-grid-3">
             <div class="diop-evidence-card"><div class="diop-tagline">Human Capability™</div>${renderSignalList(humanKeys)}</div>
             <div class="diop-evidence-card"><div class="diop-tagline">Operating System™</div>${renderSignalList(osKeys)}</div>
@@ -2326,13 +2352,32 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>06 · Opportunity Matrix + Portfolio económico</h3></div>
+          <div class="diop-section-title"><h3>06 · Economic Bridge™ + Opportunity Portfolio</h3></div>
           <div class="diop-opp-row">${opportunitySummary}</div>
-          <div class="diop-grid-4" style="margin-bottom:12px;">
-            <div class="diop-metric"><div class="diop-metric-label">Inversión portfolio</div><div class="diop-metric-value" style="font-size:17px;color:var(--teal-l);">${money(econ.totalInv)}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">BNA conservador</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${money(econ.totalLow)}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">BNA base</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">Payback base</div><div class="diop-metric-value" style="font-size:17px;color:var(--text);">${econ.paybackBase ? econ.paybackBase + 'm' : esc(roi.plazo_retorno_meses || '—') + 'm'}</div></div>
+          <div class="diop-grid-3" style="margin-bottom:12px;">
+            <div class="diop-metric" style="border-left:3px solid var(--red);border-radius:0 12px 12px 0;">
+              <div class="diop-metric-label" style="color:var(--red);">Conservador</div>
+              <div class="diop-metric-value" style="font-size:18px;color:var(--red);">${money(econ.totalLow)}</div>
+              <div class="diop-metric-note">BNA/año · Payback ${econ.paybackLow?econ.paybackLow+'m':'—'}</div>
+            </div>
+            <div class="diop-metric" style="border-left:3px solid var(--teal);border-radius:0 12px 12px 0;background:rgba(0,173,181,0.04);">
+              <div class="diop-metric-label" style="color:var(--teal);">Base</div>
+              <div class="diop-metric-value" style="font-size:18px;color:var(--teal-l);">${money(econ.totalBase)}</div>
+              <div class="diop-metric-note">BNA/año · Payback ${econ.paybackBase?econ.paybackBase+'m':'—'}</div>
+            </div>
+            <div class="diop-metric" style="border-left:3px solid var(--green);border-radius:0 12px 12px 0;">
+              <div class="diop-metric-label" style="color:var(--green);">Optimista</div>
+              <div class="diop-metric-value" style="font-size:18px;color:var(--green);">${money(econ.totalHigh)}</div>
+              <div class="diop-metric-note">BNA/año · Payback ${econ.paybackHigh?econ.paybackHigh+'m':'—'}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--s2);border:0.5px solid var(--border);border-radius:12px;margin-bottom:14px;">
+            <div style="font-size:11px;color:var(--text3);">Inversión total:</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text);font-family:var(--mono);">${money(econ.totalInv)}</div>
+            <div style="width:1px;height:20px;background:var(--border);"></div>
+            <div style="font-size:11px;color:var(--text3);">Confianza portfolio:</div>
+            <div>${chip(esc(econ.confidenceBand||'Pendiente'), econ.avgConf>=4?'var(--green)':econ.avgConf>=3?'var(--teal)':'var(--amber)')}</div>
+            ${econ.riskCount?`<div style="width:1px;height:20px;background:var(--border);"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
           </div>
           <div class="diop-list">
             ${qws.map((qw, i) => `<div class="diop-list-item"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)}</div>${chip(`${esc(qw.impacto_euros || '—')} · ${esc(qw.plazo_dias || '—')} días`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div><div class="diop-list-desc">${esc(qw.descripcion)}</div></div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
@@ -2345,11 +2390,24 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>08 · Methodology + Next Steps</h3></div>
+          <div class="diop-section-title"><h3>08 · Herramientas + Methodology + Next Steps</h3></div>
+          ${tools.length ? `<div class="diop-grid-3" style="margin-bottom:14px;">
+            ${tools.map(t => `<div class="diop-evidence-card">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <strong style="margin:0;">${esc(t.nombre)}</strong>
+                ${chip(esc(t.tipo || ''), 'var(--teal)')}
+              </div>
+              <p style="margin-bottom:6px;">${esc(t.para_que || '')}</p>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:11px;color:var(--teal-l);font-weight:600;">${esc(t.precio_aproximado || '')}</span>
+                ${t.url ? `<a href="${esc(t.url)}" target="_blank" style="font-size:10px;color:var(--teal);text-decoration:none;">Web →</a>` : ''}
+              </div>
+            </div>`).join('')}
+          </div>` : ''}
           <div class="diop-grid-2">
             <div class="diop-method">
               <strong style="color:var(--text);">DIOP Methodology</strong><br>
-              El diagnóstico utiliza los frameworks TECNOFAB: OFI™ para fricción operacional, TTL™ para secuencia de madurez, Archetypes™ para narrativa ejecutiva y RIM™ para priorización impacto/readiness.
+              El diagnóstico utiliza los frameworks propietarios TECNOFAB: <strong>OFI™</strong> para fricción operacional, <strong>TTL™</strong> para secuencia de madurez, <strong>Archetypes™</strong> para narrativa ejecutiva, <strong>RIM™</strong> para priorización impacto/readiness, <strong>Confidence Layer™</strong> para nivel de evidencia y <strong>Economic Bridge™</strong> para trazabilidad financiera.
             </div>
             <div class="next-q-box" style="margin:0;"><div class="nqb-lbl">Siguiente pregunta al CEO</div><div class="nqb-text">"${esc(r.siguiente_pregunta_ceo || '—')}"</div></div>
           </div>
@@ -2659,33 +2717,6 @@ function exportPDF() {
   .hb-brand{font-size:9pt;font-weight:bold;color:#e8f4f5;}
   .hb-client{font-size:8pt;color:#3a7a82;}
   .hb-page{font-size:7.5pt;color:#3a7a82;}
-
-
-/* ─────────────────────────────────────────────
-   DIOP UI REFRESH v2 — REAL VISUAL REWORK
-   Scope: stronger sidebar, premium cards, readable workbench
-   ───────────────────────────────────────────── */
-:root{
-  --bg:#050A11; --s1:#08111d; --s2:#0d1a2b; --s3:#12243a;
-  --border:rgba(87, 208, 217, 0.10);
-  --border2:rgba(87, 208, 217, 0.22);
-  --text:#eefbfc; --text2:#a7cbd0; --text3:#628f98;
-}
-body{background:radial-gradient(circle at top left,rgba(0,173,181,.09),transparent 34%),var(--bg);} 
-.topbar{height:60px;padding:0 24px;background:rgba(8,17,29,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(87,208,217,.12);} 
-.topbar-logo{width:34px;height:34px}.topbar-brand{font-size:15px}.topbar-version{font-size:11px;padding:4px 9px;background:rgba(0,173,181,.08);border-color:rgba(0,173,181,.25);color:var(--teal-l)}
-.app-body{background:linear-gradient(90deg,rgba(0,173,181,.025),transparent 35%);} 
-.sidebar{width:306px;background:linear-gradient(180deg,#07101c 0%,#050a11 100%);border-right:1px solid rgba(87,208,217,.12);box-shadow:18px 0 50px rgba(0,0,0,.22);} 
-.sidebar-section{padding:22px 20px 12px}.sidebar-label{font-size:10px;color:#5f8b93}.sidebar-client-name{font-size:16px;letter-spacing:-.015em}.sidebar-client-meta{font-size:12px;color:#6f9fa7;margin-top:4px}.sidebar-divider{margin:12px 20px;background:rgba(87,208,217,.12)}
-.rm-list{padding:10px 16px 22px;overflow:auto}.rm-phase{border:1px solid rgba(87,208,217,.11);background:rgba(255,255,255,.018);border-radius:16px;margin:0 0 12px;overflow:hidden;box-shadow:0 14px 32px rgba(0,0,0,.10)}
-.rm-phase-head{display:flex;align-items:center;gap:10px;padding:14px 14px 10px;cursor:default;background:linear-gradient(135deg,rgba(0,173,181,.075),rgba(0,173,181,.015));border-bottom:1px solid rgba(87,208,217,.07)}
-.rm-phase-icon{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(0,173,181,.10);border:1px solid rgba(0,173,181,.18);font-size:14px;flex-shrink:0}.rm-phase-title{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.10em;color:#9bc4ca}.rm-phase-sub{font-size:10.5px;color:#5e8c94;margin-top:2px}.rm-phase-pct{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--teal-l);background:rgba(0,173,181,.09);border:1px solid rgba(0,173,181,.16);border-radius:999px;padding:4px 8px}.rm-phase-bar{height:3px;background:#122235;overflow:hidden}.rm-phase-fill{height:100%;background:linear-gradient(90deg,var(--teal-d),var(--teal-l));border-radius:4px}.rm-phase-body{padding:8px 8px 10px}.rm-item{position:relative;gap:10px;padding:10px 10px;border-radius:12px;margin-bottom:3px;border:1px solid transparent}.rm-item:hover{background:rgba(0,173,181,.07);border-color:rgba(0,173,181,.10);transform:translateX(1px)}.rm-item.rm-active{background:rgba(0,173,181,.12);border-color:rgba(0,173,181,.32);box-shadow:0 0 0 1px rgba(0,173,181,.04) inset,0 8px 20px rgba(0,173,181,.04)}.rm-circle{width:24px;height:24px;border-width:1px;font-size:10px}.rm-label{font-size:12.5px;color:#b9d8dc}.rm-label-sub{font-size:12px;color:#7ea8af}.rm-item-sub{padding-left:10px}.rm-item-sub:before{content:'';position:absolute;left:20px;top:-3px;bottom:-3px;width:1px;background:rgba(87,208,217,.06);z-index:0}.rm-item-sub .rm-circle{width:20px;height:20px;font-size:9px;z-index:1}.rm-item-sub .rm-label{z-index:1}
-.content{padding:42px 56px;max-width:none;background:radial-gradient(circle at top right,rgba(0,173,181,.06),transparent 30%)}.page-header{margin-bottom:34px}.page-title{font-size:28px;font-weight:650;letter-spacing:-.035em}.page-sub{font-size:14px;max-width:780px;line-height:1.6}.session-hero{padding:26px 28px;border-radius:20px;background:linear-gradient(135deg,rgba(13,26,43,.96),rgba(8,17,29,.94));border:1px solid rgba(87,208,217,.16);box-shadow:0 22px 60px rgba(0,0,0,.22);margin-bottom:28px}.sh-icon{width:54px;height:54px;border-radius:16px}.sh-title,.session-hero [style*="font-size:15px"]{font-size:20px!important;font-weight:650!important;letter-spacing:-.025em}.sh-sub,.session-hero [style*="font-size:12px"]{font-size:13.5px!important;color:#84aeb6!important;line-height:1.55}.sh-time{padding:6px 11px;border-radius:999px}
-.vsm-section,.q-block{max-width:1180px}.vsm-section{padding:28px;border-radius:18px;background:rgba(8,17,29,.72);border:1px solid rgba(87,208,217,.13);box-shadow:0 18px 44px rgba(0,0,0,.17);margin-bottom:22px}.vsm-section-title{font-size:17px;font-weight:650;letter-spacing:-.025em;margin-bottom:7px}.vsm-section-sub{font-size:12.8px;line-height:1.6;color:#6f9fa7;margin-bottom:20px}.q-card{border-radius:16px;background:rgba(8,17,29,.72);border:1px solid rgba(87,208,217,.10);margin-bottom:12px}.q-top{padding:18px 20px}.q-text{font-size:14.5px;line-height:1.58}.q-meta{margin-bottom:8px}.opt-grid{gap:8px}.opt-btn,.yn-btn,.vsm-input,.vsm-select,.num-input,.txt-input{border-radius:12px;padding:10px 12px}.opt-btn{font-size:12.5px}.save-bar{padding:16px 56px;margin-left:-56px;margin-right:-56px;background:rgba(5,10,17,.92);backdrop-filter:blur(8px)}
-.kpi-grid,.roi-grid,.bench-grid,.vsm-results-grid{gap:14px}.kpi-card,.roi-card,.bench-card,.vsm-result-card{border-radius:16px;padding:18px;background:rgba(13,26,43,.80);border:1px solid rgba(87,208,217,.12)}
-/* Strong M4/M8 click chips */
-button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;padding:8px 13px!important;font-weight:600!important;box-shadow:0 8px 18px rgba(0,0,0,.10)}
-@media(max-width:1200px){.sidebar{width:280px}.content{padding:34px 38px}.save-bar{padding-left:38px;padding-right:38px;margin-left:-38px;margin-right:-38px}}
 
 </style>
 </head>
@@ -5666,6 +5697,26 @@ function getM4ReportContext() {
   }
   
   if(m4.archetype_signals)ctx+=`Señales arquetipo M4: ${m4.archetype_signals}\n`;
+  
+  // Human Capability™
+  if(m4.human){
+    const hk=[['key_people','Dependencia personas clave'],['info_search','Búsqueda manual info'],['troubleshooting','Troubleshooting experto'],['coordination','Coordinación/silos'],['reactive_planning','Planificación reactiva']];
+    const filled=hk.filter(([k])=>m4.human[k]);
+    if(filled.length){ctx+=`\nHuman Capability™:\n`;filled.forEach(([k,l])=>{ctx+=`  ${l}: ${m4.human[k]}\n`;});}
+  }
+  // Operating System™
+  if(m4.operating){
+    const ok=[['kpi_ownership','Ownership KPI'],['routines','Rutinas operativas'],['action_followup','Seguimiento acciones'],['escalation','Escalado problemas'],['continuous_improvement','Mejora continua']];
+    const filled=ok.filter(([k])=>m4.operating[k]);
+    if(filled.length){ctx+=`\nOperating System™:\n`;filled.forEach(([k,l])=>{ctx+=`  ${l}: ${m4.operating[k]}\n`;});}
+  }
+  // Execution Readiness™
+  if(m4.execution){
+    const ek=[['sponsor','Sponsor visible'],['execution_capacity','Capacidad ejecución'],['team_time','Disponibilidad equipo'],['skills','Skills'],['change_openness','Apertura cambio']];
+    const filled=ek.filter(([k])=>m4.execution[k]);
+    if(filled.length){ctx+=`\nExecution Readiness™:\n`;filled.forEach(([k,l])=>{ctx+=`  ${l}: ${m4.execution[k]}\n`;});}
+  }
+  
   return ctx;
 }
 
