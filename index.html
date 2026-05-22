@@ -2382,7 +2382,7 @@ function renderReport(r, reportsHistoryHtml = '') {
       <div class="diop-cover-v2">
         <div class="diop-cover-top">
           <div>
-            <div class="diop-kicker">Tecno-Fab · DIOP Executive Report v2</div>
+            <div class="diop-kicker">Tecno-Fab · DIOP Executive Report v3</div>
             <div class="diop-title">${esc(currentClient.name)}</div>
             <div class="diop-subtitle">${esc(currentClient.sector || 'Sector no indicado')} · ${esc(currentClient.employees || '')} · ${today}</div>
             <div class="diop-cover-badges">
@@ -2856,433 +2856,102 @@ async function saveNote() {
 
 function exportPDF() {
   const r = window._lastReport;
-  const client = currentClient;
   if(!r) { showToast('Genera el informe primero'); return; }
-  const procesos = r.procesos || [];
-  const CAT_PDF = {
-    quick_win:    { label:'Quick Win',    color:'#1D9E75' },
-    big_swing:    { label:'Big Swing',    color:'#7F77DD' },
-    nice_to_have: { label:'Nice-to-Have', color:'#BA7517' },
-    deprioritize: { label:'Deprioritize', color:'#E24B4A' },
+
+  const source = document.querySelector('#report-body .diop-report-v2') || document.querySelector('#report-body .report-content') || document.getElementById('report-body');
+  if(!source) { showToast('No encuentro el informe para exportar'); return; }
+
+  // PDF v3 principle: export the exact rendered report, not a second manually rebuilt version.
+  // This guarantees that new high-value sections (VSM, Field Intelligence, Economic Story, M4, etc.) travel to PDF.
+  const clone = source.cloneNode(true);
+  clone.querySelectorAll('button, .no-pdf, [data-no-pdf="true"]').forEach(el => el.remove());
+  clone.querySelectorAll('a').forEach(a => { a.style.textDecoration = 'none'; });
+
+  const clientName = (currentClient?.name || 'Cliente').replace(/[^a-z0-9áéíóúñü _-]/gi,'').trim() || 'Cliente';
+  const today = new Date().toISOString().slice(0,10);
+
+  const shell = document.createElement('div');
+  shell.id = 'diop-pdf-export-shell';
+  shell.style.cssText = 'position:fixed;left:-10000px;top:0;width:1040px;background:#050A11;color:#e8f4f5;padding:0;z-index:-1;';
+  shell.innerHTML = `
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;700&display=swap');
+      :root{
+        --bg:#050A11; --s1:#08111d; --s2:#0d1a2b; --s3:#12243a;
+        --border:rgba(87,208,217,0.14); --border2:rgba(87,208,217,0.28); --border3:rgba(87,208,217,0.45);
+        --text:#eefbfc; --text2:#a7cbd0; --text3:#628f98; --text4:#315c64;
+        --teal:#00adb5; --teal-l:#00dee8; --teal-d:#007c82;
+        --green:#1D9E75; --green-l:#2dcf9a; --green-d:#0a6b4e;
+        --amber:#BA7517; --red:#E24B4A; --purple:#7F77DD;
+        --font:'DM Sans',Arial,sans-serif; --mono:'DM Mono',monospace;
+      }
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+      body{margin:0;background:#050A11;color:#eefbfc;font-family:var(--font);}
+      #diop-pdf-export-shell{font-family:var(--font);}
+      .diop-report-v2{max-width:980px!important;margin:0 auto!important;color:var(--text)!important;background:#050A11!important;padding:0 0 28px!important;}
+      .diop-report-card{border-radius:0!important;box-shadow:none!important;border:0!important;background:#08111d!important;margin:0!important;overflow:visible!important;}
+      .diop-cover-v2{min-height:980px!important;display:flex!important;flex-direction:column!important;justify-content:space-between!important;padding:64px 56px!important;page-break-after:always!important;background:radial-gradient(circle at 20% 0%,rgba(0,222,232,0.22),transparent 34%),linear-gradient(135deg,#050A11,#0f2535)!important;}
+      .diop-cover-top{margin-bottom:42px!important;}
+      .diop-title{font-size:42px!important;line-height:1.02!important;letter-spacing:-.04em!important;}
+      .diop-subtitle{font-size:15px!important;line-height:1.5!important;}
+      .diop-report-body{padding:42px 52px 54px!important;background:#050A11!important;}
+      .diop-section{break-inside:avoid!important;page-break-inside:avoid!important;margin-bottom:30px!important;}
+      .diop-section:nth-of-type(3), .diop-section:nth-of-type(5), .diop-section:nth-of-type(7){break-before:page!important;page-break-before:always!important;}
+      .diop-section-title{margin-bottom:14px!important;}
+      .diop-section-title h3{font-size:12px!important;letter-spacing:.14em!important;color:#7ab0b8!important;}
+      .diop-exec{font-size:16px!important;line-height:1.75!important;padding:22px!important;background:rgba(0,173,181,.075)!important;border-left:4px solid #00dee8!important;border-radius:0 14px 14px 0!important;}
+      .diop-grid-4{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:12px!important;}
+      .diop-grid-3{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:12px!important;}
+      .diop-grid-2{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:14px!important;}
+      .diop-metric,.diop-evidence-card,.diop-list-item{break-inside:avoid!important;page-break-inside:avoid!important;background:#0d1a2b!important;border:1px solid rgba(87,208,217,0.18)!important;border-radius:14px!important;}
+      .diop-metric{padding:16px!important;min-height:92px!important;}
+      .diop-metric-label{font-size:9px!important;letter-spacing:.11em!important;color:#628f98!important;}
+      .diop-metric-value{font-size:24px!important;}
+      .diop-metric-note,.diop-text,.diop-evidence-card p,.diop-list-desc{color:#a7cbd0!important;}
+      .diop-text{font-size:13px!important;line-height:1.75!important;}
+      .diop-signal{background:rgba(255,255,255,.025)!important;border:1px solid rgba(87,208,217,.14)!important;}
+      .diop-mini-bars{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:9px!important;}
+      .diop-opp-row{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:9px!important;}
+      svg,img{max-width:100%!important;}
+      table{break-inside:avoid!important;page-break-inside:avoid!important;}
+      .vsm-diagram-wrap{overflow:visible!important;}
+      .pdf-footer{margin:28px 52px 0;padding-top:10px;border-top:1px solid rgba(87,208,217,.16);display:flex;justify-content:space-between;color:#315c64;font-size:10px;font-family:var(--mono);}
+      @media print{
+        .diop-cover-v2{page-break-after:always!important;}
+        .diop-section{page-break-inside:avoid!important;}
+      }
+    </style>
+    <div class="pdf-inner"></div>
+    <div class="pdf-footer"><span>Tecno-Fab · DIOP Executive Diagnostic</span><span>Confidential · ${today}</span></div>
+  `;
+  shell.querySelector('.pdf-inner').appendChild(clone);
+  document.body.appendChild(shell);
+
+  const opt = {
+    margin: [6, 6, 8, 6],
+    filename: `DIOP_${clientName}_${today}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#050A11',
+      scrollY: 0,
+      windowWidth: 1200
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: {
+      mode: ['css', 'legacy'],
+      avoid: ['.diop-section', '.diop-metric', '.diop-evidence-card', '.diop-list-item', '.diop-report-card']
+    }
   };
-  const W=700, H=420, ML=40, MR=20, MT=20, MB=30;
-  const PW=W-ML-MR, PH=H-MT-MB;
-  const maxH=Math.max(...procesos.map(p=>p.horas_mes||0),1);
-  const minR=10, maxR=22;
-  const posMap={};
-  procesos.forEach((p,i)=>{const k=p.esfuerzo+'_'+p.impacto;if(!posMap[k])posMap[k]=[];posMap[k].push(i);});
 
-  let bubbles='';
-  procesos.forEach((p,i)=>{
-    const cfg=CAT_PDF[p.categoria]||CAT_PDF.nice_to_have;
-    const r2=p.horas_mes?minR+((p.horas_mes/maxH)*(maxR-minR)):(minR+maxR)/2;
-    const key=p.esfuerzo+'_'+p.impacto;
-    const grp=posMap[key],pos=grp.indexOf(i),tot=grp.length;
-    const jx=tot>1?(pos-(tot-1)/2)*(r2*1.5):0;
-    const jy=tot>1?(pos%2===0?-1:1)*r2*0.4:0;
-    const cx=ML+((p.esfuerzo-0.5)/5)*PW+jx;
-    const cy=MT+PH-((p.impacto-0.5)/5)*PH+jy;
-    bubbles+=`<circle cx="${cx}" cy="${cy}" r="${r2+4}" fill="${cfg.color}" opacity="0.15"/>
-    <circle cx="${cx}" cy="${cy}" r="${r2}" fill="${cfg.color}" fill-opacity="0.85" stroke="#fff" stroke-opacity="0.3" stroke-width="1"/>
-    <text x="${cx}" y="${cy+3.5}" text-anchor="middle" font-size="${r2>14?'9':'8'}" font-family="Arial" font-weight="bold" fill="#fff">${String(i+1).padStart(2,'0')}</text>`;
-  });
-
-  const matrixSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
-    <rect x="${ML}" y="${MT}" width="${PW/2}" height="${PH/2}" fill="rgba(29,158,117,0.06)"/>
-    <rect x="${ML+PW/2}" y="${MT}" width="${PW/2}" height="${PH/2}" fill="rgba(127,119,221,0.05)"/>
-    <rect x="${ML}" y="${MT+PH/2}" width="${PW/2}" height="${PH/2}" fill="rgba(186,117,23,0.04)"/>
-    <rect x="${ML+PW/2}" y="${MT+PH/2}" width="${PW/2}" height="${PH/2}" fill="rgba(226,75,74,0.04)"/>
-    <text x="${ML+8}" y="${MT+13}" font-size="8" font-family="Arial" fill="rgba(100,160,160,0.5)" font-weight="bold" letter-spacing="1">QUICK WINS</text>
-    <text x="${ML+PW-8}" y="${MT+13}" font-size="8" font-family="Arial" fill="rgba(127,119,221,0.5)" font-weight="bold" letter-spacing="1" text-anchor="end">BIG SWINGS</text>
-    <text x="${ML+8}" y="${MT+PH-8}" font-size="8" font-family="Arial" fill="rgba(186,117,23,0.5)" font-weight="bold" letter-spacing="1">NICE-TO-HAVE</text>
-    <text x="${ML+PW-8}" y="${MT+PH-8}" font-size="8" font-family="Arial" fill="rgba(226,75,74,0.5)" font-weight="bold" letter-spacing="1" text-anchor="end">DEPRIORITIZE</text>
-    <line x1="${ML+PW/2}" y1="${MT}" x2="${ML+PW/2}" y2="${MT+PH}" stroke="rgba(0,150,160,0.25)" stroke-width="1" stroke-dasharray="4 4"/>
-    <line x1="${ML}" y1="${MT+PH/2}" x2="${ML+PW}" y2="${MT+PH/2}" stroke="rgba(0,150,160,0.25)" stroke-width="1" stroke-dasharray="4 4"/>
-    ${[1,2,3,4,5].map(v=>`
-    <text x="${ML+((v-0.5)/5)*PW}" y="${MT+PH+18}" text-anchor="middle" font-size="8" font-family="Arial" fill="#7ab0b8">${v}</text>
-    <text x="${ML-6}" y="${MT+PH-((v-0.5)/5)*PH+3}" text-anchor="end" font-size="8" font-family="Arial" fill="#7ab0b8">${v}</text>`).join('')}
-    ${bubbles}
-  </svg>`;
-  const today = new Date().toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'});
-  const urgColor = r.urgencia==='alta'?'#E24B4A':r.urgencia==='media'?'#BA7517':'#1D9E75';
-  const scoreColor = (r.madurez_digital?.puntuacion||0)<=3?'#E24B4A':(r.madurez_digital?.puntuacion||0)<=6?'#BA7517':'#1D9E75';
-  const scorePct = ((r.madurez_digital?.puntuacion||0)/10)*100;
-  const kpis = r.kpis||{};
-  const mad = r.madurez_digital||{};
-  const bench = r.benchmark_sectorial||{};
-  const roi = r.roi||{};
-  const qws = r.quick_wins||[];
-  const tools = r.herramientas_mercado||[];
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Informe DIOP — ${client.name}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#0f1a2e;font-size:10pt;line-height:1.5;}
-  @page{margin:14mm 12mm;size:A4;}
-  @media print{
-    body{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
-    .no-break{page-break-inside:avoid;}
-    .page-break{page-break-after:always;}
-  }
-  .cover{background:#060b12;color:#e8f4f5;padding:20mm 15mm;min-height:260mm;display:flex;flex-direction:column;}
-  .cover-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:40mm;}
-  .brand{font-size:14pt;font-weight:bold;color:#e8f4f5;letter-spacing:1px;}
-  .diop-tag{font-size:8pt;color:#00adb5;border:1px solid #00adb5;padding:3px 10px;border-radius:4px;}
-  .cover-line{width:30mm;height:2px;background:#00adb5;margin-bottom:6mm;}
-  .cover-pre{font-size:8pt;color:#3a7a82;text-transform:uppercase;letter-spacing:2px;margin-bottom:3mm;}
-  .cover-name{font-size:24pt;font-weight:bold;color:#e8f4f5;margin-bottom:3mm;line-height:1.2;}
-  .cover-sector{font-size:11pt;color:#7ab0b8;margin-bottom:15mm;}
-  .meta-grid{display:flex;gap:12mm;flex-wrap:wrap;margin-bottom:auto;}
-  .meta-item strong{display:block;font-size:7pt;color:#3a7a82;text-transform:uppercase;letter-spacing:1px;margin-bottom:1mm;}
-  .meta-item span{font-size:9pt;color:#00dee8;}
-  .cover-footer{border-top:1px solid rgba(0,173,181,0.2);padding-top:5mm;display:flex;justify-content:space-between;align-items:center;margin-top:10mm;}
-  .cover-footer-left{font-size:8pt;color:#3a7a82;}
-  .urgency{font-size:9pt;padding:3px 10px;border-radius:4px;border:1px solid ${urgColor};color:${urgColor};}
-
-  h2{font-size:7pt;text-transform:uppercase;letter-spacing:2px;color:#7ab0b8;margin-bottom:4mm;padding-bottom:2mm;border-bottom:1px solid #e0eef0;}
-  .section{margin-bottom:6mm;}
-
-  .summary-box{background:#f0f9fa;border-left:3px solid #00adb5;padding:4mm 5mm;border-radius:0 5px 5px 0;}
-  .summary-box p{font-size:10pt;font-weight:bold;color:#0f1a2e;line-height:1.6;}
-
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm;}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:4mm;}
-  .card{background:#f7fafa;border:1px solid #daedef;border-radius:5px;padding:3mm 4mm;}
-  .card-lbl{font-size:7pt;color:#7ab0b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm;}
-  .card-val{font-size:14pt;font-weight:bold;}
-
-  .mad-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:2mm;}
-  .mad-score{font-size:20pt;font-weight:bold;color:${scoreColor};}
-  .mad-nivel{font-size:10pt;font-weight:bold;color:${scoreColor};}
-  .mad-bar-bg{height:5px;background:#e0eef0;border-radius:3px;overflow:hidden;margin-bottom:2mm;}
-  .mad-bar-fill{height:100%;background:${scoreColor};width:${scorePct}%;border-radius:3px;}
-  .mad-desc{font-size:8.5pt;color:#4a7080;}
-  .mad-next{font-size:8pt;color:#7ab0b8;font-style:italic;margin-top:1mm;}
-
-  .bench-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm;}
-  .bench-card{border-radius:5px;padding:3mm 4mm;text-align:center;}
-  .bc1{background:#fef0f0;border:1px solid #f5c0c0;}
-  .bc2{background:#fef8ee;border:1px solid #f0d8a0;}
-  .bc3{background:#eef8f3;border:1px solid #b0dcc4;}
-  .bench-lbl{font-size:7pt;color:#7ab0b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm;}
-  .bench-val{font-size:13pt;font-weight:bold;}
-  .bench-gap{font-size:8pt;color:#4a7080;margin-top:3mm;}
-  .bench-gap strong{color:#00706e;}
-
-  .qw-item{display:flex;gap:3mm;padding:3mm 4mm;border-radius:5px;margin-bottom:3mm;border:1px solid;}
-  .qw1{background:#fef0f0;border-color:#f5c0c0;}
-  .qw2{background:#fef8ee;border-color:#f0d8a0;}
-  .qw3{background:#eef8f3;border-color:#b0dcc4;}
-  .qw-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:bold;flex-shrink:0;margin-top:1mm;}
-  .qn1{background:#E24B4A;color:#fff;} .qn2{background:#BA7517;color:#fff;} .qn3{background:#1D9E75;color:#fff;}
-  .qw-title{font-size:9pt;font-weight:bold;margin-bottom:1mm;}
-  .qw-desc{font-size:8pt;color:#4a7080;line-height:1.4;}
-  .qw-meta{font-size:8pt;font-weight:bold;margin-top:1mm;}
-
-  .roi-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm;margin-bottom:2mm;}
-  .roi-card{background:#f0f9fa;border:1px solid #daedef;border-radius:5px;padding:3mm 4mm;}
-  .roi-lbl{font-size:7pt;color:#7ab0b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm;}
-  .roi-val{font-size:12pt;font-weight:bold;color:#00706e;}
-  .roi-note{font-size:8pt;color:#7ab0b8;font-style:italic;}
-
-  .tool-item{background:#f7fafa;border:1px solid #daedef;border-radius:5px;padding:3mm 4mm;margin-bottom:2mm;}
-  .tool-item:first-child{border-color:#1D9E75;border-left:3px solid #1D9E75;}
-  .tool-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1mm;}
-  .tool-name{font-size:9pt;font-weight:bold;}
-  .tool-type{font-size:7pt;padding:1px 5px;background:#e8f0f2;color:#7ab0b8;border-radius:3px;}
-  .tool-desc{font-size:8pt;color:#4a7080;margin-bottom:2mm;}
-  .tool-foot{display:flex;justify-content:space-between;}
-  .tool-price{font-size:7.5pt;color:#7ab0b8;}
-  .tool-url{font-size:7.5pt;color:#00706e;}
-
-  .next-q{background:#f0f9fa;border-left:3px solid #00adb5;padding:4mm 5mm;border-radius:0 5px 5px 0;}
-  .nq-lbl{font-size:7pt;color:#7ab0b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm;}
-  .nq-text{font-size:10pt;color:#0f1a2e;font-style:italic;}
-
-  .footer{background:#060b12;padding:3mm 5mm;display:flex;justify-content:space-between;align-items:center;margin-top:5mm;}
-  .footer-left{font-size:7.5pt;color:#3a7a82;}
-  .footer-right{font-size:7pt;color:#1e4a52;font-style:italic;}
-
-  .disclaimer{background:#f0f9fa;border:1px solid #daedef;border-radius:5px;padding:4mm;margin-top:4mm;}
-  .disclaimer p{font-size:8pt;color:#4a7080;line-height:1.5;}
-
-  .page-num{font-size:7pt;color:#7ab0b8;text-align:right;margin-bottom:4mm;}
-  .header-bar{background:#060b12;padding:4mm 5mm;display:flex;justify-content:space-between;align-items:center;margin-bottom:6mm;}
-  .hb-brand{font-size:9pt;font-weight:bold;color:#e8f4f5;}
-  .hb-client{font-size:8pt;color:#3a7a82;}
-  .hb-page{font-size:7.5pt;color:#3a7a82;}
-
-</style>
-</head>
-<body onload="init()">
-
-<!-- PORTADA -->
-<div class="cover page-break">
-  <div class="cover-top">
-    <div class="brand">&lt;/&gt; Tecno-Fab</div>
-    <div class="diop-tag">DIOP · Diagnóstico de Impacto Operativo</div>
-  </div>
-  <div class="cover-line"></div>
-  <div class="cover-pre">Informe de diagnóstico industrial</div>
-  <div class="cover-name">${client.name}</div>
-  <div class="cover-sector">${client.sector||''} ${client.employees?'· '+client.employees:''}</div>
-  <div class="meta-grid">
-    <div class="meta-item"><strong>Fecha</strong><span>${today}</span></div>
-    <div class="meta-item"><strong>Vertical prioritaria</strong><span>${r.vertical_prioritaria||'—'}</span></div>
-    <div class="meta-item"><strong>Madurez digital</strong><span>${mad.puntuacion||'—'}/10</span></div>
-    <div class="meta-item"><strong>Impacto estimado</strong><span>${kpis.impacto_total_estimado||'—'}</span></div>
-  </div>
-  <div class="cover-footer">
-    <div class="cover-footer-left">tecnofab.com · info@tecnofab.com</div>
-    <div class="urgency">Urgencia ${r.urgencia||'—'}</div>
-  </div>
-</div>
-<!-- PÁG 2: MATRIZ DE OPORTUNIDAD -->
-<div class="no-break page-break">
-<div class="header-bar">
-  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
-  <div class="hb-client">${client.name} · Informe DIOP</div>
-  <div class="hb-page">Página 2 de 5</div>
-</div>
-<div class="section">
-  <h2>Matriz de Oportunidad · Procesos identificados</h2>
-  <div style="display:flex;gap:8px;margin-bottom:6mm;">
-    ${Object.keys(CAT_PDF).map(cat => {
-      const items = procesos.filter(p => p.categoria === cat);
-      const totalH = items.reduce((a,p) => a+(p.horas_mes||0), 0);
-      return `<div style="flex:1;padding:3mm 4mm;border-radius:4px;border:1px solid ${CAT_PDF[cat].color}44;background:${CAT_PDF[cat].color}0f;">
-        <div style="font-size:16pt;font-weight:bold;color:${CAT_PDF[cat].color};">${items.length}</div>
-        <div style="font-size:7.5pt;font-weight:bold;color:${CAT_PDF[cat].color};">${CAT_PDF[cat].label}</div>
-        <div style="font-size:7pt;color:#7ab0b8;">${totalH ? '~'+totalH+'h/mes' : '—'}</div>
-      </div>`;
-    }).join('')}
-  </div>
-  ${matrixSVG}
-</div>
-<div class="footer">
-  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
-  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
-</div>
-</div>
-<!-- PÁG 5: RESUMEN + KPIs + MADUREZ + BENCHMARK -->
-<div class="no-break">
-<div class="header-bar">
-  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
-  <div class="hb-client">${client.name} · Informe DIOP</div>
-  <div class="hb-page">Página 2 de 4</div>
-</div>
-
-<div class="section no-break">
-  <h2>Resumen ejecutivo</h2>
-  <div class="summary-box"><p>${r.resumen_ejecutivo||'—'}</p></div>
-</div>
-
-${r.ofi_resumen ? `<div class="section no-break">
-  <h2>OFI™ — Operational Friction Index</h2>
-  <div class="grid3">
-    <div class="card"><div class="card-lbl">OFI Score</div><div class="card-val" style="color:#E24B4A;">${r.ofi_resumen.score||'—'}/100</div></div>
-    <div class="card"><div class="card-lbl">Zona</div><div class="card-val" style="color:#BA7517;font-size:10pt;">${r.ofi_resumen.zona||'—'}</div></div>
-    <div class="card"><div class="card-lbl">Capa TTL™</div><div class="card-val" style="color:#00706e;">${r.ofi_resumen.ttl_capa||'—'}</div></div>
-  </div>
-  ${r.ofi_resumen.vector_friccion?`<div style="background:#fef0f0;border-left:3px solid #E24B4A;padding:3mm 4mm;border-radius:0 4px 4px 0;margin-top:3mm;"><div style="font-size:7pt;color:#E24B4A;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin-bottom:1mm;">Vector de fricción</div><div style="font-size:9pt;color:#0f1a2e;">${r.ofi_resumen.vector_friccion}</div></div>`:''}
-  ${r.ofi_resumen.arquetipo?`<div style="font-size:8.5pt;color:#4a7080;margin-top:2mm;"><strong>Arquetipo:</strong> ${r.ofi_resumen.arquetipo}</div>`:''}
-</div>` : ''}
-
-${r.vsm_resumen && r.vsm_resumen.lead_time ? `<div class="section no-break">
-  <h2>Value Stream Map — Análisis de flujo</h2>
-  <div class="grid3">
-    <div class="card"><div class="card-lbl">Lead Time</div><div class="card-val" style="color:#E24B4A;">${r.vsm_resumen.lead_time}</div></div>
-    <div class="card"><div class="card-lbl">Ratio Valor Añadido</div><div class="card-val" style="color:#BA7517;">${r.vsm_resumen.va_ratio}</div></div>
-    <div class="card"><div class="card-lbl">Cuellos de botella</div><div class="card-val" style="color:#00706e;font-size:9pt;">${(r.vsm_resumen.cuellos_botella||[]).join(', ')||'—'}</div></div>
-  </div>
-  ${r.vsm_resumen.impacto_lead_time?`<div style="font-size:8.5pt;color:#4a7080;margin-top:2mm;line-height:1.5;">${r.vsm_resumen.impacto_lead_time}</div>`:''}
-</div>` : ''}
-
-<div class="section no-break">
-  <h2>KPIs identificados</h2>
-  <div class="grid3">
-    <div class="card"><div class="card-lbl">OEE estimado</div><div class="card-val" style="color:#E24B4A;">${kpis.oee_estimado||'—'}</div></div>
-    <div class="card"><div class="card-lbl">Merma estimada</div><div class="card-val" style="color:#BA7517;">${kpis.merma_pct||'—'}</div></div>
-    <div class="card"><div class="card-lbl">Impacto total</div><div class="card-val" style="color:#00706e;">${kpis.impacto_total_estimado||'—'}</div></div>
-  </div>
-</div>
-
-<div class="grid2">
-  <div class="section no-break">
-    <h2>Madurez digital</h2>
-    <div class="mad-row">
-      <div class="mad-score">${mad.puntuacion||'—'}<span style="font-size:10pt;color:#7ab0b8;font-weight:normal;">/10</span></div>
-      <div class="mad-nivel">${mad.nivel||'—'}</div>
-    </div>
-    <div class="mad-bar-bg"><div class="mad-bar-fill"></div></div>
-    <div class="mad-desc">${mad.descripcion||''}</div>
-    <div class="mad-next">Siguiente nivel: ${mad.siguiente_nivel||''}</div>
-  </div>
-
-  <div class="section no-break">
-    <h2>Benchmark sectorial · ${bench.kpi_referencia||''}</h2>
-    <div class="bench-grid">
-      <div class="bench-card bc1"><div class="bench-lbl">Tu empresa</div><div class="bench-val" style="color:#E24B4A;">${bench.valor_cliente||'—'}</div></div>
-      <div class="bench-card bc2"><div class="bench-lbl">Media sector</div><div class="bench-val" style="color:#BA7517;">${bench.valor_sector_medio||'—'}</div></div>
-      <div class="bench-card bc3"><div class="bench-lbl">Top sector</div><div class="bench-val" style="color:#1D9E75;">${bench.valor_sector_top||'—'}</div></div>
-    </div>
-    ${bench.gap_euros?`<div class="bench-gap">Gap vs media del sector: <strong>${bench.gap_euros}</strong></div>`:''}
-  </div>
-</div>
-
-<div class="footer">
-  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
-  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
-</div>
-</div>
-
-<!-- PÁG 3: QUICK WINS + ROI -->
-<div style="margin-top:8mm;" class="no-break">
-<div class="header-bar">
-  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
-  <div class="hb-client">${client.name} · Informe DIOP</div>
-  <div class="hb-page">Página 3 de 4</div>
-</div>
-
-<div class="section no-break">
-  <h2>Quick Wins priorizados por impacto económico</h2>
-  ${qws.map((qw,i)=>`
-  <div class="qw-item qw${i+1}">
-    <div class="qw-num qn${i+1}">${i+1}</div>
-    <div>
-      <div class="qw-title">${qw.titulo||''}</div>
-      <div class="qw-desc">${qw.descripcion||''}</div>
-      <div class="qw-meta" style="color:${['#E24B4A','#BA7517','#1D9E75'][i]}">${qw.impacto_euros||''} · ${qw.plazo_dias||'—'} días</div>
-    </div>
-  </div>`).join('')}
-</div>
-
-<div class="section no-break">
-  <h2>ROI estimado del proyecto</h2>
-  <div class="roi-grid">
-    <div class="roi-card"><div class="roi-lbl">Presupuesto herramienta</div><div class="roi-val">${roi.presupuesto_herramienta||'—'}</div></div>
-    <div class="roi-card"><div class="roi-lbl">Ahorro anual estimado</div><div class="roi-val">${roi.ahorro_estimado_anual||'—'}</div></div>
-    <div class="roi-card"><div class="roi-lbl">Plazo de retorno</div><div class="roi-val">${roi.plazo_retorno_meses||'—'} meses</div></div>
-  </div>
-  <div class="roi-note" style="margin-top:2mm;">${roi.base_calculo||''}</div>
-</div>
-
-<div class="footer">
-  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
-  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
-</div>
-</div>
-
-<!-- PÁG 4: HERRAMIENTAS + SIGUIENTE PASO -->
-<div style="margin-top:8mm;" class="no-break">
-<div class="header-bar">
-  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
-  <div class="hb-client">${client.name} · Informe DIOP</div>
-  <div class="hb-page">Página 4</div>
-</div>
-
-${r.analisis_detallado ? `<div class="section no-break">
-  <h2>Análisis detallado del diagnóstico</h2>
-  <div style="font-size:9pt;color:#0f1a2e;line-height:1.7;white-space:pre-wrap;text-align:justify;">${r.analisis_detallado}</div>
-</div>` : ''}
-
-<div class="footer">
-  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
-  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
-</div>
-</div>
-
-${r.roadmap_narrativo || (r.riesgos_principales && r.riesgos_principales.length) ? `
-<!-- PÁG 5: ROADMAP + RIESGOS -->
-<div style="margin-top:8mm;" class="no-break">
-<div class="header-bar">
-  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
-  <div class="hb-client">${client.name} · Informe DIOP</div>
-  <div class="hb-page">Página 5</div>
-</div>
-
-${r.roadmap_narrativo ? `<div class="section no-break">
-  <h2>Roadmap de implementación por capas TTL™</h2>
-  <div style="font-size:9pt;color:#0f1a2e;line-height:1.7;white-space:pre-wrap;text-align:justify;">${r.roadmap_narrativo}</div>
-</div>` : ''}
-
-${r.riesgos_principales && r.riesgos_principales.length ? `<div class="section no-break">
-  <h2>Riesgos principales identificados</h2>
-  ${r.riesgos_principales.map(rk => {
-    const rkCol = rk.probabilidad==='alta'?'#E24B4A':rk.probabilidad==='media'?'#BA7517':'#1D9E75';
-    return `<div style="padding:3mm 4mm;border-left:3px solid ${rkCol};background:${rkCol}08;border-radius:0 4px 4px 0;margin-bottom:2mm;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1mm;">
-        <div style="font-size:9pt;font-weight:bold;color:#0f1a2e;">${rk.riesgo}</div>
-        <div style="font-size:7pt;padding:1px 6px;border-radius:3px;background:${rkCol}20;color:${rkCol};font-weight:bold;">P: ${rk.probabilidad}</div>
-      </div>
-      <div style="font-size:8pt;color:#4a7080;">Impacto: ${rk.impacto}</div>
-      <div style="font-size:8pt;color:#00706e;margin-top:1mm;">Mitigación: ${rk.mitigacion}</div>
-    </div>`;
-  }).join('')}
-</div>` : ''}
-
-<div class="footer">
-  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
-  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
-</div>
-</div>
-` : ''}
-
-<!-- PÁG 6: HERRAMIENTAS + SIGUIENTE PASO -->
-<div style="margin-top:8mm;" class="no-break">
-<div class="header-bar">
-  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
-  <div class="hb-client">${client.name} · Informe DIOP</div>
-  <div class="hb-page">Página final</div>
-</div>
-
-<div class="section no-break">
-  <h2>Herramientas del mercado recomendadas</h2>
-  <div style="font-size:8pt;color:#7ab0b8;margin-bottom:3mm;">Ajustadas al sector y presupuesto. Primera opción = más económica.</div>
-  ${tools.map(t=>`
-  <div class="tool-item">
-    <div class="tool-top"><div class="tool-name">${t.nombre||''}</div><div class="tool-type">${t.tipo||''}</div></div>
-    <div class="tool-desc">${t.para_que||''}</div>
-    <div class="tool-foot">
-      <div class="tool-price">${t.precio_aproximado||''}</div>
-      ${t.url?`<div class="tool-url">${t.url}</div>`:''}
-    </div>
-  </div>`).join('')}
-</div>
-
-<div class="section no-break">
-  <h2>Siguiente pregunta al CEO</h2>
-  <div class="next-q">
-    <div class="nq-lbl">Pregunta recomendada para la próxima reunión</div>
-    <div class="nq-text">"${r.siguiente_pregunta_ceo||'—'}"</div>
-  </div>
-</div>
-
-<div class="disclaimer no-break">
-  <p>Este informe ha sido elaborado por Tecno-Fab mediante la metodología DIOP (Diagnóstico de Impacto Operativo), incorporando los frameworks propietarios OFI™, TTL™ y RIM™. Los datos y estimaciones están basados en la información recogida durante las sesiones de diagnóstico, observación directa en planta (Gemba Walk), Value Stream Mapping y evaluación de madurez digital y organizacional del equipo de ${client.name}. Las cifras de ROI son estimaciones orientativas basadas en benchmarks del sector industrial y los 3 escenarios (conservador, base, optimista) con su factor de confianza asociado.</p>
-</div>
-
-<div class="footer">
-  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
-  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
-</div>
-</div>
-
-</body>
-</html>`;
-
-  const win = window.open('', '_blank', 'width=900,height=700');
-  win.document.write(html);
-  win.document.close();
-  setTimeout(() => {
-    win.focus();
-    win.print();
-  }, 1000);
+  showToast('Preparando PDF completo...');
+  html2pdf().set(opt).from(shell).save()
+    .catch(err => { console.error(err); showToast('Error exportando PDF'); })
+    .finally(() => { shell.remove(); });
 }
+
 function getProgress(client) {
   const sessions = {};
 
