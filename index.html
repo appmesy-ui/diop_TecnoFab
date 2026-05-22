@@ -3801,6 +3801,30 @@ function m4RiskFromBool(v){
   if(['no','false'].includes(t)) return 'Bajo';
   return '';
 }
+
+function m4ConfidenceFind(labelPart){
+  try{
+    const c=currentClient && confidenceData[currentClient.id];
+    if(!c||!Array.isArray(c.findings))return null;
+    const needle=m4Text(labelPart);
+    return c.findings.find(f=>m4Text(f.label).includes(needle) && f.confidence) || null;
+  }catch(e){return null;}
+}
+function m4ConfidenceSource(f){return f?`Confidence Layer · ${f.module} · ${f.label} (${f.confidence})`:'';}
+function m4RiskLevelFromConfidence(f){
+  if(!f)return '';
+  // For risk-mode factors: stronger confidence in a risk signal = higher risk.
+  return f.confidence==='Confirmado'?'Alto':f.confidence==='Hipótesis fuerte'?'Medio':f.confidence==='Investigación requerida'?'Medio':'';
+}
+function m4PositiveLevelFromConfidence(f){
+  if(!f)return '';
+  // For positive factors: a confirmed risk signal indicates lower readiness.
+  return f.confidence==='Confirmado'?'Bajo':f.confidence==='Hipótesis fuerte'?'Medio':f.confidence==='Investigación requerida'?'Medio':'';
+}
+function m4SafeFieldIntelligence(){
+  try{return (typeof buildFieldIntelligence==='function') ? buildFieldIntelligence() : {discrepancias:[],fricciones:[],dataTrust:[],dependencias:[],adopcion:[]};}
+  catch(e){return {discrepancias:[],fricciones:[],dataTrust:[],dependencias:[],adopcion:[]};}
+}
 function m4InferFactor(key, mode, explicit, dims, gov){
   if(explicit) return {value:explicit, source:'M4 input'};
   const a=(s,q)=>m4Answer(s,q);
@@ -3900,6 +3924,81 @@ function m4InferFactor(key, mode, explicit, dims, gov){
     if(v.length){const avg=v.reduce((a,b)=>a+b,0)/v.length;return {value:m4DimToLevel(Math.round(avg)), source:'M4 absorción + colaboración'};}
     if(contains(untrusted,['no conf','desconf'])) return {value:'Medio', source:'IT/OT desconfianza en datos'};
   }
+  // FIELD INTELLIGENCE + CONFIDENCE FALLBACK
+  // If M4 has not been manually scored yet, infer an initial readiness signal from the intelligence already captured.
+  const fi=m4SafeFieldIntelligence();
+  const cRisk=m4ConfidenceFind('riesgo organizacional');
+  const cArch=m4ConfidenceFind('arquetipo');
+  const cDigital=m4ConfidenceFind('brecha digital');
+  const cConstraint=m4ConfidenceFind('constraint');
+  const cLoss=m4ConfidenceFind('pérdida operativa');
+  const cKpi=m4ConfidenceFind('kpi baseline');
+  const hasSignals=(arr)=>Array.isArray(arr)&&arr.length>0;
+
+  if(key==='key_people'){
+    if(hasSignals(fi.dependencias)) return {value:'Alto', source:'Field Intelligence · dependencias humanas'};
+    const v=m4RiskLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
+  }
+  if(key==='info_search'){
+    if(hasSignals(fi.fricciones)) return {value:'Alto', source:'Field Intelligence · fricciones invisibles'};
+    if(hasSignals(fi.dataTrust)) return {value:'Medio', source:'Field Intelligence · Data Trust Profile'};
+    const v=m4RiskLevelFromConfidence(cDigital); if(v) return {value:v, source:m4ConfidenceSource(cDigital)};
+  }
+  if(key==='troubleshooting'){
+    if(hasSignals(fi.dependencias)) return {value:'Medio', source:'Field Intelligence · dependencia de conocimiento experto'};
+    const v=m4RiskLevelFromConfidence(cArch); if(v) return {value:v, source:m4ConfidenceSource(cArch)};
+  }
+  if(key==='coordination'){
+    if(hasSignals(fi.discrepancias)) return {value:'Alto', source:'Field Intelligence · discrepancias entre perfiles'};
+    const v=m4RiskLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
+  }
+  if(key==='reactive_planning'){
+    if(hasSignals(fi.discrepancias)) return {value:'Medio', source:'Field Intelligence · señales cruzadas de campo'};
+    const v=m4RiskLevelFromConfidence(cConstraint)||m4RiskLevelFromConfidence(cLoss); if(v) return {value:v, source:m4ConfidenceSource(cConstraint||cLoss)};
+  }
+
+  if(key==='kpi_ownership'){
+    if(hasSignals(fi.dataTrust)) return {value:'Bajo', source:'Field Intelligence · datos no confiables / ownership débil'};
+    const v=m4PositiveLevelFromConfidence(cKpi); if(v) return {value:v, source:m4ConfidenceSource(cKpi)};
+  }
+  if(key==='routines'){
+    if(hasSignals(fi.fricciones)) return {value:'Medio', source:'Field Intelligence · fricciones no absorbidas por rutinas'};
+    const v=m4PositiveLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
+  }
+  if(key==='action_followup'){
+    if(hasSignals(fi.adopcion)) return {value:'Medio', source:'Field Intelligence · adopción / proyectos previos'};
+    const v=m4PositiveLevelFromConfidence(cArch); if(v) return {value:v, source:m4ConfidenceSource(cArch)};
+  }
+  if(key==='escalation'){
+    if(hasSignals(fi.discrepancias)) return {value:'Bajo', source:'Field Intelligence · discrepancias entre niveles'};
+    const v=m4PositiveLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
+  }
+  if(key==='continuous_improvement'){
+    if(hasSignals(fi.adopcion)) return {value:'Medio', source:'Field Intelligence · historial de adopción/resistencia'};
+    const v=m4PositiveLevelFromConfidence(cArch); if(v) return {value:v, source:m4ConfidenceSource(cArch)};
+  }
+
+  if(key==='sponsor'){
+    if(hasSignals(fi.adopcion) && fi.adopcion.some(x=>m4Text(x.signal).includes('sponsor')||m4Text(x.signal).includes('liderazgo'))) return {value:'Bajo', source:'Field Intelligence · liderazgo/sponsor'};
+    const v=m4PositiveLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
+  }
+  if(key==='execution_capacity'){
+    if(hasSignals(fi.adopcion)) return {value:'Medio', source:'Field Intelligence · historial de ejecución/adopción'};
+    const v=m4PositiveLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
+  }
+  if(key==='team_time'){
+    if(hasSignals(fi.fricciones)) return {value:'Medio', source:'Field Intelligence · carga invisible / fricción operativa'};
+    const v=m4PositiveLevelFromConfidence(cLoss); if(v) return {value:v, source:m4ConfidenceSource(cLoss)};
+  }
+  if(key==='skills'){
+    const v=m4PositiveLevelFromConfidence(cDigital); if(v) return {value:v, source:m4ConfidenceSource(cDigital)};
+    if(hasSignals(fi.fricciones) && fi.fricciones.some(x=>m4Text(x.signal).includes('sistema evitado'))) return {value:'Bajo', source:'Field Intelligence · sistema evitado'};
+  }
+  if(key==='change_openness'){
+    if(hasSignals(fi.adopcion)) return {value:'Medio', source:'Field Intelligence · adopción/resistencia'};
+    const v=m4PositiveLevelFromConfidence(cArch); if(v) return {value:v, source:m4ConfidenceSource(cArch)};
+  }
+
   return {value:'', source:''};
 }
 
