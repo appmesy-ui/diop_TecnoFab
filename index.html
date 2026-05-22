@@ -1845,6 +1845,9 @@ if (procesosSeleccionados) {
   // Add OFI summary
   ctx += getOFIReportContext();
 
+  // Add Field Intelligence
+  ctx += getFieldIntelligenceReportContext();
+
   const prompt = `Eres un consultor senior de Tecno-Fab, consultora de digitalización industrial IT/OT y eficiencia operacional. Especializados en pymes industriales de 50-500 empleados.
 
 Has completado un diagnóstico DIOP completo. Aquí están TODOS los datos recogidos:
@@ -2095,130 +2098,134 @@ Devuelve SOLO el JSON, sin texto adicional.`;
   }
 }
 
+// ── FIELD INTELLIGENCE™ ENGINE ──
+// Extracts cross-module signals that raw data doesn't surface. No new capture needed.
+function buildFieldIntelligence(){
+  if(!currentClient) return {discrepancias:[],fricciones:[],dataTrust:[],dependencias:[],adopcion:[]};
+  const a=(s,q)=>allAnswers[`${currentClient.id}_${s}_${q}`]||'';
+  const m2=m2extData[currentClient.id]||{};
+  const m3=m3extData[currentClient.id]||{};
+  const m4raw=m4Data[currentClient.id]||{};
+  const m8raw=m8Data[currentClient.id]||{};
 
-
-// ─────────────────────────────────────────────
-// ── REPORT V2 UPGRADE · FLOW & BOTTLENECK ANALYSIS™ ──
-// Exporta al informe/PDF el VSM real capturado en M2.
-// ─────────────────────────────────────────────
-function reportEsc(v){
-  return String(v ?? '—')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-function getFlowMetricsForReport(){
-  const vsm = getVSM ? getVSM() : defaultVSM();
-  const procs = (vsm.processes || []).filter(p => p && (p.name || p.ct_value || p.uptime || p.co));
-  const takt = calcTaktTime(vsm);
-  let totalVA = 0;
-  procs.forEach(p => { const ct = normalizeCT(p); if(ct) totalVA += ct; });
-  let totalNVA = 0;
-  const mpDays = parseFloat(vsm.inventories?.mp);
-  if(mpDays) totalNVA += mpDays * 24 * 3600;
-  for(let i=0;i<procs.length-1;i++){
-    const key = `${i}_${i+1}`;
-    const wip = parseFloat(vsm.inventories?.between?.[key]);
-    const nextCT = normalizeCT(procs[i+1]);
-    if(wip && nextCT) totalNVA += wip * nextCT;
+  // ── 1. DISCREPANCIAS ENTRE PERFILES ──
+  const disc=[];
+  // CEO problem_cost vs calculated impact
+  const ceoCost=a('ceo','problem_cost');
+  const impact=a('fab','downtime_hours_week');
+  if(ceoCost&&ceoCost.includes('No lo sabemos')&&impact&&!impact.includes('No lo saben'))
+    disc.push({signal:'El CEO no cuantifica el coste del problema pero la planta registra '+impact+' de paradas/semana.',profiles:'CEO vs Fábrica',severity:'alta'});
+  // CEO says no recall but fab scrap high
+  const hasRecall=a('ceo','has_recall');
+  const scrapPct=a('fab','scrap_pct');
+  if(hasRecall==='No'&&scrapPct&&(scrapPct.includes('5% - 10')||scrapPct.includes('10% - 20')||scrapPct.includes('más del 20')))
+    disc.push({signal:'CEO dice sin recalls, pero la merma reportada es '+scrapPct+'. Posible falta de visibilidad de calidad a nivel directivo.',profiles:'CEO vs Fábrica',severity:'alta'});
+  // Dir.Ops info flow vs operario reality
+  const opsFlow=a('ops','info_flow_to_desk');
+  const opHandover=a('operario','shift_handover_reality');
+  if(opsFlow&&opHandover){
+    if((opsFlow.includes('tiempo real')||opsFlow.includes('pantalla'))&&(opHandover.toLowerCase().includes('nadie')||opHandover.toLowerCase().includes('no me enter')))
+      disc.push({signal:'Dir.Ops cree tener info en tiempo real, pero el operario dice que no hay comunicación formal entre turnos.',profiles:'Dir.Ops vs Operario',severity:'alta'});
   }
-  const ptUnits = parseFloat(vsm.inventories?.pt);
-  const demandDay = parseFloat(vsm.demand?.units_per_day);
-  if(ptUnits && demandDay) totalNVA += (ptUnits / demandDay) * 24 * 3600;
-  const leadTime = totalVA + totalNVA;
-  const vaRatio = leadTime > 0 ? (totalVA / leadTime) * 100 : 0;
-  const rows = procs.map((p, idx) => {
-    const ct = normalizeCT(p);
-    const eff = effectiveCT(p);
-    const isBN = Boolean(takt && eff && eff > takt);
-    return {
-      idx, name:p.name || `Proceso ${idx+1}`, ct, eff, isBN,
-      co: parseFloat(p.co) || 0,
-      uptime: parseFloat(p.uptime) || 0,
-      operators: p.operators || '—'
-    };
-  });
-  const bottlenecks = rows.filter(r => r.isBN).sort((a,b)=>(b.eff||0)-(a.eff||0));
-  const maxEff = Math.max(...rows.map(r=>r.eff||0), takt||0, 1);
-  return {vsm, procs, rows, takt, totalVA, totalNVA, leadTime, vaRatio, bottlenecks, maxEff};
-}
-function buildFlowBottleneckBlock(pdf=false){
-  const m = getFlowMetricsForReport();
-  if(!m.rows.length) return '';
-  const c = {
-    bg: pdf ? '#f7fafa' : 'var(--s2)',
-    bg2: pdf ? '#eef8f9' : 'rgba(255,255,255,0.025)',
-    border: pdf ? '#daedef' : 'var(--border)',
-    text: pdf ? '#0f1a2e' : 'var(--text)',
-    text2: pdf ? '#4a7080' : 'var(--text2)',
-    text3: pdf ? '#7ab0b8' : 'var(--text3)',
-    teal: pdf ? '#007c82' : 'var(--teal)',
-    tealLight: pdf ? '#007c82' : 'var(--teal-l)',
-    green: '#1D9E75', amber: '#BA7517', red: '#E24B4A'
-  };
-  const fmt = (s) => (s==null || isNaN(s)) ? '—' : (s < 10 ? s.toFixed(1) : s.toFixed(0)) + 's';
-  const takt = m.takt;
-  const linePct = takt ? Math.min(100, Math.max(0, (takt / (m.maxEff * 1.12)) * 100)) : 0;
-  const supplier = reportEsc(m.vsm.supplier?.name || 'Proveedor');
-  const customer = reportEsc(m.vsm.client_info?.name || 'Cliente');
-  const flow = m.rows.map((r,i)=>`<div style="display:inline-flex;align-items:center;gap:8px;margin-right:8px;margin-bottom:8px;">
-    <div style="min-width:112px;padding:10px 12px;border-radius:12px;background:${r.isBN ? (pdf?'#fff0f0':'rgba(226,75,74,.10)') : c.bg2};border:1px solid ${r.isBN?c.red:c.border};text-align:center;">
-      <div style="font-size:${pdf?'8pt':'12px'};font-weight:800;color:${r.isBN?c.red:c.text};line-height:1.2;">${reportEsc(r.name)}${r.isBN?' ⚠':''}</div>
-      <div style="font-size:${pdf?'7pt':'10px'};color:${c.text3};margin-top:4px;font-family:${pdf?'Arial':'var(--mono)'};">C/T eff ${fmt(r.eff)} · Up ${r.uptime||'—'}%</div>
-    </div>${i<m.rows.length-1?`<span style="color:${c.teal};font-size:${pdf?'9pt':'14px'};">→</span>`:''}
-  </div>`).join('');
-  const barRows = m.rows.map(r => {
-    const pct = Math.min(100, ((r.eff || 0) / (m.maxEff * 1.12)) * 100);
-    const col = r.isBN ? c.red : (takt && r.eff && r.eff > takt*0.85 ? c.amber : c.green);
-    return `<div style="display:grid;grid-template-columns:${pdf?'30mm':'138px'} 1fr ${pdf?'18mm':'58px'};gap:10px;align-items:center;margin-bottom:${pdf?'2.2mm':'9px'};">
-      <div style="font-size:${pdf?'8pt':'12px'};color:${r.isBN?c.red:c.text2};font-weight:${r.isBN?'800':'650'};text-align:right;">${reportEsc(r.name)}</div>
-      <div style="height:${pdf?'6mm':'27px'};background:${pdf?'#e8f0f2':'#07101c'};border-radius:8px;position:relative;overflow:hidden;border:0.5px solid ${c.border};">
-        ${takt?`<div style="position:absolute;left:${linePct}%;top:0;bottom:0;width:2px;background:${c.red};opacity:.75;z-index:2;"></div>`:''}
-        <div style="height:100%;width:${pct}%;background:${col};border-radius:8px;"></div>
-      </div>
-      <div style="font-size:${pdf?'8pt':'12px'};color:${col};font-family:${pdf?'Arial':'var(--mono)'};font-weight:700;">${fmt(r.eff)}</div>
-    </div>`;
-  }).join('');
-  const tableRows = m.rows.map(r => `<tr style="background:${r.isBN?(pdf?'#fff0f0':'rgba(226,75,74,.08)'):'transparent'};">
-    <td style="padding:${pdf?'1.8mm':'8px'};font-weight:800;color:${r.isBN?c.red:c.text};">${reportEsc(r.name)}${r.isBN?' ⚠':''}</td>
-    <td style="padding:${pdf?'1.8mm':'8px'};text-align:right;color:${c.text2};">${fmt(r.ct)}</td>
-    <td style="padding:${pdf?'1.8mm':'8px'};text-align:right;color:${r.isBN?c.red:c.tealLight};font-weight:800;">${fmt(r.eff)}</td>
-    <td style="padding:${pdf?'1.8mm':'8px'};text-align:right;color:${r.co>0?c.amber:c.text3};">${r.co?`${r.co}min`:'—'}</td>
-    <td style="padding:${pdf?'1.8mm':'8px'};text-align:right;color:${r.uptime && r.uptime<85?c.red:c.text2};">${r.uptime?`${r.uptime}%`:'—'}</td>
-    <td style="padding:${pdf?'1.8mm':'8px'};text-align:right;color:${c.text2};">${reportEsc(r.operators)}</td>
-  </tr>`).join('');
-  const bn = m.bottlenecks[0];
-  const insight = bn
-    ? `El constraint principal se concentra en ${reportEsc(bn.name)}, con un C/T efectivo de ${fmt(bn.eff)} frente a un takt de ${takt?fmt(takt):'—'}. Esta brecha indica riesgo directo de pérdida de capacidad y debe tratarse como prioridad operacional.`
-    : `No se detecta un proceso cuyo C/T efectivo supere el takt con los datos actuales. La prioridad pasa a validar estabilidad, WIP y pérdidas de disponibilidad.`;
-  const shellPad = pdf ? '4mm' : '14px';
-  return `<div class="diop-section ${pdf?'no-break':''}" style="page-break-inside:avoid;">
-    ${pdf?'<h2>Flow & Bottleneck Analysis™</h2>':'<div class="diop-section-title"><h3>03 · Flow & Bottleneck Analysis™</h3></div>'}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:${pdf?'3mm':'10px'};margin-bottom:${pdf?'4mm':'12px'};">
-      <div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:${shellPad};"><div style="font-size:${pdf?'7pt':'9px'};color:${c.text3};text-transform:uppercase;letter-spacing:.08em;">Takt Time</div><div style="font-size:${pdf?'13pt':'22px'};font-weight:800;color:${c.tealLight};">${takt?fmt(takt):'—'}</div></div>
-      <div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:${shellPad};"><div style="font-size:${pdf?'7pt':'9px'};color:${c.text3};text-transform:uppercase;letter-spacing:.08em;">Lead Time</div><div style="font-size:${pdf?'13pt':'22px'};font-weight:800;color:${m.leadTime?c.amber:c.text3};">${m.leadTime?formatTime(m.leadTime):'—'}</div></div>
-      <div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:${shellPad};"><div style="font-size:${pdf?'7pt':'9px'};color:${c.text3};text-transform:uppercase;letter-spacing:.08em;">VA Ratio</div><div style="font-size:${pdf?'13pt':'22px'};font-weight:800;color:${m.vaRatio?c.green:c.text3};">${m.leadTime?m.vaRatio.toFixed(4)+'%':'—'}</div></div>
-      <div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:${shellPad};"><div style="font-size:${pdf?'7pt':'9px'};color:${c.text3};text-transform:uppercase;letter-spacing:.08em;">Bottlenecks</div><div style="font-size:${pdf?'13pt':'22px'};font-weight:800;color:${m.bottlenecks.length?c.red:c.green};">${m.bottlenecks.length}</div></div>
-    </div>
-    <div style="background:${c.bg};border:1px solid ${c.border};border-radius:12px;padding:${shellPad};margin-bottom:${pdf?'4mm':'12px'};overflow:${pdf?'visible':'auto'};">
-      <div style="font-size:${pdf?'8pt':'12px'};font-weight:800;color:${c.text};margin-bottom:${pdf?'2mm':'10px'};">Flujo de valor — ${supplier} → ${customer}</div>
-      <div style="white-space:${pdf?'normal':'nowrap'};">${flow}</div>
-    </div>
-    <div style="background:${c.bg};border:1px solid ${c.border};border-radius:12px;padding:${shellPad};margin-bottom:${pdf?'4mm':'12px'};">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:${pdf?'3mm':'10px'};">
-        <div><div style="font-size:${pdf?'8pt':'13px'};font-weight:800;color:${c.text};">C/T efectivo vs Takt Time</div><div style="font-size:${pdf?'7pt':'11px'};color:${c.text3};">Cualquier barra que supere la línea roja es cuello de botella.</div></div>
-        ${takt?`<div style="font-size:${pdf?'7pt':'10px'};color:${c.red};font-weight:700;">Takt ${fmt(takt)}</div>`:''}
-      </div>
-      ${barRows}
-    </div>
-    <div style="background:${c.bg};border:1px solid ${c.border};border-radius:12px;padding:${shellPad};margin-bottom:${pdf?'4mm':'12px'};">
-      <div style="font-size:${pdf?'8pt':'13px'};font-weight:800;color:${c.text};margin-bottom:${pdf?'2mm':'10px'};">Detalle por proceso</div>
-      <table style="width:100%;border-collapse:collapse;font-size:${pdf?'7.5pt':'12px'};">
-        <thead><tr style="border-bottom:1px solid ${c.border};color:${c.text3};"><th style="text-align:left;padding:${pdf?'1.8mm':'8px'};">Proceso</th><th style="text-align:right;padding:${pdf?'1.8mm':'8px'};">C/T</th><th style="text-align:right;padding:${pdf?'1.8mm':'8px'};">C/T eff</th><th style="text-align:right;padding:${pdf?'1.8mm':'8px'};">C/O</th><th style="text-align:right;padding:${pdf?'1.8mm':'8px'};">Uptime</th><th style="text-align:right;padding:${pdf?'1.8mm':'8px'};">Op</th></tr></thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </div>
-    <div style="background:${pdf?'#f0f9fa':'rgba(0,173,181,.055)'};border-left:3px solid ${m.bottlenecks.length?c.red:c.teal};padding:${shellPad};border-radius:0 10px 10px 0;font-size:${pdf?'8.5pt':'12.5px'};color:${c.text2};line-height:1.55;"><strong style="color:${c.text};">Constraint Insight™</strong><br>${insight}</div>
-  </div>`;
+  // OEE perception gap
+  const oeeOfficial=a('sys','oee_current');
+  const oeeKPI=(m2.kpiBaseline||[]).find(k=>k.id==='oee_global');
+  if(oeeOfficial&&oeeKPI&&oeeKPI.value){
+    const official=parseInt(oeeOfficial);const real=parseInt(oeeKPI.value);
+    if(!isNaN(official)&&!isNaN(real)&&Math.abs(official-real)>10)
+      disc.push({signal:`OEE declarado en sesión (${oeeOfficial}) difiere ${Math.abs(official-real)} puntos del baseline medido (${oeeKPI.value}%). Obs: ${oeeKPI.obs||'?'}.`,profiles:'Sistemas vs M2 Baseline',severity:'media'});
+  }
+  // CEO change expectation vs M4 readiness
+  const timeline=a('ceo','timeline_expectation');
+  const absorption=parseInt(m4raw.dimensions?.absorption)||0;
+  if(timeline&&timeline.includes('1-2 meses')&&absorption>0&&absorption<=2)
+    disc.push({signal:'CEO espera resultados en 1-2 meses pero la capacidad de absorción organizacional es '+absorption+'/5. Riesgo de frustración.',profiles:'CEO vs M4 Readiness',severity:'alta'});
+  // What each profile would change tomorrow
+  const opsChange=a('ops','one_thing_change');
+  const opHardest=a('operario','hardest_daily');
+  if(opsChange&&opHardest&&opsChange.length>5&&opHardest.length>5)
+    disc.push({signal:`Quick Win real — Dir.Ops cambiaría: "${opsChange.substring(0,80)}..." · Operario sufre: "${opHardest.substring(0,80)}..."`,profiles:'Dir.Ops + Operario',severity:'insight'});
+
+  // ── 2. FRICCIONES INVISIBLES ──
+  const fric=[];
+  // Manual transfers from M3ext dataflow
+  if(m3.dataflow){
+    const flows=[{k:'planta_scada',l:'Planta→SCADA'},{k:'scada_erp',l:'SCADA→ERP'},{k:'scada_historian',l:'SCADA→Historian'},{k:'erp_bi',l:'ERP→BI'},{k:'calidad_erp',l:'Calidad→ERP'},{k:'maint_erp',l:'Maint→ERP'},{k:'planning_prod',l:'Plan→Producción'}];
+    const manual=flows.filter(f=>m3.dataflow[f.k]==='Manual');
+    const noExist=flows.filter(f=>m3.dataflow[f.k]==='No existe');
+    if(manual.length) fric.push({signal:`${manual.length} transferencia${manual.length>1?'s':''} manual${manual.length>1?'es':''}: ${manual.map(f=>f.l).join(', ')}. Cada una es una ruptura de observabilidad.`,type:'transfer',count:manual.length});
+    if(noExist.length) fric.push({signal:`${noExist.length} flujo${noExist.length>1?'s':''} de datos inexistente${noExist.length>1?'s':''}: ${noExist.map(f=>f.l).join(', ')}. Puntos ciegos totales.`,type:'gap',count:noExist.length});
+  }
+  // Avoided systems
+  const digUse=a('operario','digital_usage');
+  if(digUse&&(digUse.toLowerCase().includes('evit')||digUse.toLowerCase().includes('no uso')||digUse.toLowerCase().includes('no se usa')))
+    fric.push({signal:`Sistema evitado por operarios: "${digUse.substring(0,100)}". El motivo real indica fricción de adopción.`,type:'avoided',count:1});
+  // Systems with <50% use
+  if(m3.systems){
+    const lowUse=m3.systems.filter(s=>s.name&&s.use_pct&&parseInt(s.use_pct)<50);
+    lowUse.forEach(s=>fric.push({signal:`${s.type} (${s.name}) con uso real ${s.use_pct}%. Inversión existente infrautilizada.`,type:'underused',count:1}));
+  }
+  // Shift handover method
+  const handover=a('fab','shift_handover');
+  if(handover&&(handover.includes('Verbal')||handover.includes('WhatsApp')))
+    fric.push({signal:`Traspaso de turno por ${handover.toLowerCase()}. Pérdida de información estructural entre turnos.`,type:'handover',count:1});
+
+  // ── 3. DATA TRUST PROFILE ──
+  const dtrust=[];
+  if(m2.kpiBaseline){
+    const kpis=m2.kpiBaseline;
+    const byObs={A:[],B:[],C:[],D:[]};
+    kpis.forEach(k=>{if(k.obs&&byObs[k.obs])byObs[k.obs].push(k.name);});
+    const total=kpis.filter(k=>k.obs).length;
+    if(total>0){
+      dtrust.push({signal:`Perfil: ${byObs.A.length} KPIs nivel A (fiable), ${byObs.B.length} nivel B, ${byObs.C.length} nivel C (manual), ${byObs.D.length} nivel D (inexistente).`,type:'profile',aCount:byObs.A.length,dCount:byObs.D.length,total});
+      if(byObs.D.length>0)dtrust.push({signal:`KPIs sin dato (nivel D): ${byObs.D.join(', ')}. Estos son puntos ciegos operativos.`,type:'blind_spots',names:byObs.D});
+      if(byObs.C.length>0)dtrust.push({signal:`KPIs con dato manual/inconsistente (nivel C): ${byObs.C.join(', ')}. Decisiones basadas en estos datos tienen riesgo.`,type:'manual',names:byObs.C});
+    }
+  }
+  // Untrusted data from IT/OT
+  const untrusted=a('itot','untrusted_data');
+  if(untrusted&&untrusted.length>8)
+    dtrust.push({signal:`IT/OT declara dato no confiable: "${untrusted.substring(0,120)}".`,type:'declared'});
+
+  // ── 4. DEPENDENCIAS HUMANAS ──
+  const dep=[];
+  const keyPerson=a('fab','key_person_dependency');
+  if(keyPerson==='Sí')dep.push({signal:'Dependencia de personas clave confirmada en sesión Fábrica.',source:'M2',severity:'alta'});
+  const singleDep=a('ops','single_person_dependency');
+  if(singleDep&&singleDep.length>5)dep.push({signal:`Dir.Ops identifica proceso dependiente de una persona: "${singleDep.substring(0,100)}".`,source:'M1',severity:'alta'});
+  const onboarding=a('fab','onboarding_weeks');
+  const rotation=a('fab','new_operators_year');
+  if(onboarding&&rotation&&parseInt(rotation)>0)
+    dep.push({signal:`${rotation} operarios nuevos/año con onboarding de ${onboarding}. Coste de rotación y riesgo de calidad durante curva de aprendizaje.`,source:'M2',severity:'media'});
+  // M4 Human Capability
+  const hc=m4raw.human||{};
+  if(hc.key_people==='Alto')dep.push({signal:'Human Capability™ marca dependencia de personas clave como ALTA.',source:'M4',severity:'alta'});
+  if(hc.troubleshooting==='Alto')dep.push({signal:'Troubleshooting depende de experiencia personal, no de procedimientos (ALTO).',source:'M4',severity:'media'});
+
+  // ── 5. SEÑALES DE ADOPCIÓN / RESISTENCIA ──
+  const adopt=[];
+  const lastImprovement=a('ops','last_improvement_success');
+  if(lastImprovement&&lastImprovement.length>5)
+    adopt.push({signal:`Historial proyectos: "${lastImprovement.substring(0,120)}".`,type:'history'});
+  const legacyPractices=a('operario','legacy_practices');
+  if(legacyPractices&&legacyPractices.length>5)
+    adopt.push({signal:`Prácticas heredadas sin justificación: "${legacyPractices.substring(0,120)}".`,type:'legacy'});
+  // M4 Execution
+  const ex=m4raw.execution||{};
+  if(ex.change_openness==='Bajo')adopt.push({signal:'Apertura al cambio clasificada como BAJA en M4.',type:'resistance'});
+  if(ex.sponsor==='Bajo')adopt.push({signal:'Sponsor/liderazgo clasificado como BAJO. Sin impulso visible de la dirección.',type:'leadership'});
+  // Track record from M4
+  const trackRecord=parseInt(m4raw.dimensions?.track_record)||0;
+  if(trackRecord>0&&trackRecord<=2)adopt.push({signal:`Track record de proyectos anteriores: ${trackRecord}/5. Historial de fracasos que condiciona futuras iniciativas.`,type:'track_record'});
+  // Confidence findings marked as "Investigación requerida"
+  const confData=confidenceData[currentClient.id];
+  if(confData&&confData.findings){
+    const research=confData.findings.filter(f=>f.confidence==='Investigación requerida'&&f.finding);
+    if(research.length)adopt.push({signal:`${research.length} hallazgo${research.length>1?'s':''} marcado${research.length>1?'s':''} como "Investigación requerida": ${research.map(f=>f.finding.substring(0,50)).join('; ')}. No asumir como hechos.`,type:'confidence_gap'});
+  }
+
+  return {discrepancias:disc,fricciones:fric,dataTrust:dtrust,dependencias:dep,adopcion:adopt};
 }
 
 function renderReport(r, reportsHistoryHtml = '') {
@@ -2248,11 +2255,12 @@ function renderReport(r, reportsHistoryHtml = '') {
   const procesos = r.procesos || [];
 
   const m4 = currentClient && m4Data[currentClient.id] ? m4Data[currentClient.id] : null;
-  const m4Engine = calcM4ReadinessEngine(m4);
   const m8 = currentClient && m8Data[currentClient.id] ? m8Data[currentClient.id] : null;
   const m6 = currentClient && m6Data[currentClient.id] ? m6Data[currentClient.id] : null;
   const conf = currentClient && confidenceData[currentClient.id] ? confidenceData[currentClient.id] : null;
   const econ = calcPortfolioEconomics(m6?.backlog || []);
+  const fi = buildFieldIntelligence();
+  const fiTotal = fi.discrepancias.length + fi.fricciones.length + fi.dataTrust.length + fi.dependencias.length + fi.adopcion.length;
 
   const urgency = (r.urgencia || '').toLowerCase();
   const urgColor = urgency === 'alta' ? 'var(--red)' : urgency === 'media' ? 'var(--amber)' : 'var(--green)';
@@ -2271,29 +2279,29 @@ function renderReport(r, reportsHistoryHtml = '') {
     </div>` : `<div class="diop-muted">Sin hallazgos con confidence tag todavía.</div>`;
 
   const humanKeys = [
-    ['key_people','Dependencia personas clave'],
-    ['info_search','Búsqueda manual información'],
-    ['troubleshooting','Troubleshooting experto'],
-    ['coordination','Coordinación / silos'],
-    ['reactive_planning','Planificación reactiva']
+    ['human','key_people','Dependencia personas clave'],
+    ['human','info_search','Búsqueda manual información'],
+    ['human','troubleshooting','Troubleshooting experto'],
+    ['human','coordination','Coordinación / silos'],
+    ['human','reactive_planning','Planificación reactiva']
   ];
   const osKeys = [
-    ['kpi_ownership','Ownership KPI'],
-    ['routines','Rutinas operativas'],
-    ['action_followup','Seguimiento acciones'],
-    ['escalation','Escalado problemas'],
-    ['continuous_improvement','Mejora continua']
+    ['operating','kpi_ownership','Ownership KPI'],
+    ['operating','routines','Rutinas operativas'],
+    ['operating','action_followup','Seguimiento acciones'],
+    ['operating','escalation','Escalado problemas'],
+    ['operating','continuous_improvement','Mejora continua']
   ];
   const exKeys = [
-    ['sponsor','Sponsor visible'],
-    ['execution_capacity','Capacidad ejecución'],
-    ['team_time','Disponibilidad equipo'],
-    ['skills','Skills'],
-    ['change_openness','Apertura cambio']
+    ['execution','sponsor','Sponsor visible'],
+    ['execution','execution_capacity','Capacidad ejecución'],
+    ['execution','team_time','Disponibilidad equipo'],
+    ['execution','skills','Skills'],
+    ['execution','change_openness','Apertura cambio']
   ];
   const levelColor = (v) => v === 'Alto' ? 'var(--green)' : v === 'Medio' ? 'var(--amber)' : v === 'Bajo' ? 'var(--red)' : 'var(--text3)';
-  const renderSignalList = (keys) => `<div class="diop-signal-list">${keys.map(([k,l]) => {
-    const v = m4?.[k] || '—';
+  const renderSignalList = (keys) => `<div class="diop-signal-list">${keys.map(([section,k,l]) => {
+    const v = m4?.[section]?.[k] || '—';
     return `<div class="diop-signal"><span>${l}</span>${chip(v, levelColor(v))}</div>`;
   }).join('')}</div>`;
 
@@ -2316,28 +2324,6 @@ function renderReport(r, reportsHistoryHtml = '') {
     const hours = items.reduce((a,p)=>a+(Number(p.horas_mes)||0),0);
     return `<div class="diop-opp-pill" style="border-color:${cfg.color}55;background:${cfg.color}10;"><strong style="color:${cfg.color};">${items.length}</strong><span style="color:${cfg.color};">${cfg.label}</span><small>${hours ? '~'+hours+'h/mes' : '—'}</small></div>`;
   }).join('');
-  const flowBottleneckBlock = buildFlowBottleneckBlock(false);
-
-  // ── Executive Cockpit + Economic Story™ ──
-  const confConfirmedPct = confTotal ? Math.round(confCount('Confirmado') / confTotal * 100) : 0;
-  const confHypPct = confTotal ? Math.round(confCount('Hipótesis fuerte') / confTotal * 100) : 0;
-  const confReqPct = confTotal ? Math.round(confCount('Investigación requerida') / confTotal * 100) : 0;
-  const confidenceHeadline = confTotal ? `${confConfirmedPct}% confirmado` : 'Sin confidence';
-  const confidenceHeadlineColor = !confTotal ? 'var(--text3)' : confConfirmedPct >= 70 ? 'var(--green)' : confConfirmedPct >= 40 ? 'var(--amber)' : 'var(--red)';
-  const frictionVector = ofi.vector_friccion || ofi.vector || ofi.dimension_dominante || '—';
-  const cockpitHeadline = (r.resumen_ejecutivo || '').split(/[.!?]\s/).filter(Boolean)[0] || 'Diagnóstico ejecutivo pendiente de generación.';
-  const portfolioConfidence = econ.confidenceBand || (econ.avgConf ? `${econ.avgConf}/5` : '—');
-  const portfolioConfidenceColor = econ.avgConf >= 3.7 ? 'var(--green)' : econ.avgConf >= 2.5 ? 'var(--amber)' : econ.avgConf > 0 ? 'var(--red)' : 'var(--text3)';
-  const economicBaselineText = [
-    m8?.downtime_hours ? `Paros: ${m8.downtime_hours}` : '',
-    m8?.line_cost ? `Coste línea: ${m8.line_cost}` : '',
-    m8?.scrap_rework ? `Scrap/retrabajo: ${m8.scrap_rework}` : '',
-    m8?.urgencies ? `Urgencias: ${m8.urgencies}` : ''
-  ].filter(Boolean).join(' · ') || 'Baseline económico pendiente o incompleto';
-  const economicStoryText = econ.totalBase
-    ? `El portfolio priorizado combina inversión estimada de ${money(econ.totalInv)} con un BNA base de ${money(econ.totalBase)} al año. En escenario conservador, el BNA estimado es ${money(econ.totalLow)}; en escenario optimista, ${money(econ.totalHigh)}. El payback base estimado es ${econ.paybackBase ? econ.paybackBase + ' meses' : 'pendiente'} y la confianza media del portfolio es ${esc(portfolioConfidence)}.`
-    : `El portfolio todavía no tiene suficiente valoración económica para consolidar un business case. El informe conserva el baseline declarado y las estimaciones de impacto como hipótesis hasta completar inversión, ahorro y confianza por iniciativa.`;
-  const costOfInaction = kpis.impacto_total_estimado || impactLabel.txt || '—';
 
   const reportHtml = `
   <style>
@@ -2388,18 +2374,7 @@ function renderReport(r, reportsHistoryHtml = '') {
     .diop-list-desc{font-size:12px;color:var(--text2);line-height:1.55;}
     .diop-risk{border-left:3px solid var(--amber);}
     .diop-method{background:rgba(0,173,181,0.035);border:0.5px dashed var(--border2);border-radius:12px;padding:15px;font-size:12px;color:var(--text2);line-height:1.65;}
-    .diop-cockpit{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:4px;}
-    .diop-cockpit-main{background:rgba(0,173,181,0.055);border:1px solid rgba(0,173,181,0.20);border-radius:16px;padding:18px;min-height:142px;}
-    .diop-cockpit-headline{font-size:16px;line-height:1.5;color:var(--text);font-weight:650;margin-bottom:12px;}
-    .diop-cockpit-tags{display:flex;gap:8px;flex-wrap:wrap;}
-    .diop-cockpit-side{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-    .diop-cockpit-tile{background:rgba(8,17,29,.58);border:1px solid rgba(87,208,217,.12);border-radius:14px;padding:13px;min-height:66px;}
-    .diop-cockpit-tile .label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:6px;}
-    .diop-cockpit-tile .value{font-size:20px;font-weight:800;line-height:1.05;}
-    .diop-econ-story{background:linear-gradient(135deg,rgba(29,158,117,.08),rgba(0,173,181,.035));border:1px solid rgba(29,158,117,.22);border-radius:16px;padding:18px;}
-    .diop-econ-story p{font-size:13px;color:var(--text2);line-height:1.65;margin-top:10px;}
-    .diop-econ-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px;}
-    @media(max-width:900px){.diop-grid-4,.diop-grid-3,.diop-grid-2,.diop-opp-row,.diop-cockpit,.diop-cockpit-side,.diop-econ-metrics{grid-template-columns:1fr}.diop-title{font-size:24px}.diop-report-body,.diop-cover-v2{padding:20px}}
+    @media(max-width:900px){.diop-grid-4,.diop-grid-3,.diop-grid-2,.diop-opp-row{grid-template-columns:1fr}.diop-title{font-size:24px}.diop-report-body,.diop-cover-v2{padding:20px}}
   </style>
 
   <div class="diop-report-v2" id="diop-report-v2">
@@ -2418,23 +2393,18 @@ function renderReport(r, reportsHistoryHtml = '') {
           </div>
           <svg class="rh-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="44" height="44"><rect width="128" height="128" rx="28" fill="#0B1220"/><g transform="translate(15,36)" stroke="#2ED3C9" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M26 6 L4 28 L26 50"/><path d="M42 50 L56 6"/><path d="M72 6 L94 28 L72 50"/></g></svg>
         </div>
-        <div class="diop-cockpit">
-          <div class="diop-cockpit-main">
-            <div class="diop-kicker">Executive Cockpit™</div>
-            <div class="diop-cockpit-headline">${esc(cockpitHeadline)}</div>
-            <div class="diop-cockpit-tags">
-              ${chip(`Vector: ${esc(frictionVector)}`, 'var(--amber)')}
-              ${chip(`Confidence: ${esc(confidenceHeadline)}`, confidenceHeadlineColor)}
-              ${chip(`Portfolio: ${money(econ.totalBase)}`, 'var(--green)')}
-              ${chip(`Coste no actuar: ${esc(costOfInaction)}`, 'var(--red)')}
+        <div class="diop-grid-4">
+          <div class="diop-metric" style="position:relative;overflow:hidden;">
+            <div style="position:absolute;top:8px;right:12px;width:56px;height:56px;border-radius:50%;border:4px solid ${ofi.score>=50?'var(--green)':ofi.score>=25?'var(--amber)':'var(--red)'}44;display:flex;align-items:center;justify-content:center;">
+              <div style="font-size:18px;font-weight:800;color:${ofi.score>=50?'var(--green)':ofi.score>=25?'var(--amber)':'var(--red)'};">${esc(ofi.score || '—')}</div>
             </div>
+            <div class="diop-metric-label">OFI™</div>
+            <div class="diop-metric-value" style="color:var(--teal-l);font-size:14px;margin-top:4px;">${esc(ofi.zona || '—')}</div>
+            <div class="diop-metric-note">Capa TTL: <strong style="color:var(--teal-l);">${esc(ofi.ttl_capa || '—')}</strong></div>
           </div>
-          <div class="diop-cockpit-side">
-            <div class="diop-cockpit-tile"><div class="label">OFI™</div><div class="value" style="color:var(--teal-l);">${esc(ofi.score || '—')}<span style="font-size:11px;color:var(--text3);font-weight:500;">/100</span></div><div class="diop-metric-note">${esc(ofi.zona || 'Zona no indicada')}</div></div>
-            <div class="diop-cockpit-tile"><div class="label">TTL™</div><div class="value" style="color:var(--teal-l);">${esc(ofi.ttl_capa || '—')}</div><div class="diop-metric-note">Capa actual</div></div>
-            <div class="diop-cockpit-tile"><div class="label">Digital</div><div class="value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:11px;color:var(--text3);font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
-            <div class="diop-cockpit-tile"><div class="label">Payback</div><div class="value" style="color:var(--green);">${econ.paybackBase ? econ.paybackBase + 'm' : esc(roi.plazo_retorno_meses || '—') + 'm'}</div><div class="diop-metric-note">Escenario base</div></div>
-          </div>
+          <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:var(--text3);font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Impacto estimado</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Portfolio base</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">${econ.paybackBase?'Payback '+econ.paybackBase+'m':'BNA anual'} · Conf. ${esc(econ.confidenceBand||'—')}</div></div>
         </div>
       </div>
 
@@ -2448,16 +2418,131 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="diop-section-title"><h3>02 · Diagnóstico operativo + Value Stream Map</h3></div>
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric"><div class="diop-metric-label">OEE estimado</div><div class="diop-metric-value" style="color:var(--red);">${esc(kpis.oee_estimado || '—')}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">Lead Time</div><div class="diop-metric-value" style="color:var(--amber);">${esc(vsm.lead_time || '—')}</div></div>
+            <div class="diop-metric"><div class="diop-metric-label">Lead Time</div><div class="diop-metric-value" style="color:var(--amber);">${esc(vsm.lead_time || '—')}</div><div class="diop-metric-note">Ratio VA: ${esc(vsm.va_ratio || '—')}</div></div>
             <div class="diop-metric"><div class="diop-metric-label">Constraint</div><div class="diop-metric-value" style="font-size:16px;color:var(--teal-l);">${esc((vsm.cuellos_botella||[]).join(', ') || '—')}</div></div>
           </div>
+          ${(() => {
+            const vd = currentClient ? vsmData[currentClient.id] : null;
+            if (!vd || !vd.processes || !vd.processes.length) return '';
+            
+            const procs = vd.processes;
+            const demandDay = parseFloat(vd.demand?.units_per_day) || 0;
+            const availMin = parseFloat(vd.demand?.available_min) || 480;
+            const plannedStops = parseFloat(vd.demand?.planned_stops) || 0;
+            const availSec = (availMin - plannedStops) * 60;
+            const takt = demandDay > 0 ? availSec / demandDay : 0;
+            
+            // Calculate effective C/T for each process
+            const procData = procs.map(p => {
+              let ctSec = parseFloat(p.ct_value) || 0;
+              if (p.ct_unit === 'min/batch' || p.ct_unit === 'min/ud') ctSec *= 60;
+              const batchSize = parseFloat(p.batch_size) || 1;
+              if (p.ct_unit?.includes('batch') && batchSize > 1) ctSec = ctSec / batchSize;
+              const uptime = (parseFloat(p.uptime) || 100) / 100;
+              const effCT = uptime > 0 ? ctSec / uptime : ctSec;
+              const isBottleneck = takt > 0 && effCT > takt;
+              const ratio = takt > 0 ? (effCT / takt * 100) : 0;
+              return { name: p.name, ct: ctSec, effCT, co: parseFloat(p.co) || 0, uptime: parseFloat(p.uptime) || 100, operators: p.operators || '—', isBottleneck, ratio };
+            });
+            
+            const maxRatio = Math.max(...procData.map(p => p.ratio), 100);
+            
+            // Build C/T vs Takt bar chart
+            let chartHtml = `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;">C/T efectivo vs Takt Time</div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">Takt: ${takt.toFixed(1)} seg/ud — Cualquier barra que supere la línea roja es cuello de botella</div>
+              <div style="position:relative;">`;
+            
+            // Takt reference line
+            const taktPct = takt > 0 ? Math.min(100, (takt / (maxRatio * takt / 100)) * 100) : 0;
+            
+            procData.forEach(p => {
+              const barPct = Math.min(100, (p.ratio / maxRatio) * 100);
+              const barCol = p.isBottleneck ? '#E24B4A' : p.ratio > 80 ? '#F59E0B' : '#1D9E75';
+              chartHtml += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <div style="width:90px;font-size:10px;color:${p.isBottleneck ? 'var(--red)' : 'var(--text2)'};font-weight:${p.isBottleneck ? '700' : '500'};text-align:right;flex-shrink:0;">${esc(p.name)}</div>
+                <div style="flex:1;height:22px;background:var(--s1);border-radius:6px;position:relative;overflow:hidden;">
+                  <div style="height:100%;width:${barPct}%;background:${barCol};border-radius:6px;transition:width .3s;"></div>
+                  <div style="position:absolute;left:${Math.min(95, 100/maxRatio*100)}%;top:0;bottom:0;width:2px;background:var(--red);opacity:0.6;"></div>
+                </div>
+                <div style="width:55px;font-size:10px;font-family:var(--mono);color:${barCol};text-align:right;flex-shrink:0;">${p.effCT.toFixed(1)}s</div>
+                ${p.isBottleneck ? '<span style="font-size:8px;color:var(--red);font-weight:700;">⚠ BN</span>' : ''}
+              </div>`;
+            });
+            chartHtml += `<div style="display:flex;align-items:center;gap:10px;margin-top:4px;"><div style="width:90px;"></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:2px;background:var(--red);opacity:0.6;"></div><span style="font-size:9px;color:var(--text4);">Takt ${takt.toFixed(1)}s</span></div></div>`;
+            chartHtml += `</div></div>`;
+            
+            // Process metrics table
+            let tableHtml = `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:10px;">Detalle por proceso</div>
+              <div style="display:grid;grid-template-columns:1fr repeat(5,auto);gap:0;font-size:10px;">
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);">Proceso</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">C/T</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">C/T eff</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">C/O</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">Uptime</div>
+                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">Op</div>`;
+            procData.forEach(p => {
+              const rowBg = p.isBottleneck ? 'rgba(226,75,74,0.06)' : 'transparent';
+              tableHtml += `
+                <div style="padding:6px 8px;color:${p.isBottleneck?'var(--red)':'var(--text)'};font-weight:${p.isBottleneck?'700':'500'};background:${rowBg};">${esc(p.name)}${p.isBottleneck?' ⚠':''}</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:var(--text2);background:${rowBg};">${p.ct.toFixed(1)}s</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.isBottleneck?'var(--red)':'var(--teal-l)'};font-weight:700;background:${rowBg};">${p.effCT.toFixed(1)}s</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.co>20?'var(--amber)':'var(--text2)'};background:${rowBg};">${p.co}min</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.uptime<85?'var(--red)':p.uptime<92?'var(--amber)':'var(--text2)'};background:${rowBg};">${p.uptime}%</div>
+                <div style="padding:6px 8px;text-align:center;color:var(--text2);background:${rowBg};">${p.operators}</div>`;
+            });
+            tableHtml += `</div></div>`;
+            
+            // Process flow mini-diagram
+            let flowHtml = `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow-x:auto;">
+              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:10px;">Flujo de valor — ${esc(vd.supplier?.name||'Proveedor')} → ${esc(vd.client_info?.name||'Cliente')}</div>
+              <div style="display:flex;align-items:center;gap:4px;min-width:max-content;">
+                <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.supplier?.name||'MP')}<br><span style="font-size:8px;color:var(--text4);">${esc(vd.inventories?.mp||'?')}d</span></div>`;
+            procs.forEach((p, i) => {
+              const pd = procData[i];
+              flowHtml += `<div style="font-size:10px;color:var(--text4);">→</div>`;
+              if (i > 0 && vd.inventories?.between?.[`${i-1}_${i}`]) {
+                const inv = vd.inventories.between[`${i-1}_${i}`];
+                flowHtml += `<div style="font-size:8px;color:var(--amber);font-family:var(--mono);text-align:center;min-width:30px;">▽<br>${inv}</div>
+                <div style="font-size:10px;color:var(--text4);">→</div>`;
+              }
+              flowHtml += `<div style="padding:8px 10px;background:${pd.isBottleneck?'rgba(226,75,74,0.1)':'var(--s1)'};border:1px solid ${pd.isBottleneck?'var(--red)':'var(--border)'};border-radius:10px;text-align:center;min-width:80px;">
+                <div style="font-size:10px;font-weight:700;color:${pd.isBottleneck?'var(--red)':'var(--text)'};">${esc(p.name)}</div>
+                <div style="font-size:8px;color:var(--text3);font-family:var(--mono);margin-top:3px;">C/T ${pd.ct.toFixed(1)}s · Up ${pd.uptime}%</div>
+                ${pd.isBottleneck?'<div style="font-size:7px;color:var(--red);font-weight:700;margin-top:2px;">BOTTLENECK</div>':''}
+              </div>`;
+            });
+            flowHtml += `<div style="font-size:10px;color:var(--text4);">→</div>
+              <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.client_info?.name||'Cliente')}<br><span style="font-size:8px;color:var(--text4);">${demandDay} ud/día</span></div>
+            </div></div>`;
+            
+            // Planning info
+            let planHtml = '';
+            if (vd.planning) {
+              planHtml = `<div style="display:flex;gap:12px;margin-bottom:14px;">
+                <div style="flex:1;padding:10px 14px;background:rgba(245,158,11,0.06);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;">
+                  <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);font-family:var(--mono);font-weight:700;margin-bottom:3px;">Sistema de planificación</div>
+                  <div style="font-size:12px;color:var(--text);">${esc(vd.planning.type || '—')} — Programa ${esc(vd.planning.frequency || '—')}</div>
+                </div>
+                <div style="flex:1;padding:10px 14px;background:rgba(0,173,181,0.06);border-left:3px solid var(--teal);border-radius:0 10px 10px 0;">
+                  <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);font-family:var(--mono);font-weight:700;margin-bottom:3px;">Takt Time</div>
+                  <div style="font-size:12px;color:var(--text);">${takt.toFixed(2)} seg/ud — Demanda ${demandDay} ud/día</div>
+                </div>
+              </div>`;
+            }
+            
+            return flowHtml + chartHtml + tableHtml + planHtml;
+          })()}
+          ${ofi.vector_friccion ? `<div style="background:rgba(226,75,74,0.06);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 12px 12px 0;margin-bottom:12px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--red);font-family:var(--mono);font-weight:700;margin-bottom:4px;">Vector de fricción principal</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(ofi.vector_friccion)}</div>
+          </div>` : ''}
           <div class="diop-text">${textBlock(vsm.impacto_lead_time || r.analisis_detallado || 'Sin análisis operativo detallado generado.')}</div>
         </div>
 
-        ${flowBottleneckBlock}
-
         <div class="diop-section">
-          <div class="diop-section-title"><h3>04 · Madurez digital + Benchmark</h3></div>
+          <div class="diop-section-title"><h3>03 · Madurez digital + Benchmark</h3></div>
           <div class="diop-grid-2">
             <div class="diop-evidence-card">
               <strong>Digital Maturity</strong>
@@ -2479,31 +2564,78 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>05 · Organizational Readiness Engine™</h3></div>
-          <div class="diop-grid-4" style="margin-bottom:14px;">
-            <div class="diop-metric"><div class="diop-metric-label">ORG Readiness</div><div class="diop-metric-value" style="color:${m4Engine.band.color};">${m4Engine.org || '—'}<span style="font-size:11px;color:var(--text3);font-weight:500;">/100</span></div><div class="diop-metric-note">${m4Engine.band.label}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">Human Capability</div><div class="diop-metric-value" style="font-size:18px;color:${m4Band(m4Engine.human).color};">${m4Engine.human || '—'}</div><div class="diop-metric-note">People / knowledge risk</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">Operating System</div><div class="diop-metric-value" style="font-size:18px;color:${m4Band(m4Engine.operating).color};">${m4Engine.operating || '—'}</div><div class="diop-metric-note">Management discipline</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">Execution Readiness</div><div class="diop-metric-value" style="font-size:18px;color:${m4Band(m4Engine.execution).color};">${m4Engine.execution || '—'}</div><div class="diop-metric-note">Change capacity</div></div>
-          </div>
-          <div class="diop-evidence-card" style="margin-bottom:12px;border-left:3px solid ${m4Engine.band.color};">
-            <div class="diop-tagline">M4 Readiness Profile™</div>
-            <strong>${m4Engine.profile.map(esc).join(' · ') || 'Pendiente'}</strong>
-            <p style="margin-top:8px;">${esc(m4Engine.narrative)}</p>
-          </div>
+          <div class="diop-section-title"><h3>04 · Organizational Readiness Premium</h3></div>
+          ${(() => {
+            const scoreBlock = (section, label, icon, keys) => {
+              const vals = keys.map(([s,k]) => m4?.[s]?.[k]).filter(v=>v);
+              const scores = vals.map(v => v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0).filter(v=>v>0);
+              const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+              const col = avg>=2.4?'var(--green)':avg>=1.7?'var(--amber)':avg>0?'var(--red)':'var(--text3)';
+              const pct = Math.round((avg/3)*100);
+              return `<div style="text-align:center;padding:8px 0;"><div style="font-size:20px;margin-bottom:4px;">${icon}</div><div style="font-size:24px;font-weight:800;color:${col};font-family:var(--mono);">${avg?avg.toFixed(1):'—'}</div><div style="font-size:8px;color:var(--text4);">/3</div><div style="height:3px;background:var(--s2);border-radius:4px;margin:6px auto;width:80%;"><div style="height:100%;width:${pct}%;background:${col};border-radius:4px;"></div></div><div style="font-size:10px;color:var(--text3);font-weight:600;">${label}</div></div>`;
+            };
+            return `<div class="diop-grid-3" style="margin-bottom:14px;">
+              <div class="diop-metric">${scoreBlock('human','Human Capability™','🧠',humanKeys)}</div>
+              <div class="diop-metric">${scoreBlock('operating','Operating System™','⚙️',osKeys)}</div>
+              <div class="diop-metric">${scoreBlock('execution','Execution Readiness™','🚀',exKeys)}</div>
+            </div>`;
+          })()}
           <div class="diop-grid-3">
-            ${[
-              ['Human Capability™', m4Engine.humanFactors, true],
-              ['Operating System™', m4Engine.operatingFactors, false],
-              ['Execution Readiness™', m4Engine.executionFactors, false]
-            ].map(([title,factors,isRisk]) => `<div class="diop-evidence-card"><div class="diop-tagline">${title}</div><div class="diop-signal-list">${factors.map(f => {
-              const score = m4ValueScore(f.value, f.mode);
-              const col = score>=75?'var(--green)':score>=55?'var(--amber)':score>0?'var(--red)':'var(--text3)';
-              const label = f.value || '—';
-              return `<div class="diop-signal"><span>${esc(f.label)}${f.source?`<small style="display:block;color:var(--text4);font-size:9px;margin-top:2px;">${esc(f.source)}</small>`:''}</span>${chip(esc(label), col)}</div>`;
-            }).join('')}</div></div>`).join('')}
+            <div class="diop-evidence-card"><div class="diop-tagline">Human Capability™</div>${renderSignalList(humanKeys)}</div>
+            <div class="diop-evidence-card"><div class="diop-tagline">Operating System™</div>${renderSignalList(osKeys)}</div>
+            <div class="diop-evidence-card"><div class="diop-tagline">Execution Readiness™</div>${renderSignalList(exKeys)}</div>
           </div>
         </div>
+
+        ${fiTotal > 0 ? `<div class="diop-section">
+          <div class="diop-section-title"><h3>05 · Field Intelligence™ — Señales críticas de campo</h3></div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.55;">Inteligencia extraída del cruce de entrevistas, observación directa y datos de campo. Estas señales no aparecen en ningún KPI — solo emergen cuando se comparan las perspectivas de CEO, operaciones y planta.</div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">
+            ${[
+              {icon:'⚡',label:'Discrepancias',count:fi.discrepancias.length,col:'var(--red)'},
+              {icon:'👻',label:'Fricciones invisibles',count:fi.fricciones.length,col:'var(--amber)'},
+              {icon:'📊',label:'Datos no confiables',count:fi.dataTrust.length,col:'var(--purple)'},
+              {icon:'👤',label:'Dependencias humanas',count:fi.dependencias.length,col:'var(--red)'},
+              {icon:'🔄',label:'Adopción/resistencia',count:fi.adopcion.length,col:'var(--teal)'}
+            ].map(c=>`<div style="text-align:center;padding:10px 6px;background:${c.count?c.col+'0d':'var(--s2)'};border:0.5px solid ${c.count?c.col+'44':'var(--border)'};border-radius:12px;">
+              <div style="font-size:18px;">${c.icon}</div>
+              <div style="font-size:20px;font-weight:800;color:${c.count?c.col:'var(--text4)'};font-family:var(--mono);">${c.count}</div>
+              <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;">${c.label}</div>
+            </div>`).join('')}
+          </div>
+          ${fi.discrepancias.length ? `<div style="margin-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--mono);margin-bottom:8px;">⚡ DISCREPANCIAS ENTRE PERFILES</div>
+            ${fi.discrepancias.map(d=>`<div style="padding:10px 14px;background:rgba(226,75,74,0.04);border-left:3px solid ${d.severity==='alta'?'var(--red)':d.severity==='insight'?'var(--teal)':'var(--amber)'};border-radius:0 10px 10px 0;margin-bottom:6px;">
+              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(d.signal)}</div>
+              <div style="font-size:9px;color:var(--text4);margin-top:4px;">${esc(d.profiles)} ${d.severity!=='insight'?'· Severidad: '+d.severity:''}</div>
+            </div>`).join('')}
+          </div>` : ''}
+          ${fi.fricciones.length ? `<div style="margin-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;color:var(--amber);font-family:var(--mono);margin-bottom:8px;">👻 FRICCIONES INVISIBLES</div>
+            ${fi.fricciones.map(f=>`<div style="padding:10px 14px;background:rgba(186,117,23,0.04);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;margin-bottom:6px;">
+              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(f.signal)}</div>
+            </div>`).join('')}
+          </div>` : ''}
+          ${fi.dataTrust.length ? `<div style="margin-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;color:var(--purple);font-family:var(--mono);margin-bottom:8px;">📊 DATA TRUST PROFILE</div>
+            ${fi.dataTrust.map(d=>`<div style="padding:10px 14px;background:rgba(127,119,221,0.04);border-left:3px solid var(--purple);border-radius:0 10px 10px 0;margin-bottom:6px;">
+              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(d.signal)}</div>
+            </div>`).join('')}
+          </div>` : ''}
+          ${fi.dependencias.length ? `<div style="margin-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--mono);margin-bottom:8px;">👤 DEPENDENCIAS HUMANAS</div>
+            ${fi.dependencias.map(d=>`<div style="padding:10px 14px;background:rgba(226,75,74,0.04);border-left:3px solid ${d.severity==='alta'?'var(--red)':'var(--amber)'};border-radius:0 10px 10px 0;margin-bottom:6px;">
+              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(d.signal)}</div>
+              <div style="font-size:9px;color:var(--text4);margin-top:4px;">Fuente: ${esc(d.source)}</div>
+            </div>`).join('')}
+          </div>` : ''}
+          ${fi.adopcion.length ? `<div style="margin-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;color:var(--teal);font-family:var(--mono);margin-bottom:8px;">🔄 SEÑALES DE ADOPCIÓN / RESISTENCIA</div>
+            ${fi.adopcion.map(a=>`<div style="padding:10px 14px;background:rgba(0,173,181,0.04);border-left:3px solid var(--teal);border-radius:0 10px 10px 0;margin-bottom:6px;">
+              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(a.signal)}</div>
+            </div>`).join('')}
+          </div>` : ''}
+        </div>` : ''}
 
         <div class="diop-section">
           <div class="diop-section-title"><h3>06 · Evidence + Risks + Confidence</h3></div>
@@ -2518,30 +2650,32 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>07 · Economic Story™</h3></div>
-          <div class="diop-econ-story">
-            <div class="diop-tagline">Business case consolidado · M1 + M6</div>
-            <strong style="font-size:16px;color:var(--text);">De fricción operativa a decisión de inversión</strong>
-            <p>${economicStoryText}</p>
-            <div class="diop-muted" style="margin-top:8px;">Baseline declarado: ${esc(economicBaselineText)}</div>
-            <div class="diop-econ-metrics">
-              <div class="diop-metric"><div class="diop-metric-label">Inversión</div><div class="diop-metric-value" style="font-size:16px;color:var(--teal-l);">${money(econ.totalInv)}</div></div>
-              <div class="diop-metric"><div class="diop-metric-label">BNA conservador</div><div class="diop-metric-value" style="font-size:16px;color:var(--amber);">${money(econ.totalLow)}</div></div>
-              <div class="diop-metric"><div class="diop-metric-label">BNA base</div><div class="diop-metric-value" style="font-size:16px;color:var(--green);">${money(econ.totalBase)}</div></div>
-              <div class="diop-metric"><div class="diop-metric-label">BNA optimista</div><div class="diop-metric-value" style="font-size:16px;color:var(--green);">${money(econ.totalHigh)}</div></div>
-              <div class="diop-metric"><div class="diop-metric-label">Confidence</div><div class="diop-metric-value" style="font-size:16px;color:${portfolioConfidenceColor};">${esc(portfolioConfidence)}</div><div class="diop-metric-note">${econ.riskCount ? `${econ.riskCount} riesgo(s) Cat D` : 'Sin Cat D'}</div></div>
+          <div class="diop-section-title"><h3>07 · Economic Bridge™ + Opportunity Portfolio</h3></div>
+          <div class="diop-opp-row">${opportunitySummary}</div>
+          <div class="diop-grid-3" style="margin-bottom:12px;">
+            <div class="diop-metric" style="border-left:3px solid var(--red);border-radius:0 12px 12px 0;">
+              <div class="diop-metric-label" style="color:var(--red);">Conservador</div>
+              <div class="diop-metric-value" style="font-size:18px;color:var(--red);">${money(econ.totalLow)}</div>
+              <div class="diop-metric-note">BNA/año · Payback ${econ.paybackLow?econ.paybackLow+'m':'—'}</div>
+            </div>
+            <div class="diop-metric" style="border-left:3px solid var(--teal);border-radius:0 12px 12px 0;background:rgba(0,173,181,0.04);">
+              <div class="diop-metric-label" style="color:var(--teal);">Base</div>
+              <div class="diop-metric-value" style="font-size:18px;color:var(--teal-l);">${money(econ.totalBase)}</div>
+              <div class="diop-metric-note">BNA/año · Payback ${econ.paybackBase?econ.paybackBase+'m':'—'}</div>
+            </div>
+            <div class="diop-metric" style="border-left:3px solid var(--green);border-radius:0 12px 12px 0;">
+              <div class="diop-metric-label" style="color:var(--green);">Optimista</div>
+              <div class="diop-metric-value" style="font-size:18px;color:var(--green);">${money(econ.totalHigh)}</div>
+              <div class="diop-metric-note">BNA/año · Payback ${econ.paybackHigh?econ.paybackHigh+'m':'—'}</div>
             </div>
           </div>
-        </div>
-
-        <div class="diop-section">
-          <div class="diop-section-title"><h3>08 · Opportunity Matrix + Portfolio económico</h3></div>
-          <div class="diop-opp-row">${opportunitySummary}</div>
-          <div class="diop-grid-4" style="margin-bottom:12px;">
-            <div class="diop-metric"><div class="diop-metric-label">Inversión portfolio</div><div class="diop-metric-value" style="font-size:17px;color:var(--teal-l);">${money(econ.totalInv)}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">BNA conservador</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${money(econ.totalLow)}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">BNA base</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">Payback base</div><div class="diop-metric-value" style="font-size:17px;color:var(--text);">${econ.paybackBase ? econ.paybackBase + 'm' : esc(roi.plazo_retorno_meses || '—') + 'm'}</div></div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--s2);border:0.5px solid var(--border);border-radius:12px;margin-bottom:14px;">
+            <div style="font-size:11px;color:var(--text3);">Inversión total:</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text);font-family:var(--mono);">${money(econ.totalInv)}</div>
+            <div style="width:1px;height:20px;background:var(--border);"></div>
+            <div style="font-size:11px;color:var(--text3);">Confianza portfolio:</div>
+            <div>${chip(esc(econ.confidenceBand||'Pendiente'), econ.avgConf>=4?'var(--green)':econ.avgConf>=3?'var(--teal)':'var(--amber)')}</div>
+            ${econ.riskCount?`<div style="width:1px;height:20px;background:var(--border);"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
           </div>
           <div class="diop-list">
             ${qws.map((qw, i) => `<div class="diop-list-item"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)}</div>${chip(`${esc(qw.impacto_euros || '—')} · ${esc(qw.plazo_dias || '—')} días`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div><div class="diop-list-desc">${esc(qw.descripcion)}</div></div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
@@ -2549,16 +2683,29 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>09 · Transformation Blueprint + Roadmap TTL™</h3></div>
+          <div class="diop-section-title"><h3>08 · Transformation Blueprint + Roadmap TTL™</h3></div>
           <div class="diop-text">${textBlock(r.roadmap_narrativo || 'Roadmap pendiente de generación.')}</div>
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>10 · Methodology + Next Steps</h3></div>
+          <div class="diop-section-title"><h3>09 · Herramientas + Methodology + Next Steps</h3></div>
+          ${tools.length ? `<div class="diop-grid-3" style="margin-bottom:14px;">
+            ${tools.map(t => `<div class="diop-evidence-card">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <strong style="margin:0;">${esc(t.nombre)}</strong>
+                ${chip(esc(t.tipo || ''), 'var(--teal)')}
+              </div>
+              <p style="margin-bottom:6px;">${esc(t.para_que || '')}</p>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:11px;color:var(--teal-l);font-weight:600;">${esc(t.precio_aproximado || '')}</span>
+                ${t.url ? `<a href="${esc(t.url)}" target="_blank" style="font-size:10px;color:var(--teal);text-decoration:none;">Web →</a>` : ''}
+              </div>
+            </div>`).join('')}
+          </div>` : ''}
           <div class="diop-grid-2">
             <div class="diop-method">
               <strong style="color:var(--text);">DIOP Methodology</strong><br>
-              El diagnóstico utiliza los frameworks TECNOFAB: OFI™ para fricción operacional, TTL™ para secuencia de madurez, Archetypes™ para narrativa ejecutiva y RIM™ para priorización impacto/readiness.
+              El diagnóstico utiliza los frameworks propietarios TECNOFAB: <strong>OFI™</strong> para fricción operacional, <strong>TTL™</strong> para secuencia de madurez, <strong>Archetypes™</strong> para narrativa ejecutiva, <strong>RIM™</strong> para priorización impacto/readiness, <strong>Confidence Layer™</strong> para nivel de evidencia y <strong>Economic Bridge™</strong> para trazabilidad financiera.
             </div>
             <div class="next-q-box" style="margin:0;"><div class="nqb-lbl">Siguiente pregunta al CEO</div><div class="nqb-text">"${esc(r.siguiente_pregunta_ceo || '—')}"</div></div>
           </div>
@@ -2766,34 +2913,6 @@ function exportPDF() {
   const roi = r.roi||{};
   const qws = r.quick_wins||[];
   const tools = r.herramientas_mercado||[];
-  const pdfFlowBottleneckBlock = buildFlowBottleneckBlock(true);
-
-  // PDF-safe Executive Cockpit™ + Economic Story™
-  const m6Pdf = (typeof getM6 === 'function') ? getM6() : { backlog: [] };
-  const econPdf = (typeof calcPortfolioEconomics === 'function') ? calcPortfolioEconomics(m6Pdf?.backlog || []) : { totalInv:0,totalLow:0,totalBase:0,totalHigh:0,paybackBase:0,avgConf:0,confidenceBand:'—',riskCount:0 };
-  const m8Pdf = (typeof getM8 === 'function') ? getM8() : {};
-  const ofiPdf = r.ofi_resumen || {};
-  const m4Pdf = (currentClient && m4Data[currentClient.id]) ? m4Data[currentClient.id] : null;
-  const m4EnginePdf = calcM4ReadinessEngine(m4Pdf);
-  const moneyPdf = (v) => { const n = Number(v || 0); return n ? n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + '€' : '—'; };
-  const confPdfItems = (typeof getConfidence === 'function' ? (getConfidence().findings || []) : []).filter(f => f && (f.finding || f.confidence));
-  const confCountsPdf = confPdfItems.reduce((a,f)=>{ const k=f.confidence||'Sin clasificar'; a[k]=(a[k]||0)+1; return a; },{});
-  const confTotalPdf = confPdfItems.length || 0;
-  const confProfilePdf = confTotalPdf
-    ? ['Confirmado','Hipótesis fuerte','Investigación requerida'].map(k => `${k}: ${Math.round(((confCountsPdf[k]||0)/confTotalPdf)*100)}%`).join(' · ')
-    : 'Pendiente de clasificar';
-  const portfolioConfidencePdf = econPdf.confidenceBand || (econPdf.avgConf ? `${econPdf.avgConf}/5` : '—');
-  const economicBaselinePdf = [
-    m8Pdf?.downtime_hours ? `Paros: ${m8Pdf.downtime_hours}` : '',
-    m8Pdf?.scrap_level ? `Scrap/retrabajo: ${m8Pdf.scrap_level}` : '',
-    m8Pdf?.line_cost ? `Coste hora línea: ${m8Pdf.line_cost}` : '',
-    m8Pdf?.shifts ? `Turnos: ${m8Pdf.shifts}` : '',
-    m8Pdf?.perceived_impact ? `Impacto percibido: ${m8Pdf.perceived_impact}` : ''
-  ].filter(Boolean).join(' · ') || 'Baseline económico pendiente o incompleto';
-  const cockpitHeadlinePdf = (r.resumen_ejecutivo || '').split(/[.!?]/)[0] || 'El diagnóstico DIOP consolida fricción operativa, madurez digital, readiness organizacional y portfolio económico en una lectura ejecutiva.';
-  const economicStoryPdf = econPdf.totalBase
-    ? `El portfolio priorizado combina una inversión estimada de ${moneyPdf(econPdf.totalInv)} con un BNA base de ${moneyPdf(econPdf.totalBase)} al año. En escenario conservador, el BNA estimado es ${moneyPdf(econPdf.totalLow)}; en escenario optimista, ${moneyPdf(econPdf.totalHigh)}. El payback base estimado es ${econPdf.paybackBase ? econPdf.paybackBase + ' meses' : 'pendiente'} y la confianza media del portfolio es ${portfolioConfidencePdf}.`
-    : 'El portfolio todavía no tiene suficiente valoración económica para consolidar un business case. El baseline declarado y las estimaciones de impacto deben tratarse como hipótesis hasta completar inversión, ahorro y confianza por iniciativa.';
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -2897,33 +3016,6 @@ function exportPDF() {
   .hb-client{font-size:8pt;color:#3a7a82;}
   .hb-page{font-size:7.5pt;color:#3a7a82;}
 
-
-/* ─────────────────────────────────────────────
-   DIOP UI REFRESH v2 — REAL VISUAL REWORK
-   Scope: stronger sidebar, premium cards, readable workbench
-   ───────────────────────────────────────────── */
-:root{
-  --bg:#050A11; --s1:#08111d; --s2:#0d1a2b; --s3:#12243a;
-  --border:rgba(87, 208, 217, 0.10);
-  --border2:rgba(87, 208, 217, 0.22);
-  --text:#eefbfc; --text2:#a7cbd0; --text3:#628f98;
-}
-body{background:radial-gradient(circle at top left,rgba(0,173,181,.09),transparent 34%),var(--bg);} 
-.topbar{height:60px;padding:0 24px;background:rgba(8,17,29,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(87,208,217,.12);} 
-.topbar-logo{width:34px;height:34px}.topbar-brand{font-size:15px}.topbar-version{font-size:11px;padding:4px 9px;background:rgba(0,173,181,.08);border-color:rgba(0,173,181,.25);color:var(--teal-l)}
-.app-body{background:linear-gradient(90deg,rgba(0,173,181,.025),transparent 35%);} 
-.sidebar{width:306px;background:linear-gradient(180deg,#07101c 0%,#050a11 100%);border-right:1px solid rgba(87,208,217,.12);box-shadow:18px 0 50px rgba(0,0,0,.22);} 
-.sidebar-section{padding:22px 20px 12px}.sidebar-label{font-size:10px;color:#5f8b93}.sidebar-client-name{font-size:16px;letter-spacing:-.015em}.sidebar-client-meta{font-size:12px;color:#6f9fa7;margin-top:4px}.sidebar-divider{margin:12px 20px;background:rgba(87,208,217,.12)}
-.rm-list{padding:10px 16px 22px;overflow:auto}.rm-phase{border:1px solid rgba(87,208,217,.11);background:rgba(255,255,255,.018);border-radius:16px;margin:0 0 12px;overflow:hidden;box-shadow:0 14px 32px rgba(0,0,0,.10)}
-.rm-phase-head{display:flex;align-items:center;gap:10px;padding:14px 14px 10px;cursor:default;background:linear-gradient(135deg,rgba(0,173,181,.075),rgba(0,173,181,.015));border-bottom:1px solid rgba(87,208,217,.07)}
-.rm-phase-icon{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(0,173,181,.10);border:1px solid rgba(0,173,181,.18);font-size:14px;flex-shrink:0}.rm-phase-title{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.10em;color:#9bc4ca}.rm-phase-sub{font-size:10.5px;color:#5e8c94;margin-top:2px}.rm-phase-pct{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--teal-l);background:rgba(0,173,181,.09);border:1px solid rgba(0,173,181,.16);border-radius:999px;padding:4px 8px}.rm-phase-bar{height:3px;background:#122235;overflow:hidden}.rm-phase-fill{height:100%;background:linear-gradient(90deg,var(--teal-d),var(--teal-l));border-radius:4px}.rm-phase-body{padding:8px 8px 10px}.rm-item{position:relative;gap:10px;padding:10px 10px;border-radius:12px;margin-bottom:3px;border:1px solid transparent}.rm-item:hover{background:rgba(0,173,181,.07);border-color:rgba(0,173,181,.10);transform:translateX(1px)}.rm-item.rm-active{background:rgba(0,173,181,.12);border-color:rgba(0,173,181,.32);box-shadow:0 0 0 1px rgba(0,173,181,.04) inset,0 8px 20px rgba(0,173,181,.04)}.rm-circle{width:24px;height:24px;border-width:1px;font-size:10px}.rm-label{font-size:12.5px;color:#b9d8dc}.rm-label-sub{font-size:12px;color:#7ea8af}.rm-item-sub{padding-left:10px}.rm-item-sub:before{content:'';position:absolute;left:20px;top:-3px;bottom:-3px;width:1px;background:rgba(87,208,217,.06);z-index:0}.rm-item-sub .rm-circle{width:20px;height:20px;font-size:9px;z-index:1}.rm-item-sub .rm-label{z-index:1}
-.content{padding:42px 56px;max-width:none;background:radial-gradient(circle at top right,rgba(0,173,181,.06),transparent 30%)}.page-header{margin-bottom:34px}.page-title{font-size:28px;font-weight:650;letter-spacing:-.035em}.page-sub{font-size:14px;max-width:780px;line-height:1.6}.session-hero{padding:26px 28px;border-radius:20px;background:linear-gradient(135deg,rgba(13,26,43,.96),rgba(8,17,29,.94));border:1px solid rgba(87,208,217,.16);box-shadow:0 22px 60px rgba(0,0,0,.22);margin-bottom:28px}.sh-icon{width:54px;height:54px;border-radius:16px}.sh-title,.session-hero [style*="font-size:15px"]{font-size:20px!important;font-weight:650!important;letter-spacing:-.025em}.sh-sub,.session-hero [style*="font-size:12px"]{font-size:13.5px!important;color:#84aeb6!important;line-height:1.55}.sh-time{padding:6px 11px;border-radius:999px}
-.vsm-section,.q-block{max-width:1180px}.vsm-section{padding:28px;border-radius:18px;background:rgba(8,17,29,.72);border:1px solid rgba(87,208,217,.13);box-shadow:0 18px 44px rgba(0,0,0,.17);margin-bottom:22px}.vsm-section-title{font-size:17px;font-weight:650;letter-spacing:-.025em;margin-bottom:7px}.vsm-section-sub{font-size:12.8px;line-height:1.6;color:#6f9fa7;margin-bottom:20px}.q-card{border-radius:16px;background:rgba(8,17,29,.72);border:1px solid rgba(87,208,217,.10);margin-bottom:12px}.q-top{padding:18px 20px}.q-text{font-size:14.5px;line-height:1.58}.q-meta{margin-bottom:8px}.opt-grid{gap:8px}.opt-btn,.yn-btn,.vsm-input,.vsm-select,.num-input,.txt-input{border-radius:12px;padding:10px 12px}.opt-btn{font-size:12.5px}.save-bar{padding:16px 56px;margin-left:-56px;margin-right:-56px;background:rgba(5,10,17,.92);backdrop-filter:blur(8px)}
-.kpi-grid,.roi-grid,.bench-grid,.vsm-results-grid{gap:14px}.kpi-card,.roi-card,.bench-card,.vsm-result-card{border-radius:16px;padding:18px;background:rgba(13,26,43,.80);border:1px solid rgba(87,208,217,.12)}
-/* Strong M4/M8 click chips */
-button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;padding:8px 13px!important;font-weight:600!important;box-shadow:0 8px 18px rgba(0,0,0,.10)}
-@media(max-width:1200px){.sidebar{width:280px}.content{padding:34px 38px}.save-bar{padding-left:38px;padding-right:38px;margin-left:-38px;margin-right:-38px}}
-
 </style>
 </head>
 <body onload="init()">
@@ -2949,51 +3041,7 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
     <div class="urgency">Urgencia ${r.urgencia||'—'}</div>
   </div>
 </div>
-<!-- PÁG 2: EXECUTIVE COCKPIT + ECONOMIC STORY -->
-<div class="no-break page-break">
-<div class="header-bar">
-  <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
-  <div class="hb-client">${client.name} · Informe DIOP</div>
-  <div class="hb-page">Executive Cockpit</div>
-</div>
-
-<div class="section no-break">
-  <h2>Executive Cockpit™</h2>
-  <div class="summary-box" style="margin-bottom:4mm;"><p>${cockpitHeadlinePdf}</p></div>
-  <div class="grid3" style="margin-bottom:3mm;">
-    <div class="card"><div class="card-lbl">OFI™</div><div class="card-val" style="color:#007c82;">${ofiPdf.score || '—'}<span style="font-size:8pt;color:#7ab0b8;font-weight:normal;">/100</span></div><div style="font-size:8pt;color:#4a7080;">${ofiPdf.zona || 'Zona no indicada'}</div></div>
-    <div class="card"><div class="card-lbl">TTL™</div><div class="card-val" style="color:#007c82;">${ofiPdf.ttl_capa || '—'}</div><div style="font-size:8pt;color:#4a7080;">Capa actual</div></div>
-    <div class="card"><div class="card-lbl">Arquetipo</div><div class="card-val" style="font-size:10pt;color:#0f1a2e;">${ofiPdf.arquetipo || '—'}</div><div style="font-size:8pt;color:#4a7080;">Patrón dominante</div></div>
-  </div>
-  <div class="grid3">
-    <div class="card"><div class="card-lbl">Digital</div><div class="card-val" style="color:${scoreColor};">${mad.puntuacion || '—'}<span style="font-size:8pt;color:#7ab0b8;font-weight:normal;">/10</span></div><div style="font-size:8pt;color:#4a7080;">${mad.nivel || ''}</div></div>
-    <div class="card"><div class="card-lbl">Payback</div><div class="card-val" style="color:#1D9E75;">${econPdf.paybackBase ? econPdf.paybackBase + 'm' : (roi.plazo_retorno_meses || '—') + 'm'}</div><div style="font-size:8pt;color:#4a7080;">Escenario base</div></div>
-    <div class="card"><div class="card-lbl">Confidence</div><div class="card-val" style="font-size:10pt;color:#0f1a2e;">${portfolioConfidencePdf}</div><div style="font-size:8pt;color:#4a7080;">${confProfilePdf}</div></div>
-  </div>
-</div>
-
-<div class="section no-break">
-  <h2>Economic Story™</h2>
-  <div class="summary-box" style="border-left-color:#1D9E75;background:#eef8f3;"><p>${economicStoryPdf}</p></div>
-  <div style="font-size:8pt;color:#4a7080;margin:2mm 0 4mm;"><strong>Baseline declarado:</strong> ${economicBaselinePdf}</div>
-  <div class="grid3" style="margin-bottom:3mm;">
-    <div class="card"><div class="card-lbl">Inversión</div><div class="card-val" style="font-size:12pt;color:#007c82;">${moneyPdf(econPdf.totalInv)}</div></div>
-    <div class="card"><div class="card-lbl">BNA conservador</div><div class="card-val" style="font-size:12pt;color:#BA7517;">${moneyPdf(econPdf.totalLow)}</div></div>
-    <div class="card"><div class="card-lbl">BNA base</div><div class="card-val" style="font-size:12pt;color:#1D9E75;">${moneyPdf(econPdf.totalBase)}</div></div>
-  </div>
-  <div class="grid3">
-    <div class="card"><div class="card-lbl">BNA optimista</div><div class="card-val" style="font-size:12pt;color:#1D9E75;">${moneyPdf(econPdf.totalHigh)}</div></div>
-    <div class="card"><div class="card-lbl">Confidence portfolio</div><div class="card-val" style="font-size:12pt;color:#0f1a2e;">${portfolioConfidencePdf}</div></div>
-    <div class="card"><div class="card-lbl">Riesgos Cat D</div><div class="card-val" style="font-size:12pt;color:${econPdf.riskCount ? '#E24B4A' : '#1D9E75'};">${econPdf.riskCount || 0}</div></div>
-  </div>
-</div>
-
-<div class="footer">
-  <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
-  <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
-</div>
-</div>
-<!-- PÁG 3: MATRIZ DE OPORTUNIDAD -->
+<!-- PÁG 2: MATRIZ DE OPORTUNIDAD -->
 <div class="no-break page-break">
 <div class="header-bar">
   <div class="hb-brand">&lt;/&gt; Tecno-Fab</div>
@@ -3044,22 +3092,15 @@ ${r.ofi_resumen ? `<div class="section no-break">
   ${r.ofi_resumen.arquetipo?`<div style="font-size:8.5pt;color:#4a7080;margin-top:2mm;"><strong>Arquetipo:</strong> ${r.ofi_resumen.arquetipo}</div>`:''}
 </div>` : ''}
 
-<div class="section no-break">
-  <h2>Organizational Readiness Engine™</h2>
-  <div class="grid3" style="margin-bottom:3mm;">
-    <div class="card"><div class="card-lbl">ORG Readiness</div><div class="card-val" style="color:${m4EnginePdf.band.pdfColor};">${m4EnginePdf.org || '—'}<span style="font-size:8pt;color:#7ab0b8;font-weight:normal;">/100</span></div><div style="font-size:8pt;color:#4a7080;">${m4EnginePdf.band.label}</div></div>
-    <div class="card"><div class="card-lbl">Perfil</div><div class="card-val" style="font-size:10pt;color:#0f1a2e;">${(m4EnginePdf.profile || []).join(' · ') || 'Pendiente'}</div></div>
-    <div class="card"><div class="card-lbl">Dimensión crítica</div><div class="card-val" style="font-size:10pt;color:#0f1a2e;">${[['Human',m4EnginePdf.human],['Operating',m4EnginePdf.operating],['Execution',m4EnginePdf.execution]].filter(x=>x[1]).sort((a,b)=>a[1]-b[1])[0]?.[0] || '—'}</div></div>
+${r.vsm_resumen && r.vsm_resumen.lead_time ? `<div class="section no-break">
+  <h2>Value Stream Map — Análisis de flujo</h2>
+  <div class="grid3">
+    <div class="card"><div class="card-lbl">Lead Time</div><div class="card-val" style="color:#E24B4A;">${r.vsm_resumen.lead_time}</div></div>
+    <div class="card"><div class="card-lbl">Ratio Valor Añadido</div><div class="card-val" style="color:#BA7517;">${r.vsm_resumen.va_ratio}</div></div>
+    <div class="card"><div class="card-lbl">Cuellos de botella</div><div class="card-val" style="color:#00706e;font-size:9pt;">${(r.vsm_resumen.cuellos_botella||[]).join(', ')||'—'}</div></div>
   </div>
-  <div class="grid3" style="margin-bottom:3mm;">
-    <div class="card"><div class="card-lbl">Human Capability</div><div class="card-val" style="color:${m4Band(m4EnginePdf.human).pdfColor};">${m4EnginePdf.human || '—'}</div></div>
-    <div class="card"><div class="card-lbl">Operating System</div><div class="card-val" style="color:${m4Band(m4EnginePdf.operating).pdfColor};">${m4EnginePdf.operating || '—'}</div></div>
-    <div class="card"><div class="card-lbl">Execution Readiness</div><div class="card-val" style="color:${m4Band(m4EnginePdf.execution).pdfColor};">${m4EnginePdf.execution || '—'}</div></div>
-  </div>
-  <div class="summary-box" style="border-left-color:${m4EnginePdf.band.pdfColor};background:#f7fafa;"><p style="font-size:9pt;font-weight:normal;">${m4EnginePdf.narrative}</p></div>
-</div>
-
-${pdfFlowBottleneckBlock}
+  ${r.vsm_resumen.impacto_lead_time?`<div style="font-size:8.5pt;color:#4a7080;margin-top:2mm;line-height:1.5;">${r.vsm_resumen.impacto_lead_time}</div>`:''}
+</div>` : ''}
 
 <div class="section no-break">
   <h2>KPIs identificados</h2>
@@ -3326,22 +3367,7 @@ function renderSidebarRoadmap() {
   const m3extHasData = currentClient && m3extData[currentClient.id];
   const m8HasData = currentClient && m8Data[currentClient.id] && Object.entries(m8Data[currentClient.id]).some(([k,v]) => k !== 'notes' ? !!v : !!(v&&v.trim&&v.trim()));
   const m6HasData = currentClient && m6Data[currentClient.id] && m6Data[currentClient.id].backlog && m6Data[currentClient.id].backlog.length > 0;
-
-  // M5 is not a normal interview session. Its visible manual work is the Confidence Layer™.
-  // Therefore the sidebar progress must follow the same completion logic the user sees in M5:
-  // all default confidence findings classified = M5 completed. Previously M5 stayed "active",
-  // so the Intelligence phase showed 67% even when all 6 confidence items were selected.
-  const confForProgress = currentClient && (confidenceData[currentClient.id] || null);
-  const confFindingsForProgress = confForProgress?.findings || [];
-  const confExpectedForProgress = (typeof defaultConfidence === 'function' ? defaultConfidence().findings.length : 6);
-  const confClassifiedForProgress = confFindingsForProgress.filter(f => f && f.confidence).length;
-  const m5ConfidenceComplete = confFindingsForProgress.length >= confExpectedForProgress && confClassifiedForProgress >= confExpectedForProgress;
-
   const m5Ready = f0HasData || (prog && ['ceo','fab','sys','ops','itot','operario'].some(s => prog.sessions[s] !== 'pending'));
-  const m5State = m5ConfidenceComplete ? 'rc-done' : m5Ready ? 'rc-active' : 'rc-pending';
-  const m5Icon = m5ConfidenceComplete ? '✓' : m5Ready ? '→' : '○';
-  const m5LabelClass = m5ConfidenceComplete ? 'rld' : m5Ready ? 'rla' : '';
-
   const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
 
   function ss(sid){ return prog?.sessions[sid]||'pending'; }
@@ -3385,7 +3411,7 @@ function renderSidebarRoadmap() {
     {
       icon:'🧠', title:'Intelligence & Output', sub:'Síntesis, portfolio e informe',
       items:[
-        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Icon, state: m5State, labelClass: m5LabelClass, action: 'openM5()' },
+        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Ready ? '→' : '○', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: m5Ready ? 'rla' : '', action: 'openM5()' },
         { id:'m6', label:'M6 · Portfolio + RIM™', icon: m6HasData ? '✓' : '○', state: m6HasData ? 'rc-done' : 'rc-pending', labelClass: m6HasData ? 'rld' : '', action: 'openM6()' },
         { id:'report', label:'M7 · Executive Report', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
       ]
@@ -3709,209 +3735,6 @@ function m4EnsureV2(){
   return m;
 }
 function m4LevelScore(v){return v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0;}
-
-// ── M4 READINESS ENGINE™ · deterministic scoring from DIOP inputs ──
-function m4ValueScore(v, mode='positive'){
-  // positive: Alto = good. risk: Alto = high dependency/friction, so lower score.
-  if(mode==='risk') return v==='Bajo'?100:v==='Medio'?60:v==='Alto'?25:0;
-  return v==='Alto'?100:v==='Medio'?60:v==='Bajo'?25:0;
-}
-function m4AvgScores(arr){
-  const vals=(arr||[]).filter(v=>Number(v)>0);
-  return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
-}
-function m4Band(score){
-  if(!score) return {label:'Pendiente', color:'var(--text3)', pdfColor:'#7ab0b8'};
-  if(score>=75) return {label:'Fuerte', color:'var(--green)', pdfColor:'#1D9E75'};
-  if(score>=55) return {label:'Moderado', color:'var(--amber)', pdfColor:'#BA7517'};
-  return {label:'Débil', color:'var(--red)', pdfColor:'#E24B4A'};
-}
-
-function m4Answer(session,qid){
-  if(!currentClient) return '';
-  return allAnswers[`${currentClient.id}_${session}_${qid}`] || '';
-}
-function m4Text(v){return String(v||'').toLowerCase();}
-function m4DimToLevel(n){n=Number(n)||0;return n>=4?'Alto':n===3?'Medio':n>0?'Bajo':'';}
-function m4RiskFromDim(n){n=Number(n)||0;return n>=4?'Bajo':n===3?'Medio':n>0?'Alto':'';}
-function m4RiskFromBool(v){
-  const t=m4Text(v);
-  if(['si','sí','yes','true'].includes(t)) return 'Alto';
-  if(['no','false'].includes(t)) return 'Bajo';
-  return '';
-}
-function m4InferFactor(key, mode, explicit, dims, gov){
-  if(explicit) return {value:explicit, source:'M4 input'};
-  const a=(s,q)=>m4Answer(s,q);
-  const txt=(s,q)=>m4Text(a(s,q));
-  const contains=(v,words)=>words.some(w=>m4Text(v).includes(w));
-  const mainProblem=txt('ceo','main_problem');
-  const teamRoles=txt('fab','team_roles');
-  const handover=txt('fab','shift_handover');
-  const planning=txt('fab','production_planning');
-  const planningHours=txt('fab','planning_hours');
-  const maintRecords=txt('fab','maintenance_records');
-  const infoDesk=txt('ops','info_flow_to_desk');
-  const dataFlow=txt('sys','data_flow_plant_to_mgmt');
-  const untrusted=txt('sys','untrusted_data');
-  const digitalUsage=txt('op','digital_usage');
-  const singleDep=txt('ops','single_person_dependency');
-  const preventivo=txt('fab','preventive_plan');
-  const overtime=txt('m8','urgency_overtime') || txt('economic','urgency_overtime');
-
-  // HUMAN CAPABILITY — risk scale: Alto = more dependency/friction.
-  if(key==='key_people'){
-    const yn=m4RiskFromBool(a('fab','key_person_dependency'));
-    if(yn) return {value:yn, source:'FAB dependencia personas clave'};
-    if(singleDep && singleDep.length>8) return {value:'Alto', source:'Dir.Ops proceso dependiente de una persona'};
-    const onboarding=txt('fab','onboarding_weeks');
-    if(contains(onboarding,['más de 3','1 - 3 meses'])) return {value:'Medio', source:'FAB onboarding largo'};
-  }
-  if(key==='info_search'){
-    if(contains(infoDesk,['me bajo','teléfono','whatsapp','excel','final del turno'])) return {value:'Alto', source:'Dir.Ops flujo información manual'};
-    if(contains(dataFlow,['manual','excel','email','correo','whatsapp','papel'])) return {value:'Alto', source:'IT/OT transferencia manual'};
-    if(contains(planningHours,['más de 10','5h - 10'])) return {value:'Alto', source:'FAB horas manuales planificación'};
-    if(contains(handover,['verbal','papel','whatsapp','excel'])) return {value:'Medio', source:'FAB traspaso no sistémico'};
-  }
-  if(key==='troubleshooting'){
-    if(contains(maintRecords,['no se registran','papel'])) return {value:'Alto', source:'FAB mantenimiento sin histórico fiable'};
-    if(contains(maintRecords,['excel'])) return {value:'Medio', source:'FAB mantenimiento en Excel'};
-    if(contains(preventivo,['no'])) return {value:'Alto', source:'FAB sin preventivo formal'};
-    if((Number(dims.track_record)||0)>0 && Number(dims.track_record)<=2) return {value:'Medio', source:'M4 track record bajo'};
-  }
-  if(key==='coordination'){
-    const d=m4RiskFromDim(dims.collaboration); if(d) return {value:d, source:'M4 colaboración interdepartamental'};
-    if(contains(mainProblem,['cumplir plazos','plan de producción','dificultad para escalar'])) return {value:'Medio', source:'CEO fricción transversal'};
-    if(contains(handover,['verbal','whatsapp'])) return {value:'Medio', source:'FAB handover informal'};
-  }
-  if(key==='reactive_planning'){
-    if(contains(planning,['decide en el momento'])) return {value:'Alto', source:'FAB planificación reactiva'};
-    if(contains(planning,['excel manual'])) return {value:'Medio', source:'FAB planificación en Excel'};
-    if(contains(planningHours,['más de 10','5h - 10'])) return {value:'Alto', source:'FAB carga manual planificación'};
-    if(contains(overtime,['alto'])) return {value:'Alto', source:'M1 Economic Baseline urgencias altas'};
-    if(contains(overtime,['medio'])) return {value:'Medio', source:'M1 Economic Baseline urgencias medias'};
-  }
-
-  // OPERATING SYSTEM — positive scale: Alto = stronger management system.
-  if(key==='kpi_ownership'){
-    const d=m4DimToLevel(dims.ownership); if(d) return {value:d, source:'M4 ownership operativo'};
-    const rows=Object.values(gov||{}); const owned=rows.filter(x=>x?.owner).length; const reviewed=rows.filter(x=>x?.review && x.review!=='Nada').length;
-    if(owned>=4 && reviewed>=4) return {value:'Alto', source:'M4 mapa gobernanza'};
-    if(owned>=2 || reviewed>=2) return {value:'Medio', source:'M4 mapa gobernanza parcial'};
-  }
-  if(key==='routines'){
-    const rows=Object.values(gov||{}); const daily=rows.filter(x=>x?.review==='Diaria').length; const weekly=rows.filter(x=>x?.review==='Semanal').length; const none=rows.filter(x=>x?.review==='Nada').length;
-    if(daily+weekly>=4) return {value:'Alto', source:'M4 revisión periódica KPIs'};
-    if(daily+weekly>=2) return {value:'Medio', source:'M4 rutinas parciales'};
-    if(none>=3) return {value:'Bajo', source:'M4 sin revisión de KPIs'};
-  }
-  if(key==='action_followup'){
-    const d=m4DimToLevel(dims.track_record); if(d) return {value:d, source:'M4 track record proyectos'};
-  }
-  if(key==='escalation'){
-    const v=[Number(dims.ownership)||0,Number(dims.collaboration)||0].filter(Boolean);
-    if(v.length){const avg=v.reduce((a,b)=>a+b,0)/v.length;return {value:m4DimToLevel(Math.round(avg)), source:'M4 ownership + colaboración'};}
-  }
-  if(key==='continuous_improvement'){
-    if(contains(teamRoles,['mejora continua'])) return {value:(Number(dims.track_record)||0)>=3?'Alto':'Medio', source:'FAB rol de mejora continua'};
-    const d=m4DimToLevel(dims.track_record); if(d) return {value:d, source:'M4 historial de mejora'};
-  }
-
-  // EXECUTION READINESS — positive scale.
-  if(key==='sponsor'){
-    const d=m4DimToLevel(dims.sponsor); if(d) return {value:d, source:'M4 sponsor ejecutivo'};
-  }
-  if(key==='execution_capacity'){
-    const v=[Number(dims.absorption)||0,Number(dims.track_record)||0].filter(Boolean);
-    if(v.length){const avg=v.reduce((a,b)=>a+b,0)/v.length;return {value:m4DimToLevel(Math.round(avg)), source:'M4 absorción + track record'};}
-  }
-  if(key==='team_time'){
-    const d=m4DimToLevel(dims.absorption); if(d) return {value:d, source:'M4 capacidad de absorción'};
-    if(contains(overtime,['alto'])) return {value:'Bajo', source:'M1 Economic Baseline urgencias altas'};
-    if(contains(overtime,['medio'])) return {value:'Medio', source:'M1 Economic Baseline urgencias medias'};
-  }
-  if(key==='skills'){
-    const d=m4DimToLevel(dims.digital_skills); if(d) return {value:d, source:'M4 competencias digitales'};
-    if(contains(digitalUsage,['evit','no uso','no se usa'])) return {value:'Bajo', source:'Operario evita sistema digital'};
-  }
-  if(key==='change_openness'){
-    const v=[Number(dims.absorption)||0,Number(dims.track_record)||0,Number(dims.collaboration)||0].filter(Boolean);
-    if(v.length){const avg=v.reduce((a,b)=>a+b,0)/v.length;return {value:m4DimToLevel(Math.round(avg)), source:'M4 absorción + colaboración'};}
-    if(contains(untrusted,['no conf','desconf'])) return {value:'Medio', source:'IT/OT desconfianza en datos'};
-  }
-  return {value:'', source:''};
-}
-
-function calcM4ReadinessEngine(m4Input){
-  const m=m4Input || {};
-  const h=m.human || {};
-  const o=m.operating || {};
-  const e=m.execution || {};
-  const dims=m.dimensions || {};
-
-  const humanFactors=[
-    {k:'key_people', label:'Dependencia personas clave', value:h.key_people, mode:'risk', weight:22},
-    {k:'info_search', label:'Búsqueda manual información', value:h.info_search, mode:'risk', weight:18},
-    {k:'troubleshooting', label:'Troubleshooting experto', value:h.troubleshooting, mode:'risk', weight:20},
-    {k:'coordination', label:'Coordinación / silos', value:h.coordination, mode:'risk', weight:20},
-    {k:'reactive_planning', label:'Planificación reactiva', value:h.reactive_planning, mode:'risk', weight:20},
-  ];
-  const operatingFactors=[
-    {k:'kpi_ownership', label:'Ownership KPI', value:o.kpi_ownership, mode:'positive', weight:22},
-    {k:'routines', label:'Rutinas operativas', value:o.routines, mode:'positive', weight:18},
-    {k:'action_followup', label:'Seguimiento acciones', value:o.action_followup, mode:'positive', weight:20},
-    {k:'escalation', label:'Escalado problemas', value:o.escalation, mode:'positive', weight:18},
-    {k:'continuous_improvement', label:'Mejora continua', value:o.continuous_improvement, mode:'positive', weight:22},
-  ];
-  const executionFactors=[
-    {k:'sponsor', label:'Sponsor visible', value:e.sponsor, mode:'positive', weight:24},
-    {k:'execution_capacity', label:'Capacidad ejecución', value:e.execution_capacity, mode:'positive', weight:22},
-    {k:'team_time', label:'Disponibilidad equipo', value:e.team_time, mode:'positive', weight:18},
-    {k:'skills', label:'Skills', value:e.skills, mode:'positive', weight:18},
-    {k:'change_openness', label:'Apertura cambio', value:e.change_openness, mode:'positive', weight:18},
-  ];
-  [humanFactors, operatingFactors, executionFactors].forEach(group=>group.forEach(f=>{
-    const inferred=m4InferFactor(f.k, f.mode, f.value, dims, m.governance||{});
-    f.value=inferred.value;
-    f.source=inferred.source;
-    f.derived=inferred.source && inferred.source!=='M4 input';
-  }));
-  function weighted(factors){
-    const active=factors.filter(f=>f.value);
-    const den=active.reduce((a,f)=>a+(f.weight||1),0);
-    if(!den) return 0;
-    return Math.round(active.reduce((a,f)=>a+m4ValueScore(f.value,f.mode)*(f.weight||1),0)/den);
-  }
-  const human=weighted(humanFactors);
-  const operating=weighted(operatingFactors);
-  const execution=weighted(executionFactors);
-  let org=0;
-  const available=[];
-  if(human) available.push({score:human,w:30});
-  if(operating) available.push({score:operating,w:35});
-  if(execution) available.push({score:execution,w:35});
-  if(available.length) org=Math.round(available.reduce((a,x)=>a+x.score*x.w,0)/available.reduce((a,x)=>a+x.w,0));
-  else {
-    const dimVals=Object.values(dims).map(v=>Number(v)||0).filter(v=>v>0);
-    if(dimVals.length) org=Math.round((dimVals.reduce((a,b)=>a+b,0)/dimVals.length)/5*100);
-  }
-
-  const profile=[];
-  if(human && human<55) profile.push('Knowledge-dependent');
-  if(operating && operating<55) profile.push('Management-system weak');
-  if(execution && execution<55) profile.push('Execution-constrained');
-  if((e.sponsor==='Bajo') || ((dims.sponsor||0)>0 && (dims.sponsor||0)<=2)) profile.push('Leadership-fragile');
-  if(org>=75) profile.push('System-driven');
-  if(execution>=70 && org>=65) profile.push('Change-ready');
-  if(!profile.length && org) profile.push(org>=55?'Developing capability':'Readiness at risk');
-
-  const lowest=[{k:'Human',score:human},{k:'Operating',score:operating},{k:'Execution',score:execution}].filter(x=>x.score).sort((a,b)=>a.score-b.score)[0];
-  const narrative = !org ? 'La organización aún no tiene suficientes datos M4 para calcular un readiness defendible.' :
-    org>=75 ? `La organización muestra una base sólida para absorber cambios. El sistema de gestión y la capacidad de ejecución permiten priorizar iniciativas de mayor ambición, siempre respetando la secuencia TTL™.` :
-    org>=55 ? `La organización presenta capacidad moderada de transformación. El principal condicionante es ${lowest?.k || 'la dimensión más débil'}, por lo que el roadmap debe combinar quick wins con refuerzo explícito de gobernanza y adopción.` :
-    `La organización presenta riesgo de ejecución. Antes de escalar iniciativas complejas, DIOP debe reforzar ownership, rutinas de gestión y capacidad real de absorción del cambio.`;
-  return {human,operating,execution,org,profile,narrative,humanFactors,operatingFactors,executionFactors,band:m4Band(org)};
-}
 function m4LevelColor(v){return v==='Alto'?'var(--green)':v==='Medio'?'var(--amber)':v==='Bajo'?'var(--red)':'var(--border)';}
 function m4SetLevel(section,key,val){const m=m4EnsureV2();m[section][key]=val;renderM4();m4Changed();}
 function renderM4QuickBlock(title,sub,section,items){
@@ -3944,19 +3767,6 @@ function renderM4(){
   const avg=M4_DIMENSIONS.reduce((a,d)=>a+(parseInt(m.dimensions[d.k])||0),0)/M4_DIMENSIONS.length;
   
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🏢</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M4 · Diagnóstico organizacional</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Readiness organizacional · 7 dimensiones · Alimenta OFI D4</div></div></div>`;
-
-  const m4Engine=calcM4ReadinessEngine(m);
-  html+=`<div class="vsm-section" style="border-left:3px solid ${m4Engine.band.color};">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;">
-      <div><div class="vsm-section-title">M4 Readiness Engine™</div><div class="vsm-section-sub">Resultado calculado desde las 7 dimensiones M4 + señales reales recogidas en M1–M4.</div></div>
-      <div style="text-align:right;"><div style="font-size:36px;font-weight:800;color:${m4Engine.band.color};font-family:var(--mono);">${m4Engine.org||'—'}<span style="font-size:14px;color:var(--text3);font-weight:500;">/100</span></div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">ORG Readiness · ${m4Engine.band.label}</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
-      ${[['Human Capability',m4Engine.human],['Operating System',m4Engine.operating],['Execution Readiness',m4Engine.execution]].map(([l,v])=>{const b=m4Band(v);return `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;"><div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">${l}</div><div style="font-size:24px;font-weight:800;color:${b.color};font-family:var(--mono);">${v||'—'}<span style="font-size:11px;color:var(--text3);font-weight:500;">/100</span></div><div style="font-size:10px;color:var(--text3);margin-top:2px;">${b.label}</div></div>`;}).join('')}
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">${m4Engine.profile.map(x=>`<span style="font-size:10px;color:var(--teal-l);background:rgba(0,173,181,.08);border:0.5px solid rgba(0,173,181,.25);padding:4px 8px;border-radius:999px;">${x}</span>`).join('')}</div>
-    <div style="font-size:12px;color:var(--text2);line-height:1.55;">${m4Engine.narrative}</div>
-  </div>`;
   
   if(avg>0){
     const col=avg<2?'var(--red)':avg<3?'var(--amber)':avg<4?'var(--teal)':'var(--green)';
@@ -6169,8 +5979,6 @@ function getM4ReportContext() {
   if(filled.length){
     const avg=filled.reduce((a,d)=>a+m4.dimensions[d.k],0)/filled.length;
     ctx+=`Readiness organizacional: ${avg.toFixed(1)}/5\n`;
-    const eng=calcM4ReadinessEngine(m4);
-    ctx+=`M4 Readiness Engine: ORG ${eng.org || '—'}/100 · Human ${eng.human || '—'} · Operating ${eng.operating || '—'} · Execution ${eng.execution || '—'} · Profile: ${(eng.profile||[]).join(', ')}\n`;
     filled.forEach(d=>{ctx+=`  ${d.name}: ${m4.dimensions[d.k]}/5${m4.evidence?.[d.k]?' — '+m4.evidence[d.k]:''}\n`;});
   }
   
@@ -6187,6 +5995,26 @@ function getM4ReportContext() {
   }
   
   if(m4.archetype_signals)ctx+=`Señales arquetipo M4: ${m4.archetype_signals}\n`;
+  
+  // Human Capability™
+  if(m4.human){
+    const hk=[['key_people','Dependencia personas clave'],['info_search','Búsqueda manual info'],['troubleshooting','Troubleshooting experto'],['coordination','Coordinación/silos'],['reactive_planning','Planificación reactiva']];
+    const filled=hk.filter(([k])=>m4.human[k]);
+    if(filled.length){ctx+=`\nHuman Capability™:\n`;filled.forEach(([k,l])=>{ctx+=`  ${l}: ${m4.human[k]}\n`;});}
+  }
+  // Operating System™
+  if(m4.operating){
+    const ok=[['kpi_ownership','Ownership KPI'],['routines','Rutinas operativas'],['action_followup','Seguimiento acciones'],['escalation','Escalado problemas'],['continuous_improvement','Mejora continua']];
+    const filled=ok.filter(([k])=>m4.operating[k]);
+    if(filled.length){ctx+=`\nOperating System™:\n`;filled.forEach(([k,l])=>{ctx+=`  ${l}: ${m4.operating[k]}\n`;});}
+  }
+  // Execution Readiness™
+  if(m4.execution){
+    const ek=[['sponsor','Sponsor visible'],['execution_capacity','Capacidad ejecución'],['team_time','Disponibilidad equipo'],['skills','Skills'],['change_openness','Apertura cambio']];
+    const filled=ek.filter(([k])=>m4.execution[k]);
+    if(filled.length){ctx+=`\nExecution Readiness™:\n`;filled.forEach(([k,l])=>{ctx+=`  ${l}: ${m4.execution[k]}\n`;});}
+  }
+  
   return ctx;
 }
 
@@ -6242,6 +6070,36 @@ function getOFIReportContext() {
   dims.sort((a,b)=>a.s-b.s);
   ctx+=`Vector de fricción principal: ${dims[0].n} (${dims[0].s}/25)\n`;
   
+  return ctx;
+}
+
+function getFieldIntelligenceReportContext(){
+  const fi=buildFieldIntelligence();
+  const total=fi.discrepancias.length+fi.fricciones.length+fi.dataTrust.length+fi.dependencias.length+fi.adopcion.length;
+  if(!total)return '';
+  let ctx='\n=== FIELD INTELLIGENCE™ — SEÑALES CRÍTICAS DE CAMPO ===\n';
+  ctx+=`Total señales detectadas: ${total}\n`;
+  if(fi.discrepancias.length){
+    ctx+=`\nDISCREPANCIAS ENTRE PERFILES (${fi.discrepancias.length}):\n`;
+    fi.discrepancias.forEach(d=>{ctx+=`  [${d.profiles}] ${d.signal}\n`;});
+  }
+  if(fi.fricciones.length){
+    ctx+=`\nFRICCIONES INVISIBLES (${fi.fricciones.length}):\n`;
+    fi.fricciones.forEach(f=>{ctx+=`  ${f.signal}\n`;});
+  }
+  if(fi.dataTrust.length){
+    ctx+=`\nDATA TRUST PROFILE (${fi.dataTrust.length}):\n`;
+    fi.dataTrust.forEach(d=>{ctx+=`  ${d.signal}\n`;});
+  }
+  if(fi.dependencias.length){
+    ctx+=`\nDEPENDENCIAS HUMANAS (${fi.dependencias.length}):\n`;
+    fi.dependencias.forEach(d=>{ctx+=`  [${d.source}] ${d.signal}\n`;});
+  }
+  if(fi.adopcion.length){
+    ctx+=`\nSEÑALES ADOPCIÓN / RESISTENCIA (${fi.adopcion.length}):\n`;
+    fi.adopcion.forEach(a=>{ctx+=`  ${a.signal}\n`;});
+  }
+  ctx+=`\nINSTRUCCIÓN: Estas señales son hallazgos de campo de alto valor consultivo. Deben influir directamente en el resumen ejecutivo, los riesgos principales, y la priorización de quick wins. Las discrepancias entre perfiles deben mencionarse explícitamente en el análisis. Los Quick Wins reales (lo que cada perfil cambiaría mañana) tienen prioridad sobre los generados por la IA.\n`;
   return ctx;
 }
 </script>
