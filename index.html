@@ -3760,7 +3760,7 @@ async function saveM4(){if(!currentClient)return;const j=JSON.stringify(getM4())
 function scheduleM4Save(){clearTimeout(m4SaveTimer);m4SaveTimer=setTimeout(saveM4,800);}
 function m4Changed(){scheduleM4Save();renderSidebarRoadmap();}
 
-async function openM4(){currentSession='m4';document.getElementById('main-content').scrollTop=0;showScreen('m4');await loadM4Data(currentClient.id);renderM4();renderSidebarRoadmap();}
+async function openM4(){currentSession='m4';document.getElementById('main-content').scrollTop=0;showScreen('m4');await loadM4Data(currentClient.id);await loadConfidenceData(currentClient.id);await loadF0Data(currentClient.id);await loadVSMData(currentClient.id);await loadM2extData(currentClient.id);await loadM3extData(currentClient.id);renderM4();renderSidebarRoadmap();}
 
 function m4EnsureV2(){
   const m=getM4();
@@ -4108,6 +4108,23 @@ function renderM4QuickBlock(title,sub,section,items){
   return html;
 }
 
+
+function renderM4ConfidenceBridge(){
+  const c = getConfidence();
+  const findings = (c.findings || []).filter(f => f.confidence);
+  if(!findings.length){
+    return `<div class="vsm-section"><div class="vsm-section-title">🧪 Señales M5 · Confidence Layer™</div><div class="vsm-section-sub">Todavía no hay hallazgos clasificados en M5. Al clasificarlos, M4 los usará como evidencia de lectura organizacional.</div></div>`;
+  }
+  const chips = findings.map(f=>{
+    const col = confidenceColor(f.confidence);
+    return `<div style="padding:10px 12px;background:var(--s2);border:0.5px solid ${col};border-radius:var(--r-sm);display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="min-width:0;"><div style="font-size:11px;color:var(--text3);font-family:var(--mono);">${f.module}</div><div style="font-size:12px;color:var(--text);font-weight:600;">${f.label}</div><div style="font-size:10px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.finding || 'Hallazgo sin descripción escrita'}</div></div>
+      <div style="font-size:10px;color:${col};border:1px solid ${col};background:${col}18;padding:5px 9px;border-radius:999px;white-space:nowrap;font-weight:700;">${f.confidence}</div>
+    </div>`;
+  }).join('');
+  return `<div class="vsm-section" style="border-left:3px solid var(--teal);"><div class="vsm-section-title">🧪 Señales M5 · Confidence Layer™</div><div class="vsm-section-sub">Esto es lo seleccionado en M5. M4 lo usa como evidencia puente cuando no hay scoring manual propio.</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">${chips}</div></div>`;
+}
+
 function renderM4(){
   const mainContent=document.getElementById('main-content');
   const scrollPos=mainContent?mainContent.scrollTop:0;
@@ -4115,6 +4132,8 @@ function renderM4(){
   const avg=M4_DIMENSIONS.reduce((a,d)=>a+(parseInt(m.dimensions[d.k])||0),0)/M4_DIMENSIONS.length;
   
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🏢</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M4 · Diagnóstico organizacional</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Readiness organizacional · 7 dimensiones · Alimenta OFI D4</div></div></div>`;
+
+  html += renderM4ConfidenceBridge();
 
   const m4Engine=calcM4ReadinessEngine(m);
   html+=`<div class="vsm-section" style="border-left:3px solid ${m4Engine.band.color};">
