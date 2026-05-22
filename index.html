@@ -2913,29 +2913,6 @@ function exportPDF() {
   const roi = r.roi||{};
   const qws = r.quick_wins||[];
   const tools = r.herramientas_mercado||[];
-  const pdfEsc = (v) => String(v ?? '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  const fi = (typeof buildFieldIntelligence === 'function') ? buildFieldIntelligence() : {discrepancias:[],fricciones:[],dataTrust:[],dependencias:[],adopcion:[]};
-  const fiTotal = fi.discrepancias.length + fi.fricciones.length + fi.dataTrust.length + fi.dependencias.length + fi.adopcion.length;
-  const fiItems = (items, color, metaFn) => (items||[]).map(it => `<div class="fi-line" style="border-left-color:${color};"><div>${pdfEsc(it.signal)}</div>${metaFn ? `<small>${pdfEsc(metaFn(it))}</small>` : ''}</div>`).join('');
-  const fiBlock = fiTotal ? `
-<div class="section no-break">
-  <h2>Field Intelligence™ — Señales críticas recogidas en campo</h2>
-  <div class="fi-intro">Inteligencia extraída del cruce de entrevistas, observación directa y datos de campo. Estas señales no suelen aparecer en los KPIs: emergen al comparar perspectivas entre dirección, operaciones, IT/OT y planta.</div>
-  <div class="fi-grid">
-    <div class="fi-card"><strong>${fi.discrepancias.length}</strong><span>Discrepancias</span></div>
-    <div class="fi-card"><strong>${fi.fricciones.length}</strong><span>Fricciones invisibles</span></div>
-    <div class="fi-card"><strong>${fi.dataTrust.length}</strong><span>Data Trust</span></div>
-    <div class="fi-card"><strong>${fi.dependencias.length}</strong><span>Dependencias humanas</span></div>
-    <div class="fi-card"><strong>${fi.adopcion.length}</strong><span>Adopción / resistencia</span></div>
-  </div>
-  ${fi.discrepancias.length ? `<h3 class="fi-title">Discrepancias entre perfiles</h3>${fiItems(fi.discrepancias,'#E24B4A',d=>`${d.profiles || ''}${d.severity && d.severity !== 'insight' ? ' · Severidad: '+d.severity : ''}`)}` : ''}
-  ${fi.fricciones.length ? `<h3 class="fi-title">Fricciones invisibles</h3>${fiItems(fi.fricciones,'#BA7517')}` : ''}
-  ${fi.dataTrust.length ? `<h3 class="fi-title">Data Trust Profile™</h3>${fiItems(fi.dataTrust,'#7F77DD')}` : ''}
-  ${fi.dependencias.length ? `<h3 class="fi-title">Dependencias humanas</h3>${fiItems(fi.dependencias,'#E24B4A',d=>d.source ? 'Fuente: '+d.source : '')}` : ''}
-  ${fi.adopcion.length ? `<h3 class="fi-title">Señales de adopción / resistencia</h3>${fiItems(fi.adopcion,'#00adb5')}` : ''}
-</div>` : '';
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -3025,14 +3002,6 @@ function exportPDF() {
   .next-q{background:#f0f9fa;border-left:3px solid #00adb5;padding:4mm 5mm;border-radius:0 5px 5px 0;}
   .nq-lbl{font-size:7pt;color:#7ab0b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm;}
   .nq-text{font-size:10pt;color:#0f1a2e;font-style:italic;}
-  .fi-intro{font-size:8.5pt;color:#4a7080;line-height:1.5;margin-bottom:3mm;}
-  .fi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2mm;margin-bottom:4mm;}
-  .fi-card{background:#f7fafa;border:1px solid #daedef;border-radius:5px;padding:2.5mm;text-align:center;min-height:18mm;}
-  .fi-card strong{display:block;font-size:15pt;color:#00706e;margin-bottom:1mm;}
-  .fi-card span{display:block;font-size:6.5pt;color:#7ab0b8;text-transform:uppercase;letter-spacing:.5px;line-height:1.2;}
-  .fi-title{font-size:7.5pt;text-transform:uppercase;letter-spacing:1px;color:#00706e;margin:3mm 0 2mm;border:none;padding:0;}
-  .fi-line{background:#f7fafa;border:1px solid #daedef;border-left:3px solid #00adb5;border-radius:0 5px 5px 0;padding:2.5mm 3mm;margin-bottom:1.8mm;font-size:8.5pt;color:#0f1a2e;line-height:1.45;}
-  .fi-line small{display:block;font-size:7pt;color:#7ab0b8;margin-top:1mm;}
 
   .footer{background:#060b12;padding:3mm 5mm;display:flex;justify-content:space-between;align-items:center;margin-top:5mm;}
   .footer-left{font-size:7.5pt;color:#3a7a82;}
@@ -3221,8 +3190,6 @@ ${r.analisis_detallado ? `<div class="section no-break">
   <div style="font-size:9pt;color:#0f1a2e;line-height:1.7;white-space:pre-wrap;text-align:justify;">${r.analisis_detallado}</div>
 </div>` : ''}
 
-${fiBlock}
-
 <div class="footer">
   <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
   <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
@@ -3400,9 +3367,7 @@ function renderSidebarRoadmap() {
   const m3extHasData = currentClient && m3extData[currentClient.id];
   const m8HasData = currentClient && m8Data[currentClient.id] && Object.entries(m8Data[currentClient.id]).some(([k,v]) => k !== 'notes' ? !!v : !!(v&&v.trim&&v.trim()));
   const m6HasData = currentClient && m6Data[currentClient.id] && m6Data[currentClient.id].backlog && m6Data[currentClient.id].backlog.length > 0;
-  const m5ConfidenceSummary = (typeof confidenceSummary === 'function') ? confidenceSummary() : { total: 0 };
-  const m5Done = m5ConfidenceSummary.total >= 6;
-  const m5Ready = m5Done || f0HasData || (prog && ['ceo','fab','sys','ops','itot','operario'].some(s => prog.sessions[s] !== 'pending'));
+  const m5Ready = f0HasData || (prog && ['ceo','fab','sys','ops','itot','operario'].some(s => prog.sessions[s] !== 'pending'));
   const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
 
   function ss(sid){ return prog?.sessions[sid]||'pending'; }
@@ -3446,7 +3411,7 @@ function renderSidebarRoadmap() {
     {
       icon:'🧠', title:'Intelligence & Output', sub:'Síntesis, portfolio e informe',
       items:[
-        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Done ? '✓' : (m5Ready ? '→' : '○'), state: m5Done ? 'rc-done' : (m5Ready ? 'rc-active' : 'rc-pending'), labelClass: m5Done ? 'rld' : (m5Ready ? 'rla' : ''), action: 'openM5()' },
+        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Ready ? '→' : '○', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: m5Ready ? 'rla' : '', action: 'openM5()' },
         { id:'m6', label:'M6 · Portfolio + RIM™', icon: m6HasData ? '✓' : '○', state: m6HasData ? 'rc-done' : 'rc-pending', labelClass: m6HasData ? 'rld' : '', action: 'openM6()' },
         { id:'report', label:'M7 · Executive Report', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
       ]
@@ -3760,7 +3725,7 @@ async function saveM4(){if(!currentClient)return;const j=JSON.stringify(getM4())
 function scheduleM4Save(){clearTimeout(m4SaveTimer);m4SaveTimer=setTimeout(saveM4,800);}
 function m4Changed(){scheduleM4Save();renderSidebarRoadmap();}
 
-async function openM4(){currentSession='m4';document.getElementById('main-content').scrollTop=0;showScreen('m4');await loadM4Data(currentClient.id);await loadConfidenceData(currentClient.id);await loadF0Data(currentClient.id);await loadVSMData(currentClient.id);await loadM2extData(currentClient.id);await loadM3extData(currentClient.id);renderM4();renderSidebarRoadmap();}
+async function openM4(){currentSession='m4';document.getElementById('main-content').scrollTop=0;showScreen('m4');await loadM4Data(currentClient.id);await loadConfidenceData(currentClient.id);renderM4();renderSidebarRoadmap();}
 
 function m4EnsureV2(){
   const m=getM4();
@@ -3770,359 +3735,29 @@ function m4EnsureV2(){
   return m;
 }
 function m4LevelScore(v){return v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0;}
-
-// ── M4 READINESS ENGINE™ · deterministic scoring from DIOP inputs ──
-function m4ValueScore(v, mode='positive'){
-  // positive: Alto = good. risk: Alto = high dependency/friction, so lower score.
-  if(mode==='risk') return v==='Bajo'?100:v==='Medio'?60:v==='Alto'?25:0;
-  return v==='Alto'?100:v==='Medio'?60:v==='Bajo'?25:0;
-}
-function m4AvgScores(arr){
-  const vals=(arr||[]).filter(v=>Number(v)>0);
-  return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
-}
-function m4Band(score){
-  if(!score) return {label:'Pendiente', color:'var(--text3)', pdfColor:'#7ab0b8'};
-  if(score>=75) return {label:'Fuerte', color:'var(--green)', pdfColor:'#1D9E75'};
-  if(score>=55) return {label:'Moderado', color:'var(--amber)', pdfColor:'#BA7517'};
-  return {label:'Débil', color:'var(--red)', pdfColor:'#E24B4A'};
-}
-
-function m4Answer(session,qid){
-  if(!currentClient) return '';
-  return allAnswers[`${currentClient.id}_${session}_${qid}`] || '';
-}
-function m4Text(v){return String(v||'').toLowerCase();}
-function m4DimToLevel(n){n=Number(n)||0;return n>=4?'Alto':n===3?'Medio':n>0?'Bajo':'';}
-function m4RiskFromDim(n){n=Number(n)||0;return n>=4?'Bajo':n===3?'Medio':n>0?'Alto':'';}
-function m4RiskFromBool(v){
-  const t=m4Text(v);
-  if(['si','sí','yes','true'].includes(t)) return 'Alto';
-  if(['no','false'].includes(t)) return 'Bajo';
-  return '';
-}
-
-function m4ConfidenceFind(labelPart){
-  try{
-    const c=currentClient && confidenceData[currentClient.id];
-    if(!c||!Array.isArray(c.findings))return null;
-    const needle=m4Text(labelPart);
-    return c.findings.find(f=>m4Text(f.label).includes(needle) && f.confidence) || null;
-  }catch(e){return null;}
-}
-function m4ConfidenceSource(f){return f?`Confidence Layer · ${f.module} · ${f.label} (${f.confidence})`:'';}
-function m4RiskLevelFromConfidence(f){
-  if(!f)return '';
-  // For risk-mode factors: stronger confidence in a risk signal = higher risk.
-  return f.confidence==='Confirmado'?'Alto':f.confidence==='Hipótesis fuerte'?'Medio':f.confidence==='Investigación requerida'?'Medio':'';
-}
-function m4PositiveLevelFromConfidence(f){
-  if(!f)return '';
-  // For positive factors: a confirmed risk signal indicates lower readiness.
-  return f.confidence==='Confirmado'?'Bajo':f.confidence==='Hipótesis fuerte'?'Medio':f.confidence==='Investigación requerida'?'Medio':'';
-}
-function m4SafeFieldIntelligence(){
-  try{return (typeof buildFieldIntelligence==='function') ? buildFieldIntelligence() : {discrepancias:[],fricciones:[],dataTrust:[],dependencias:[],adopcion:[]};}
-  catch(e){return {discrepancias:[],fricciones:[],dataTrust:[],dependencias:[],adopcion:[]};}
-}
-function m4InferFactor(key, mode, explicit, dims, gov){
-  if(explicit) return {value:explicit, source:'M4 input'};
-  const a=(s,q)=>m4Answer(s,q);
-  const txt=(s,q)=>m4Text(a(s,q));
-  const contains=(v,words)=>words.some(w=>m4Text(v).includes(w));
-  const mainProblem=txt('ceo','main_problem');
-  const teamRoles=txt('fab','team_roles');
-  const handover=txt('fab','shift_handover');
-  const planning=txt('fab','production_planning');
-  const planningHours=txt('fab','planning_hours');
-  const maintRecords=txt('fab','maintenance_records');
-  const infoDesk=txt('ops','info_flow_to_desk');
-  const dataFlow=txt('sys','data_flow_plant_to_mgmt');
-  const untrusted=txt('sys','untrusted_data');
-  const digitalUsage=txt('op','digital_usage');
-  const singleDep=txt('ops','single_person_dependency');
-  const preventivo=txt('fab','preventive_plan');
-  const overtime=txt('m8','urgency_overtime') || txt('economic','urgency_overtime');
-
-  // HUMAN CAPABILITY — risk scale: Alto = more dependency/friction.
-  if(key==='key_people'){
-    const yn=m4RiskFromBool(a('fab','key_person_dependency'));
-    if(yn) return {value:yn, source:'FAB dependencia personas clave'};
-    if(singleDep && singleDep.length>8) return {value:'Alto', source:'Dir.Ops proceso dependiente de una persona'};
-    const onboarding=txt('fab','onboarding_weeks');
-    if(contains(onboarding,['más de 3','1 - 3 meses'])) return {value:'Medio', source:'FAB onboarding largo'};
-  }
-  if(key==='info_search'){
-    if(contains(infoDesk,['me bajo','teléfono','whatsapp','excel','final del turno'])) return {value:'Alto', source:'Dir.Ops flujo información manual'};
-    if(contains(dataFlow,['manual','excel','email','correo','whatsapp','papel'])) return {value:'Alto', source:'IT/OT transferencia manual'};
-    if(contains(planningHours,['más de 10','5h - 10'])) return {value:'Alto', source:'FAB horas manuales planificación'};
-    if(contains(handover,['verbal','papel','whatsapp','excel'])) return {value:'Medio', source:'FAB traspaso no sistémico'};
-  }
-  if(key==='troubleshooting'){
-    if(contains(maintRecords,['no se registran','papel'])) return {value:'Alto', source:'FAB mantenimiento sin histórico fiable'};
-    if(contains(maintRecords,['excel'])) return {value:'Medio', source:'FAB mantenimiento en Excel'};
-    if(contains(preventivo,['no'])) return {value:'Alto', source:'FAB sin preventivo formal'};
-    if((Number(dims.track_record)||0)>0 && Number(dims.track_record)<=2) return {value:'Medio', source:'M4 track record bajo'};
-  }
-  if(key==='coordination'){
-    const d=m4RiskFromDim(dims.collaboration); if(d) return {value:d, source:'M4 colaboración interdepartamental'};
-    if(contains(mainProblem,['cumplir plazos','plan de producción','dificultad para escalar'])) return {value:'Medio', source:'CEO fricción transversal'};
-    if(contains(handover,['verbal','whatsapp'])) return {value:'Medio', source:'FAB handover informal'};
-  }
-  if(key==='reactive_planning'){
-    if(contains(planning,['decide en el momento'])) return {value:'Alto', source:'FAB planificación reactiva'};
-    if(contains(planning,['excel manual'])) return {value:'Medio', source:'FAB planificación en Excel'};
-    if(contains(planningHours,['más de 10','5h - 10'])) return {value:'Alto', source:'FAB carga manual planificación'};
-    if(contains(overtime,['alto'])) return {value:'Alto', source:'M1 Economic Baseline urgencias altas'};
-    if(contains(overtime,['medio'])) return {value:'Medio', source:'M1 Economic Baseline urgencias medias'};
-  }
-
-  // OPERATING SYSTEM — positive scale: Alto = stronger management system.
-  if(key==='kpi_ownership'){
-    const d=m4DimToLevel(dims.ownership); if(d) return {value:d, source:'M4 ownership operativo'};
-    const rows=Object.values(gov||{}); const owned=rows.filter(x=>x?.owner).length; const reviewed=rows.filter(x=>x?.review && x.review!=='Nada').length;
-    if(owned>=4 && reviewed>=4) return {value:'Alto', source:'M4 mapa gobernanza'};
-    if(owned>=2 || reviewed>=2) return {value:'Medio', source:'M4 mapa gobernanza parcial'};
-  }
-  if(key==='routines'){
-    const rows=Object.values(gov||{}); const daily=rows.filter(x=>x?.review==='Diaria').length; const weekly=rows.filter(x=>x?.review==='Semanal').length; const none=rows.filter(x=>x?.review==='Nada').length;
-    if(daily+weekly>=4) return {value:'Alto', source:'M4 revisión periódica KPIs'};
-    if(daily+weekly>=2) return {value:'Medio', source:'M4 rutinas parciales'};
-    if(none>=3) return {value:'Bajo', source:'M4 sin revisión de KPIs'};
-  }
-  if(key==='action_followup'){
-    const d=m4DimToLevel(dims.track_record); if(d) return {value:d, source:'M4 track record proyectos'};
-  }
-  if(key==='escalation'){
-    const v=[Number(dims.ownership)||0,Number(dims.collaboration)||0].filter(Boolean);
-    if(v.length){const avg=v.reduce((a,b)=>a+b,0)/v.length;return {value:m4DimToLevel(Math.round(avg)), source:'M4 ownership + colaboración'};}
-  }
-  if(key==='continuous_improvement'){
-    if(contains(teamRoles,['mejora continua'])) return {value:(Number(dims.track_record)||0)>=3?'Alto':'Medio', source:'FAB rol de mejora continua'};
-    const d=m4DimToLevel(dims.track_record); if(d) return {value:d, source:'M4 historial de mejora'};
-  }
-
-  // EXECUTION READINESS — positive scale.
-  if(key==='sponsor'){
-    const d=m4DimToLevel(dims.sponsor); if(d) return {value:d, source:'M4 sponsor ejecutivo'};
-  }
-  if(key==='execution_capacity'){
-    const v=[Number(dims.absorption)||0,Number(dims.track_record)||0].filter(Boolean);
-    if(v.length){const avg=v.reduce((a,b)=>a+b,0)/v.length;return {value:m4DimToLevel(Math.round(avg)), source:'M4 absorción + track record'};}
-  }
-  if(key==='team_time'){
-    const d=m4DimToLevel(dims.absorption); if(d) return {value:d, source:'M4 capacidad de absorción'};
-    if(contains(overtime,['alto'])) return {value:'Bajo', source:'M1 Economic Baseline urgencias altas'};
-    if(contains(overtime,['medio'])) return {value:'Medio', source:'M1 Economic Baseline urgencias medias'};
-  }
-  if(key==='skills'){
-    const d=m4DimToLevel(dims.digital_skills); if(d) return {value:d, source:'M4 competencias digitales'};
-    if(contains(digitalUsage,['evit','no uso','no se usa'])) return {value:'Bajo', source:'Operario evita sistema digital'};
-  }
-  if(key==='change_openness'){
-    const v=[Number(dims.absorption)||0,Number(dims.track_record)||0,Number(dims.collaboration)||0].filter(Boolean);
-    if(v.length){const avg=v.reduce((a,b)=>a+b,0)/v.length;return {value:m4DimToLevel(Math.round(avg)), source:'M4 absorción + colaboración'};}
-    if(contains(untrusted,['no conf','desconf'])) return {value:'Medio', source:'IT/OT desconfianza en datos'};
-  }
-  // FIELD INTELLIGENCE + CONFIDENCE FALLBACK
-  // If M4 has not been manually scored yet, infer an initial readiness signal from the intelligence already captured.
-  const fi=m4SafeFieldIntelligence();
-  const cRisk=m4ConfidenceFind('riesgo organizacional');
-  const cArch=m4ConfidenceFind('arquetipo');
-  const cDigital=m4ConfidenceFind('brecha digital');
-  const cConstraint=m4ConfidenceFind('constraint');
-  const cLoss=m4ConfidenceFind('pérdida operativa');
-  const cKpi=m4ConfidenceFind('kpi baseline');
-  const hasSignals=(arr)=>Array.isArray(arr)&&arr.length>0;
-
-  if(key==='key_people'){
-    if(hasSignals(fi.dependencias)) return {value:'Alto', source:'Field Intelligence · dependencias humanas'};
-    const v=m4RiskLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
-  }
-  if(key==='info_search'){
-    if(hasSignals(fi.fricciones)) return {value:'Alto', source:'Field Intelligence · fricciones invisibles'};
-    if(hasSignals(fi.dataTrust)) return {value:'Medio', source:'Field Intelligence · Data Trust Profile'};
-    const v=m4RiskLevelFromConfidence(cDigital); if(v) return {value:v, source:m4ConfidenceSource(cDigital)};
-  }
-  if(key==='troubleshooting'){
-    if(hasSignals(fi.dependencias)) return {value:'Medio', source:'Field Intelligence · dependencia de conocimiento experto'};
-    const v=m4RiskLevelFromConfidence(cArch); if(v) return {value:v, source:m4ConfidenceSource(cArch)};
-  }
-  if(key==='coordination'){
-    if(hasSignals(fi.discrepancias)) return {value:'Alto', source:'Field Intelligence · discrepancias entre perfiles'};
-    const v=m4RiskLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
-  }
-  if(key==='reactive_planning'){
-    if(hasSignals(fi.discrepancias)) return {value:'Medio', source:'Field Intelligence · señales cruzadas de campo'};
-    const v=m4RiskLevelFromConfidence(cConstraint)||m4RiskLevelFromConfidence(cLoss); if(v) return {value:v, source:m4ConfidenceSource(cConstraint||cLoss)};
-  }
-
-  if(key==='kpi_ownership'){
-    if(hasSignals(fi.dataTrust)) return {value:'Bajo', source:'Field Intelligence · datos no confiables / ownership débil'};
-    const v=m4PositiveLevelFromConfidence(cKpi); if(v) return {value:v, source:m4ConfidenceSource(cKpi)};
-  }
-  if(key==='routines'){
-    if(hasSignals(fi.fricciones)) return {value:'Medio', source:'Field Intelligence · fricciones no absorbidas por rutinas'};
-    const v=m4PositiveLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
-  }
-  if(key==='action_followup'){
-    if(hasSignals(fi.adopcion)) return {value:'Medio', source:'Field Intelligence · adopción / proyectos previos'};
-    const v=m4PositiveLevelFromConfidence(cArch); if(v) return {value:v, source:m4ConfidenceSource(cArch)};
-  }
-  if(key==='escalation'){
-    if(hasSignals(fi.discrepancias)) return {value:'Bajo', source:'Field Intelligence · discrepancias entre niveles'};
-    const v=m4PositiveLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
-  }
-  if(key==='continuous_improvement'){
-    if(hasSignals(fi.adopcion)) return {value:'Medio', source:'Field Intelligence · historial de adopción/resistencia'};
-    const v=m4PositiveLevelFromConfidence(cArch); if(v) return {value:v, source:m4ConfidenceSource(cArch)};
-  }
-
-  if(key==='sponsor'){
-    if(hasSignals(fi.adopcion) && fi.adopcion.some(x=>m4Text(x.signal).includes('sponsor')||m4Text(x.signal).includes('liderazgo'))) return {value:'Bajo', source:'Field Intelligence · liderazgo/sponsor'};
-    const v=m4PositiveLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
-  }
-  if(key==='execution_capacity'){
-    if(hasSignals(fi.adopcion)) return {value:'Medio', source:'Field Intelligence · historial de ejecución/adopción'};
-    const v=m4PositiveLevelFromConfidence(cRisk); if(v) return {value:v, source:m4ConfidenceSource(cRisk)};
-  }
-  if(key==='team_time'){
-    if(hasSignals(fi.fricciones)) return {value:'Medio', source:'Field Intelligence · carga invisible / fricción operativa'};
-    const v=m4PositiveLevelFromConfidence(cLoss); if(v) return {value:v, source:m4ConfidenceSource(cLoss)};
-  }
-  if(key==='skills'){
-    const v=m4PositiveLevelFromConfidence(cDigital); if(v) return {value:v, source:m4ConfidenceSource(cDigital)};
-    if(hasSignals(fi.fricciones) && fi.fricciones.some(x=>m4Text(x.signal).includes('sistema evitado'))) return {value:'Bajo', source:'Field Intelligence · sistema evitado'};
-  }
-  if(key==='change_openness'){
-    if(hasSignals(fi.adopcion)) return {value:'Medio', source:'Field Intelligence · adopción/resistencia'};
-    const v=m4PositiveLevelFromConfidence(cArch); if(v) return {value:v, source:m4ConfidenceSource(cArch)};
-  }
-
-  return {value:'', source:''};
-}
-
-function calcM4ReadinessEngine(m4Input){
-  const m=m4Input || {};
-  const h=m.human || {};
-  const o=m.operating || {};
-  const e=m.execution || {};
-  const dims=m.dimensions || {};
-
-  const humanFactors=[
-    {k:'key_people', label:'Dependencia personas clave', value:h.key_people, mode:'risk', weight:22},
-    {k:'info_search', label:'Búsqueda manual información', value:h.info_search, mode:'risk', weight:18},
-    {k:'troubleshooting', label:'Troubleshooting experto', value:h.troubleshooting, mode:'risk', weight:20},
-    {k:'coordination', label:'Coordinación / silos', value:h.coordination, mode:'risk', weight:20},
-    {k:'reactive_planning', label:'Planificación reactiva', value:h.reactive_planning, mode:'risk', weight:20},
-  ];
-  const operatingFactors=[
-    {k:'kpi_ownership', label:'Ownership KPI', value:o.kpi_ownership, mode:'positive', weight:22},
-    {k:'routines', label:'Rutinas operativas', value:o.routines, mode:'positive', weight:18},
-    {k:'action_followup', label:'Seguimiento acciones', value:o.action_followup, mode:'positive', weight:20},
-    {k:'escalation', label:'Escalado problemas', value:o.escalation, mode:'positive', weight:18},
-    {k:'continuous_improvement', label:'Mejora continua', value:o.continuous_improvement, mode:'positive', weight:22},
-  ];
-  const executionFactors=[
-    {k:'sponsor', label:'Sponsor visible', value:e.sponsor, mode:'positive', weight:24},
-    {k:'execution_capacity', label:'Capacidad ejecución', value:e.execution_capacity, mode:'positive', weight:22},
-    {k:'team_time', label:'Disponibilidad equipo', value:e.team_time, mode:'positive', weight:18},
-    {k:'skills', label:'Skills', value:e.skills, mode:'positive', weight:18},
-    {k:'change_openness', label:'Apertura cambio', value:e.change_openness, mode:'positive', weight:18},
-  ];
-  [humanFactors, operatingFactors, executionFactors].forEach(group=>group.forEach(f=>{
-    const inferred=m4InferFactor(f.k, f.mode, f.value, dims, m.governance||{});
-    f.value=inferred.value;
-    f.source=inferred.source;
-    f.derived=inferred.source && inferred.source!=='M4 input';
-  }));
-  function weighted(factors){
-    const active=factors.filter(f=>f.value);
-    const den=active.reduce((a,f)=>a+(f.weight||1),0);
-    if(!den) return 0;
-    return Math.round(active.reduce((a,f)=>a+m4ValueScore(f.value,f.mode)*(f.weight||1),0)/den);
-  }
-  const human=weighted(humanFactors);
-  const operating=weighted(operatingFactors);
-  const execution=weighted(executionFactors);
-  let org=0;
-  const available=[];
-  if(human) available.push({score:human,w:30});
-  if(operating) available.push({score:operating,w:35});
-  if(execution) available.push({score:execution,w:35});
-  if(available.length) org=Math.round(available.reduce((a,x)=>a+x.score*x.w,0)/available.reduce((a,x)=>a+x.w,0));
-  else {
-    const dimVals=Object.values(dims).map(v=>Number(v)||0).filter(v=>v>0);
-    if(dimVals.length) org=Math.round((dimVals.reduce((a,b)=>a+b,0)/dimVals.length)/5*100);
-  }
-
-  const profile=[];
-  if(human && human<55) profile.push('Knowledge-dependent');
-  if(operating && operating<55) profile.push('Management-system weak');
-  if(execution && execution<55) profile.push('Execution-constrained');
-  if((e.sponsor==='Bajo') || ((dims.sponsor||0)>0 && (dims.sponsor||0)<=2)) profile.push('Leadership-fragile');
-  if(org>=75) profile.push('System-driven');
-  if(execution>=70 && org>=65) profile.push('Change-ready');
-  if(!profile.length && org) profile.push(org>=55?'Developing capability':'Readiness at risk');
-
-  const lowest=[{k:'Human',score:human},{k:'Operating',score:operating},{k:'Execution',score:execution}].filter(x=>x.score).sort((a,b)=>a.score-b.score)[0];
-  const narrative = !org ? 'La organización aún no tiene suficientes datos M4 para calcular un readiness defendible.' :
-    org>=75 ? `La organización muestra una base sólida para absorber cambios. El sistema de gestión y la capacidad de ejecución permiten priorizar iniciativas de mayor ambición, siempre respetando la secuencia TTL™.` :
-    org>=55 ? `La organización presenta capacidad moderada de transformación. El principal condicionante es ${lowest?.k || 'la dimensión más débil'}, por lo que el roadmap debe combinar quick wins con refuerzo explícito de gobernanza y adopción.` :
-    `La organización presenta riesgo de ejecución. Antes de escalar iniciativas complejas, DIOP debe reforzar ownership, rutinas de gestión y capacidad real de absorción del cambio.`;
-  return {human,operating,execution,org,profile,narrative,humanFactors,operatingFactors,executionFactors,band:m4Band(org)};
-}
-
 function m4LevelColor(v){return v==='Alto'?'var(--green)':v==='Medio'?'var(--amber)':v==='Bajo'?'var(--red)':'var(--border)';}
 function m4SetLevel(section,key,val){const m=m4EnsureV2();m[section][key]=val;renderM4();m4Changed();}
 function renderM4QuickBlock(title,sub,section,items){
   const m=m4EnsureV2();
-  const eng=calcM4ReadinessEngine(m);
-  const factorMap={human:eng.humanFactors,operating:eng.operatingFactors,execution:eng.executionFactors};
-  const factors=factorMap[section]||[];
-  const vals=factors.map(f=>f.value).filter(Boolean).map(v=>m4LevelScore(v));
+  const vals=items.map(i=>m4LevelScore(m[section]?.[i.k])).filter(v=>v>0);
   const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
   const avgText=avg?`${avg.toFixed(1)}/3`:'Pendiente';
   const avgCol=avg>=2.4?'var(--green)':avg>=1.7?'var(--amber)':avg>0?'var(--red)':'var(--text3)';
   let html=`<div class="vsm-section"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px;"><div><div class="vsm-section-title">${title}</div><div class="vsm-section-sub">${sub}</div></div><div style="font-size:20px;font-weight:700;color:${avgCol};font-family:var(--mono);white-space:nowrap;">${avgText}</div></div>`;
   html+=`<div style="display:flex;flex-direction:column;gap:8px;">`;
   items.forEach(it=>{
-    const f=factors.find(x=>x.k===it.k)||{};
-    const explicit=m[section]?.[it.k]||'';
-    const val=explicit || f.value || '';
-    const col=m4LevelColor(val);
-    const source=explicit?'M4 input manual':(f.source||'Pendiente');
-    html+=`<div style="padding:12px;background:var(--s2);border:0.5px solid ${val?col:'var(--border)'};border-radius:var(--r-sm);">
+    const val=m[section]?.[it.k]||'';
+    html+=`<div style="padding:12px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);">
       <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;">
-        <div style="min-width:0;flex:1;"><div style="font-size:12px;font-weight:600;color:var(--text);">${it.l}</div><div style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.35;">${it.h}</div><div style="font-size:9px;color:${val?'var(--text3)':'var(--text4)'};margin-top:5px;font-family:var(--mono);">Fuente: ${source}</div></div>
-        <div style="display:flex;align-items:flex-end;gap:5px;flex-shrink:0;flex-direction:column;">
-          <div style="font-size:11px;font-weight:700;color:${val?col:'var(--text3)'};border:1px solid ${val?col:'var(--border)'};background:${val?col+'18':'transparent'};padding:4px 9px;border-radius:999px;min-width:58px;text-align:center;">${val||'—'}</div>
-          <div style="display:flex;gap:4px;">
-          ${['Bajo','Medio','Alto'].map(opt=>{const sel=explicit===opt;const c=m4LevelColor(opt);return `<button onclick="m4SetLevel('${section}','${it.k}','${opt}')" title="Forzar ${opt}" style="padding:4px 7px;border-radius:var(--r-xs);border:1px solid ${sel?c:'var(--border)'};background:${sel?c+'22':'var(--s1)'};color:${sel?c:'var(--text3)'};font-size:9px;font-weight:600;cursor:pointer;font-family:var(--font);">${opt[0]}</button>`;}).join('')}
-          </div>
+        <div style="min-width:0;"><div style="font-size:12px;font-weight:600;color:var(--text);">${it.l}</div><div style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.35;">${it.h}</div></div>
+        <div style="display:flex;gap:5px;flex-shrink:0;">
+          ${['Bajo','Medio','Alto'].map(opt=>{const sel=val===opt;const col=m4LevelColor(opt);return `<button onclick="m4SetLevel('${section}','${it.k}','${opt}')" style="padding:6px 9px;border-radius:var(--r-xs);border:1px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${opt}</button>`;}).join('')}
         </div>
       </div>
     </div>`;
   });
   html+=`</div></div>`;
   return html;
-}
-
-
-function renderM4ConfidenceBridge(){
-  const c = getConfidence();
-  const findings = (c.findings || []).filter(f => f.confidence);
-  if(!findings.length){
-    return `<div class="vsm-section"><div class="vsm-section-title">🧪 Señales M5 · Confidence Layer™</div><div class="vsm-section-sub">Todavía no hay hallazgos clasificados en M5. Al clasificarlos, M4 los usará como evidencia de lectura organizacional.</div></div>`;
-  }
-  const chips = findings.map(f=>{
-    const col = confidenceColor(f.confidence);
-    return `<div style="padding:10px 12px;background:var(--s2);border:0.5px solid ${col};border-radius:var(--r-sm);display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <div style="min-width:0;"><div style="font-size:11px;color:var(--text3);font-family:var(--mono);">${f.module}</div><div style="font-size:12px;color:var(--text);font-weight:600;">${f.label}</div><div style="font-size:10px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.finding || 'Hallazgo sin descripción escrita'}</div></div>
-      <div style="font-size:10px;color:${col};border:1px solid ${col};background:${col}18;padding:5px 9px;border-radius:999px;white-space:nowrap;font-weight:700;">${f.confidence}</div>
-    </div>`;
-  }).join('');
-  return `<div class="vsm-section" style="border-left:3px solid var(--teal);"><div class="vsm-section-title">🧪 Señales M5 · Confidence Layer™</div><div class="vsm-section-sub">Esto es lo seleccionado en M5. M4 lo usa como evidencia puente cuando no hay scoring manual propio.</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">${chips}</div></div>`;
 }
 
 function renderM4(){
@@ -4132,21 +3767,6 @@ function renderM4(){
   const avg=M4_DIMENSIONS.reduce((a,d)=>a+(parseInt(m.dimensions[d.k])||0),0)/M4_DIMENSIONS.length;
   
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🏢</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M4 · Diagnóstico organizacional</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Readiness organizacional · 7 dimensiones · Alimenta OFI D4</div></div></div>`;
-
-  html += renderM4ConfidenceBridge();
-
-  const m4Engine=calcM4ReadinessEngine(m);
-  html+=`<div class="vsm-section" style="border-left:3px solid ${m4Engine.band.color};">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;">
-      <div><div class="vsm-section-title">M4 Readiness Engine™</div><div class="vsm-section-sub">Resultado calculado desde las 7 dimensiones M4 + señales reales recogidas en M1–M4.</div></div>
-      <div style="text-align:right;"><div style="font-size:36px;font-weight:800;color:${m4Engine.band.color};font-family:var(--mono);">${m4Engine.org||'—'}<span style="font-size:14px;color:var(--text3);font-weight:500;">/100</span></div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">ORG Readiness · ${m4Engine.band.label}</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
-      ${[['Human Capability',m4Engine.human],['Operating System',m4Engine.operating],['Execution Readiness',m4Engine.execution]].map(([l,v])=>{const b=m4Band(v);return `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;"><div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">${l}</div><div style="font-size:24px;font-weight:800;color:${b.color};font-family:var(--mono);">${v||'—'}<span style="font-size:11px;color:var(--text3);font-weight:500;">/100</span></div><div style="font-size:10px;color:var(--text3);margin-top:2px;">${b.label}</div></div>`;}).join('')}
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">${m4Engine.profile.map(x=>`<span style="font-size:10px;color:var(--teal-l);background:rgba(0,173,181,.08);border:0.5px solid rgba(0,173,181,.25);padding:4px 8px;border-radius:999px;">${x}</span>`).join('')}</div>
-    <div style="font-size:12px;color:var(--text2);line-height:1.55;">${m4Engine.narrative}</div>
-  </div>`;
   
   if(avg>0){
     const col=avg<2?'var(--red)':avg<3?'var(--amber)':avg<4?'var(--teal)':'var(--green)';
@@ -4218,7 +3838,6 @@ function renderM4(){
   document.getElementById('m4-content').innerHTML=html;
   if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
 }
-
 
 // ══════════════════════════════════════════════════════
 // ── M5 · OFI™ DASHBOARD ──
@@ -4570,7 +4189,7 @@ function renderConfidenceLayer(){const c=getConfidence(); if(!c.findings)c.findi
     <div style="display:grid;grid-template-columns:54px 1fr 190px;gap:8px;align-items:center;">
       <div style="font-size:10px;font-weight:800;color:var(--teal);font-family:var(--mono);">${f.module}</div>
       <div><div style="font-size:12px;font-weight:600;color:var(--text);">${f.label}</div><input class="vsm-input" style="font-size:11px;padding:6px;margin-top:5px;" placeholder="Hallazgo clave observado..." value="${(f.finding||'').replace(/"/g,'&quot;')}" oninput="getConfidence().findings[${i}].finding=this.value;confidenceChanged()"></div>
-      <div><select class="vsm-select" style="font-size:11px;padding:6px;border-color:${col};color:${col};" onchange="getConfidence().findings[${i}].confidence=this.value;renderM5();confidenceChanged()"><option value="">Confidence...</option><option ${f.confidence==='Confirmado'?'selected':''}>Confirmado</option><option ${f.confidence==='Hipótesis fuerte'?'selected':''}>Hipótesis fuerte</option><option ${f.confidence==='Investigación requerida'?'selected':''}>Investigación requerida</option></select><div style="font-size:9px;color:var(--text4);margin-top:4px;line-height:1.3;">${confidenceNarrative(f.confidence)}</div></div>
+      <div><select class="vsm-select" style="font-size:11px;padding:6px;border-color:${col};color:${col};" onchange="getConfidence().findings[${i}].confidence=this.value;saveConfidence();renderM5();confidenceChanged()"><option value="">Confidence...</option><option ${f.confidence==='Confirmado'?'selected':''}>Confirmado</option><option ${f.confidence==='Hipótesis fuerte'?'selected':''}>Hipótesis fuerte</option><option ${f.confidence==='Investigación requerida'?'selected':''}>Investigación requerida</option></select><div style="font-size:9px;color:var(--text4);margin-top:4px;line-height:1.3;">${confidenceNarrative(f.confidence)}</div></div>
     </div>
   </div>`;});
   html+=`</div><div style="font-size:10px;color:var(--text4);margin-top:10px;line-height:1.45;">Regla TECNOFAB: Confirmado = ≥2 fuentes sólidas; Hipótesis = señales consistentes sin cierre completo; Investigación = visibilidad insuficiente.</div></div>`;
