@@ -2913,6 +2913,29 @@ function exportPDF() {
   const roi = r.roi||{};
   const qws = r.quick_wins||[];
   const tools = r.herramientas_mercado||[];
+  const pdfEsc = (v) => String(v ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const fi = (typeof buildFieldIntelligence === 'function') ? buildFieldIntelligence() : {discrepancias:[],fricciones:[],dataTrust:[],dependencias:[],adopcion:[]};
+  const fiTotal = fi.discrepancias.length + fi.fricciones.length + fi.dataTrust.length + fi.dependencias.length + fi.adopcion.length;
+  const fiItems = (items, color, metaFn) => (items||[]).map(it => `<div class="fi-line" style="border-left-color:${color};"><div>${pdfEsc(it.signal)}</div>${metaFn ? `<small>${pdfEsc(metaFn(it))}</small>` : ''}</div>`).join('');
+  const fiBlock = fiTotal ? `
+<div class="section no-break">
+  <h2>Field Intelligence™ — Señales críticas recogidas en campo</h2>
+  <div class="fi-intro">Inteligencia extraída del cruce de entrevistas, observación directa y datos de campo. Estas señales no suelen aparecer en los KPIs: emergen al comparar perspectivas entre dirección, operaciones, IT/OT y planta.</div>
+  <div class="fi-grid">
+    <div class="fi-card"><strong>${fi.discrepancias.length}</strong><span>Discrepancias</span></div>
+    <div class="fi-card"><strong>${fi.fricciones.length}</strong><span>Fricciones invisibles</span></div>
+    <div class="fi-card"><strong>${fi.dataTrust.length}</strong><span>Data Trust</span></div>
+    <div class="fi-card"><strong>${fi.dependencias.length}</strong><span>Dependencias humanas</span></div>
+    <div class="fi-card"><strong>${fi.adopcion.length}</strong><span>Adopción / resistencia</span></div>
+  </div>
+  ${fi.discrepancias.length ? `<h3 class="fi-title">Discrepancias entre perfiles</h3>${fiItems(fi.discrepancias,'#E24B4A',d=>`${d.profiles || ''}${d.severity && d.severity !== 'insight' ? ' · Severidad: '+d.severity : ''}`)}` : ''}
+  ${fi.fricciones.length ? `<h3 class="fi-title">Fricciones invisibles</h3>${fiItems(fi.fricciones,'#BA7517')}` : ''}
+  ${fi.dataTrust.length ? `<h3 class="fi-title">Data Trust Profile™</h3>${fiItems(fi.dataTrust,'#7F77DD')}` : ''}
+  ${fi.dependencias.length ? `<h3 class="fi-title">Dependencias humanas</h3>${fiItems(fi.dependencias,'#E24B4A',d=>d.source ? 'Fuente: '+d.source : '')}` : ''}
+  ${fi.adopcion.length ? `<h3 class="fi-title">Señales de adopción / resistencia</h3>${fiItems(fi.adopcion,'#00adb5')}` : ''}
+</div>` : '';
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -3002,6 +3025,14 @@ function exportPDF() {
   .next-q{background:#f0f9fa;border-left:3px solid #00adb5;padding:4mm 5mm;border-radius:0 5px 5px 0;}
   .nq-lbl{font-size:7pt;color:#7ab0b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm;}
   .nq-text{font-size:10pt;color:#0f1a2e;font-style:italic;}
+  .fi-intro{font-size:8.5pt;color:#4a7080;line-height:1.5;margin-bottom:3mm;}
+  .fi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2mm;margin-bottom:4mm;}
+  .fi-card{background:#f7fafa;border:1px solid #daedef;border-radius:5px;padding:2.5mm;text-align:center;min-height:18mm;}
+  .fi-card strong{display:block;font-size:15pt;color:#00706e;margin-bottom:1mm;}
+  .fi-card span{display:block;font-size:6.5pt;color:#7ab0b8;text-transform:uppercase;letter-spacing:.5px;line-height:1.2;}
+  .fi-title{font-size:7.5pt;text-transform:uppercase;letter-spacing:1px;color:#00706e;margin:3mm 0 2mm;border:none;padding:0;}
+  .fi-line{background:#f7fafa;border:1px solid #daedef;border-left:3px solid #00adb5;border-radius:0 5px 5px 0;padding:2.5mm 3mm;margin-bottom:1.8mm;font-size:8.5pt;color:#0f1a2e;line-height:1.45;}
+  .fi-line small{display:block;font-size:7pt;color:#7ab0b8;margin-top:1mm;}
 
   .footer{background:#060b12;padding:3mm 5mm;display:flex;justify-content:space-between;align-items:center;margin-top:5mm;}
   .footer-left{font-size:7.5pt;color:#3a7a82;}
@@ -3190,6 +3221,8 @@ ${r.analisis_detallado ? `<div class="section no-break">
   <div style="font-size:9pt;color:#0f1a2e;line-height:1.7;white-space:pre-wrap;text-align:justify;">${r.analisis_detallado}</div>
 </div>` : ''}
 
+${fiBlock}
+
 <div class="footer">
   <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
   <div class="footer-right">Documento confidencial — uso exclusivo del cliente</div>
@@ -3367,7 +3400,9 @@ function renderSidebarRoadmap() {
   const m3extHasData = currentClient && m3extData[currentClient.id];
   const m8HasData = currentClient && m8Data[currentClient.id] && Object.entries(m8Data[currentClient.id]).some(([k,v]) => k !== 'notes' ? !!v : !!(v&&v.trim&&v.trim()));
   const m6HasData = currentClient && m6Data[currentClient.id] && m6Data[currentClient.id].backlog && m6Data[currentClient.id].backlog.length > 0;
-  const m5Ready = f0HasData || (prog && ['ceo','fab','sys','ops','itot','operario'].some(s => prog.sessions[s] !== 'pending'));
+  const m5ConfidenceSummary = (typeof confidenceSummary === 'function') ? confidenceSummary() : { total: 0 };
+  const m5Done = m5ConfidenceSummary.total >= 6;
+  const m5Ready = m5Done || f0HasData || (prog && ['ceo','fab','sys','ops','itot','operario'].some(s => prog.sessions[s] !== 'pending'));
   const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
 
   function ss(sid){ return prog?.sessions[sid]||'pending'; }
@@ -3411,7 +3446,7 @@ function renderSidebarRoadmap() {
     {
       icon:'🧠', title:'Intelligence & Output', sub:'Síntesis, portfolio e informe',
       items:[
-        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Ready ? '→' : '○', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: m5Ready ? 'rla' : '', action: 'openM5()' },
+        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Done ? '✓' : (m5Ready ? '→' : '○'), state: m5Done ? 'rc-done' : (m5Ready ? 'rc-active' : 'rc-pending'), labelClass: m5Done ? 'rld' : (m5Ready ? 'rla' : ''), action: 'openM5()' },
         { id:'m6', label:'M6 · Portfolio + RIM™', icon: m6HasData ? '✓' : '○', state: m6HasData ? 'rc-done' : 'rc-pending', labelClass: m6HasData ? 'rld' : '', action: 'openM6()' },
         { id:'report', label:'M7 · Executive Report', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
       ]
