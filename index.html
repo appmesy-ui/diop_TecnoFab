@@ -3367,7 +3367,13 @@ function renderSidebarRoadmap() {
   const m3extHasData = currentClient && m3extData[currentClient.id];
   const m8HasData = currentClient && m8Data[currentClient.id] && Object.entries(m8Data[currentClient.id]).some(([k,v]) => k !== 'notes' ? !!v : !!(v&&v.trim&&v.trim()));
   const m6HasData = currentClient && m6Data[currentClient.id] && m6Data[currentClient.id].backlog && m6Data[currentClient.id].backlog.length > 0;
-  const m5Ready = f0HasData || (prog && ['ceo','fab','sys','ops','itot','operario'].some(s => prog.sessions[s] !== 'pending'));
+  // M5 is considered DONE only when the Confidence Layer has all 6 findings classified.
+  // Important: this reads directly from confidenceData/getConfidence(), not from client.answers,
+  // because confidence is stored as a JSON config row and client.answers may be stale until reload.
+  const m5Confidence = currentClient ? getConfidence() : defaultConfidence();
+  const m5Findings = (m5Confidence && m5Confidence.findings) ? m5Confidence.findings : [];
+  const m5Done = m5Findings.length >= 6 && m5Findings.every(f => !!(f && f.confidence));
+  const m5HasData = m5Findings.some(f => !!(f && (f.confidence || (f.finding && f.finding.trim && f.finding.trim()))));
   const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
 
   function ss(sid){ return prog?.sessions[sid]||'pending'; }
@@ -3411,7 +3417,7 @@ function renderSidebarRoadmap() {
     {
       icon:'🧠', title:'Intelligence & Output', sub:'Síntesis, portfolio e informe',
       items:[
-        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Ready ? '→' : '○', state: m5Ready ? 'rc-active' : 'rc-pending', labelClass: m5Ready ? 'rla' : '', action: 'openM5()' },
+        { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Done ? '✓' : (m5HasData ? '→' : '○'), state: m5Done ? 'rc-done' : (m5HasData ? 'rc-active' : 'rc-pending'), labelClass: m5Done ? 'rld' : (m5HasData ? 'rla' : ''), action: 'openM5()' },
         { id:'m6', label:'M6 · Portfolio + RIM™', icon: m6HasData ? '✓' : '○', state: m6HasData ? 'rc-done' : 'rc-pending', labelClass: m6HasData ? 'rld' : '', action: 'openM6()' },
         { id:'report', label:'M7 · Executive Report', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
       ]
@@ -4173,7 +4179,20 @@ function defaultConfidence(){return{findings:[
 ]};}
 function getConfidence(){if(!currentClient)return defaultConfidence();if(!confidenceData[currentClient.id])confidenceData[currentClient.id]=defaultConfidence();return confidenceData[currentClient.id];}
 async function loadConfidenceData(clientId){try{const key=`${clientId}_confidence_config`;if(allAnswers[key]){confidenceData[clientId]=JSON.parse(allAnswers[key]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','confidence').eq('question_id','config').single();if(data?.answer){confidenceData[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}}}catch(e){}}
-async function saveConfidence(){if(!currentClient)return;const j=JSON.stringify(getConfidence());allAnswers[`${currentClient.id}_confidence_config`]=j;try{await sb.from('diop_answers').upsert({client_id:currentClient.id,session:'confidence',question_id:'config',answer:j,updated_at:new Date().toISOString()});}catch(e){}}
+async function saveConfidence(){
+  if(!currentClient)return;
+  const j=JSON.stringify(getConfidence());
+  const now=new Date().toISOString();
+  allAnswers[`${currentClient.id}_confidence_config`]=j;
+  // Keep currentClient.answers in sync so progress/report outdated logic does not wait for a full reload.
+  currentClient.answers=currentClient.answers||[];
+  const idx=currentClient.answers.findIndex(a=>a.session==='confidence'&&a.question_id==='config');
+  const row={client_id:currentClient.id,session:'confidence',question_id:'config',answer:j,updated_at:now};
+  if(idx>=0) currentClient.answers[idx]={...currentClient.answers[idx],...row};
+  else currentClient.answers.push(row);
+  try{await sb.from('diop_answers').upsert(row);}catch(e){console.warn('saveConfidence failed',e);}
+  renderSidebarRoadmap();
+}
 function scheduleConfidenceSave(){clearTimeout(confidenceSaveTimer);confidenceSaveTimer=setTimeout(saveConfidence,800);}
 function confidenceChanged(){scheduleConfidenceSave();renderSidebarRoadmap();}
 function confidenceColor(v){return v==='Confirmado'?'var(--green)':v==='Hipótesis fuerte'?'var(--amber)':v==='Investigación requerida'?'var(--red)':'var(--text3)';}
