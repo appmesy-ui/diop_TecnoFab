@@ -1764,7 +1764,7 @@ document.getElementById('report-content').innerHTML = `
     ? `<button
          class="gen-btn"
          id="gen-btn"
-         onclick="generateReport()"
+         onclick="openM7ImpactReview()"
          style="${reportOutdated ? 'background:linear-gradient(135deg,var(--amber),#d38a1f);color:#fff;' : ''}"
        >${
          latestReport
@@ -1808,10 +1808,9 @@ document.getElementById('report-content').innerHTML = `
     renderReport(latestReport, reportsHistoryHtml);
   }
 }
-async function generateReport() {
-  const btn = document.getElementById('gen-btn');
-  btn.disabled = true;
-  btn.textContent = 'Analizando...';
+async function generateReport(confirmedOperationalImpact) {
+  const btn = document.getElementById('gen-btn') || document.getElementById('m7-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Analizando...'; }
 
   document.getElementById('report-body').innerHTML = `
     <div class="report-header">
@@ -1836,6 +1835,26 @@ async function generateReport() {
   await loadM6Data(currentClient.id);
   await loadConfidenceData(currentClient.id);
   await loadF0Data(currentClient.id);
+
+  // ── Números ya calculados y validados — la IA los usa, nunca los inventa ──
+  const opImpact = confirmedOperationalImpact || calcM7OperationalImpact();
+  const d1=calcOFI_D1(),d2=calcOFI_D2(),d3=calcOFI_D3(),d4=calcOFI_D4();
+  const ofiScore = Math.round(d1*0.30+d2*0.25+d3*0.25+d4*0.20);
+  const ofiZone = ofiScore>=75?'Optimización avanzada':ofiScore>=50?'Mejora estructurada':ofiScore>=25?'Estabilización necesaria':'Intervención urgente';
+  const ofiTTL = ofiScore<15?'L1':ofiScore<30?'L2':ofiScore<45?'L3':ofiScore<60?'L4':ofiScore<75?'L5':'L6';
+  const econM6 = calcPortfolioEconomics(m6Data[currentClient.id]?.backlog || []);
+
+  let lockedNumbersCtx = '\n=== NÚMEROS YA CALCULADOS Y VALIDADOS — ÚSALOS EXACTOS, NO LOS RECALCULES NI LOS CAMBIES ===\n';
+  if (opImpact && opImpact.total) {
+    lockedNumbersCtx += `Impacto operativo anual (validado por el consultor): ${opImpact.total.toLocaleString('es-ES')}€\n`;
+    lockedNumbersCtx += `Desglose: ${opImpact.components.map(c=>`${c.label} ${c.value.toLocaleString('es-ES')}€`).join(', ')}\n`;
+  }
+  lockedNumbersCtx += `OFI™ Score: ${ofiScore}/100 — Zona: ${ofiZone} — Capa TTL™: ${ofiTTL}\n`;
+  lockedNumbersCtx += `D1 Rendimiento: ${d1}/25 · D2 Datos: ${d2}/25 · D3 Digital: ${d3}/25 · D4 Organización: ${d4}/25\n`;
+  if (econM6.list.length) {
+    lockedNumbersCtx += `Portfolio M6 — Inversión: ${econM6.totalInv.toLocaleString('es-ES')}€ · BNA base: ${econM6.totalBase.toLocaleString('es-ES')}€/año · Payback: ${econM6.paybackBase||'—'} meses\n`;
+  }
+  ctx += lockedNumbersCtx;
 
   const notasSecciones = ['general','ceo','ops','fab','sys'];
   const notasLabels = {general:'General',ceo:'CEO',ops:'Dir. Operaciones',fab:'Fábrica',sys:'Sistemas'};
@@ -1880,9 +1899,6 @@ if (procesosSeleccionados) {
   // Add Confidence Layer
   ctx += getConfidenceReportContext();
 
-  // Add OFI summary
-  ctx += getOFIReportContext();
-
   // Add Field Intelligence
   ctx += getFieldIntelligenceReportContext();
 
@@ -1919,32 +1935,24 @@ REGLAS CRÍTICAS:
 6. Los quick_wins deben estar directamente vinculados a hallazgos específicos del diagnóstico, no genéricos.
 7. Coherencia económica: la suma de quick_wins debe ser 20-50% del impacto total. El resto es potencial estructural a medio plazo.
 8. Si hay iniciativas en M6, referéncialas en las recomendaciones.
-9. NO inventes datos. Si falta información, dilo. Usa rangos cuando hay incertidumbre.
+9. NO inventes datos numéricos. Los números de impacto operativo, OFI Score y portfolio M6 YA ESTÁN CALCULADOS arriba en "NÚMEROS YA CALCULADOS Y VALIDADOS" — úsalos literalmente en tu texto, nunca generes una cifra distinta para el mismo concepto.
 10. Herramientas realistas para pymes. No SAP ni soluciones enterprise.
 11. Tono: directo, profesional, sin florituras. Como un consultor senior que lleva 20 años en esto.
+12. CRÍTICO: no devuelvas campos numéricos de score, euros o porcentajes en kpis/ofi_resumen — esos los rellenamos nosotros con los valores reales. Tu trabajo es solo narrativa y análisis cualitativo.
 
 Devuelve un JSON con este formato exacto:
 {
-  "resumen_ejecutivo": "Párrafo completo de 6-8 frases en lenguaje CEO. Driver principal, impacto cuantificado, conexión con crecimiento del negocio.",
+  "resumen_ejecutivo": "Párrafo completo de 6-8 frases en lenguaje CEO. Driver principal usando el impacto operativo YA CALCULADO arriba, conexión con crecimiento del negocio.",
   "analisis_detallado": "Texto EXTENSO (mínimo 4 párrafos) con análisis profundo: operativo, digital, organizacional y estratégico. Incluir VSM si hay datos. Mínimo 800 palabras.",
   "vertical_prioritaria": "la vertical con más impacto económico",
   "verticals_secundarias": ["otras verticales afectadas"],
   "impacto_negocio": ["impactos principales identificados — mínimo 4"],
   "urgencia": "alta|media|baja",
-  "kpis": {
-    "oee_estimado": "% estimado o 'No medido'",
-    "merma_pct": "% estimado",
-    "coste_no_calidad": "estimación en € anuales o rango",
-    "impacto_total_estimado": "euros anuales totales"
-  },
-  "ofi_resumen": {
-    "score": 0,
-    "zona": "Intervención urgente|Estabilización|Mejora estructurada|Optimización",
-    "vector_friccion": "dimensión más débil y por qué",
-    "ttl_capa": "L1|L2|L3|L4|L5|L6",
-    "ttl_recomendacion": "qué debe consolidar antes de avanzar",
-    "arquetipo": "nombre del arquetipo y por qué encaja"
-  },
+  "oee_estimado": "% estimado o 'No medido' (texto, no inventes el OFI score aquí)",
+  "merma_pct": "% estimado, usa el dato real de scrap_pct de la sesión Fábrica si existe",
+  "vector_friccion": "cuál de las 4 dimensiones OFI es más débil y por qué (usa los valores D1-D4 ya calculados arriba)",
+  "ttl_recomendacion": "qué debe consolidar antes de avanzar a la siguiente capa TTL",
+  "arquetipo": "nombre del arquetipo (Reactive Factory, Growing Complexity, etc) y por qué encaja",
   "vsm_resumen": {
     "lead_time": "X días/horas",
     "va_ratio": "X%",
@@ -1952,23 +1960,21 @@ Devuelve un JSON con este formato exacto:
     "impacto_lead_time": "qué significa económicamente para el cliente"
   },
   "madurez_digital": {
-    "puntuacion": 3,
-    "nivel": "nombre del nivel",
+    "nivel": "nombre del nivel de madurez digital observado (no inventes un número 1-10, solo el nombre del nivel)",
     "descripcion": "descripción en 1 frase",
     "siguiente_nivel": "qué necesita para mejorar"
   },
   "benchmark_sectorial": {
-    "kpi_referencia": "KPI más relevante",
-    "valor_cliente": "valor estimado",
-    "valor_sector_medio": "media del sector",
-    "valor_sector_top": "top performers",
-    "gap_euros": "diferencia económica estimada"
+    "kpi_referencia": "KPI más relevante del sector (ej: OEE, % mantenimiento reactivo)",
+    "valor_sector_medio": "media típica del sector, en texto (ej: '65-75%')",
+    "valor_sector_top": "top performers del sector, en texto",
+    "comentario": "1-2 frases sobre cómo se posiciona el cliente frente a esto, sin inventar el valor_cliente numérico exacto si no está en los datos"
   },
   "quick_wins": [
     {
       "titulo": "título en lenguaje CEO",
       "descripcion": "qué hacer y por qué, detallado",
-      "impacto_euros": "ahorro estimado anual",
+      "impacto_euros": "ahorro estimado anual — debe ser coherente y proporcional al impacto operativo YA CALCULADO arriba, nunca mayor que el total",
       "plazo_dias": 30,
       "prioridad": 1,
       "proceso_ref": "nombre exacto del proceso",
@@ -1976,12 +1982,6 @@ Devuelve un JSON con este formato exacto:
     }
   ],
   "roadmap_narrativo": "Párrafo describiendo la secuencia recomendada de implementación por capas TTL. Qué hacer primero, qué después, y por qué en ese orden. Mínimo 200 palabras.",
-  "roi": {
-    "presupuesto_herramienta": "estimación",
-    "ahorro_estimado_anual": "total",
-    "plazo_retorno_meses": 12,
-    "base_calculo": "explicación"
-  },
   "herramientas_mercado": [
     {
       "nombre": "nombre real",
@@ -2059,6 +2059,54 @@ Devuelve SOLO el JSON, sin texto adicional.`;
       cleaned += c;
     }
     const r = normalizeReportProcesos(JSON.parse(cleaned));
+
+    // ── BLINDAJE DE NÚMEROS: sobreescribimos con los valores reales de código,
+    // sin importar lo que haya devuelto la IA en estos campos. ──
+    r.kpis = r.kpis || {};
+    r.kpis.oee_estimado = r.oee_estimado || r.kpis.oee_estimado || 'No medido';
+    r.kpis.merma_pct = r.merma_pct || r.kpis.merma_pct || '—';
+    r.kpis.impacto_total_estimado = opImpact && opImpact.total ? `${opImpact.total.toLocaleString('es-ES')}€` : 'No calculado — faltan datos de Fábrica';
+    r.kpis.coste_no_calidad = opImpact ? (() => {
+      const scrapComp = opImpact.components.find(c => c.key === 'scrap');
+      const reworkComp = opImpact.components.find(c => c.key === 'rework');
+      const v = (scrapComp?.value||0) + (reworkComp?.value||0);
+      return v ? `${v.toLocaleString('es-ES')}€` : '—';
+    })() : '—';
+
+    r.operational_impact_breakdown = opImpact ? opImpact.components : [];
+
+    r.ofi_resumen = r.ofi_resumen || {};
+    r.ofi_resumen.score = ofiScore;
+    r.ofi_resumen.zona = ofiZone;
+    r.ofi_resumen.ttl_capa = ofiTTL;
+    r.ofi_resumen.vector_friccion = r.vector_friccion || r.ofi_resumen.vector_friccion || '';
+    r.ofi_resumen.ttl_recomendacion = r.ttl_recomendacion || r.ofi_resumen.ttl_recomendacion || '';
+    r.ofi_resumen.arquetipo = r.arquetipo || r.ofi_resumen.arquetipo || '';
+    r.ofi_resumen.d1 = d1; r.ofi_resumen.d2 = d2; r.ofi_resumen.d3 = d3; r.ofi_resumen.d4 = d4;
+
+    r.madurez_digital = r.madurez_digital || {};
+    r.madurez_digital.puntuacion = Math.round((d3 / 25) * 10);
+
+    if (econM6.list.length) {
+      r.roi = {
+        presupuesto_herramienta: `${econM6.totalInv.toLocaleString('es-ES')}€`,
+        ahorro_estimado_anual: `${econM6.totalBase.toLocaleString('es-ES')}€/año`,
+        plazo_retorno_meses: econM6.paybackBase || null,
+        base_calculo: `Portfolio M6 — ${econM6.list.length} iniciativas con ROI calculado. Confianza: ${econM6.confidenceBand}.`
+      };
+    } else {
+      r.roi = { presupuesto_herramienta: '—', ahorro_estimado_anual: '—', plazo_retorno_meses: null, base_calculo: 'Sin iniciativas con inversión/ahorro definidos en M6 todavía.' };
+    }
+
+    r.benchmark_items = calcM7RealBenchmark();
+    if (r.benchmark_items.length) {
+      const first = r.benchmark_items[0];
+      r.benchmark_sectorial = r.benchmark_sectorial || {};
+      r.benchmark_sectorial.kpi_referencia = first.nombre;
+      r.benchmark_sectorial.valor_cliente = first.valor_cliente;
+      r.benchmark_sectorial.valor_sector_medio = first.valor_sector;
+      r.benchmark_sectorial.gap_euros = first.gap_label;
+    }
 
     await sb.from('diop_reports').insert([
       {
@@ -2580,7 +2628,7 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>03 · Madurez digital + Benchmark</h3></div>
+          <div class="diop-section-title"><h3>03 · Madurez digital + Benchmark sectorial</h3></div>
           <div class="diop-grid-2">
             <div class="diop-evidence-card">
               <strong>Digital Maturity</strong>
@@ -2590,13 +2638,16 @@ function renderReport(r, reportsHistoryHtml = '') {
               <div class="diop-muted" style="margin-top:8px;">Siguiente nivel: ${esc(mad.siguiente_nivel || '—')}</div>
             </div>
             <div class="diop-evidence-card">
-              <strong>Benchmark sectorial · ${esc(bench.kpi_referencia || 'KPI')}</strong>
-              <div class="diop-grid-3">
-                <div><div class="diop-metric-label">Cliente</div><div class="diop-metric-value" style="font-size:18px;color:var(--red);">${esc(bench.valor_cliente || '—')}</div></div>
-                <div><div class="diop-metric-label">Media</div><div class="diop-metric-value" style="font-size:18px;color:var(--amber);">${esc(bench.valor_sector_medio || '—')}</div></div>
-                <div><div class="diop-metric-label">Top</div><div class="diop-metric-value" style="font-size:18px;color:var(--green);">${esc(bench.valor_sector_top || '—')}</div></div>
-              </div>
-              <p style="margin-top:10px;">Gap económico: <strong style="color:var(--teal-l);">${esc(bench.gap_euros || '—')}</strong></p>
+              <strong>Posición vs sector — ${esc(currentClient.sector || '')}</strong>
+              ${(r.benchmark_items && r.benchmark_items.length) ? `<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+                ${r.benchmark_items.map(it => {
+                  const col = it.esBueno ? 'var(--green)' : 'var(--red)';
+                  return `<div style="padding:8px 10px;background:var(--s2);border-radius:8px;border-left:3px solid ${col};">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:12px;font-weight:600;color:var(--text);">${esc(it.nombre)}</span><span style="font-size:10px;color:${col};font-weight:600;">${esc(it.gap_label)}</span></div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:2px;">Vosotros: ${esc(it.valor_cliente)} · Sector: ${esc(it.valor_sector)}</div>
+                  </div>`;
+                }).join('')}
+              </div>` : `<p class="diop-muted" style="margin-top:8px;">Sin datos suficientes en las sesiones para comparar contra el sector todavía.</p>`}
             </div>
           </div>
         </div>
@@ -7131,6 +7182,315 @@ Devuelve SOLO este JSON, sin texto adicional:
     if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar números y generar informe →'; }
     showToast('Error al generar la narrativa. Inténtalo de nuevo.');
   }
+}
+
+// ══════════════════════════════════════════════════════
+// ── M7 · IMPACTO OPERATIVO DETERMINISTA ──
+// Mismo principio que el Free Trial: el cálculo vive en JS,
+// auditable y editable. La IA nunca inventa estas cifras —
+// solo recibe los números ya calculados y los narra.
+// ══════════════════════════════════════════════════════
+
+function calcM7OperationalImpact() {
+  if (!currentClient) return null;
+  const cid = currentClient.id;
+  const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
+  const sector = currentClient.sector || 'default';
+
+  const components = [];
+
+  // ── Inputs base reutilizados ──
+  const operatorHourCostRaw = a('fab', 'operator_hour_cost');
+  const operatorHourCost = parseFloat(operatorHourCostRaw) || 22;
+  const operatorHourCostIsReal = !!parseFloat(operatorHourCostRaw);
+
+  const productiveWeeksRaw = a('fab', 'productive_weeks_year');
+  const productiveWeeks = parseFloat(productiveWeeksRaw) || 48;
+
+  const revenueRaw = a('ceo', 'revenue');
+  const revenueMap = {'menos de 2M€':1500000,'2M€ - 5M€':3500000,'5M€ - 10M€':7500000,'10M€ - 25M€':17500000,'25M€ - 50M€':37500000,'más de 50M€':60000000};
+  const revenueNum = revenueMap[revenueRaw] || 3500000;
+
+  const cogsRaw = a('fab', 'cogs_pct_revenue');
+  const cogsMap = {'menos del 25%':0.20,'25% - 40%':0.32,'40% - 55%':0.47,'más del 55%':0.60};
+  const cogsPct = cogsMap[cogsRaw] || 0.40;
+  const cogsIsReal = !!cogsMap[cogsRaw];
+
+  const downtimeScopeRaw = a('fab', 'downtime_scope');
+  const linesTotal = parseInt(a('fab', 'production_lines_total')) || 1;
+  let scopeFactor = 1, scopeLabel = 'la línea afectada';
+  if (downtimeScopeRaw === 'Una línea crítica específica') { scopeFactor = 1; scopeLabel = 'la línea crítica afectada'; }
+  else if (downtimeScopeRaw === 'Varias líneas a la vez') { scopeFactor = Math.max(2, Math.round(linesTotal/2)); scopeLabel = 'las líneas afectadas'; }
+  else if (downtimeScopeRaw === 'Toda la fábrica') { scopeFactor = linesTotal || 1; scopeLabel = 'toda la fábrica'; }
+
+  // ── Coste de línea: prioriza M8 (Economic Baseline) si existe, luego Fábrica ──
+  const lineCostNumRaw = a('fab', 'line_hour_cost_num');
+  const lineCostRangeRaw = a('fab', 'line_hour_cost');
+  const m8LineCost = m8Data[cid]?.line_hour_cost;
+  const lineCostMap = {'menos de 200€':150,'200€ - 400€':300,'400€ - 800€':600,'más de 800€':1000,'No lo sabemos':300,'<250€':200,'250–500€':350,'500–1.000€':700,'>1.000€':1200,'Desconocido':300};
+  let lineCostEur, lineCostIsReal, lineCostSource;
+  if (parseFloat(lineCostNumRaw) > 0) {
+    lineCostEur = parseFloat(lineCostNumRaw); lineCostIsReal = true; lineCostSource = `${lineCostEur}€/h (dato real, sesión Fábrica)`;
+  } else if (lineCostRangeRaw && lineCostMap[lineCostRangeRaw]) {
+    lineCostEur = lineCostMap[lineCostRangeRaw]; lineCostIsReal = false; lineCostSource = `rango "${lineCostRangeRaw}" → punto medio ${lineCostEur}€/h`;
+  } else if (m8LineCost && lineCostMap[m8LineCost]) {
+    lineCostEur = lineCostMap[m8LineCost]; lineCostIsReal = false; lineCostSource = `M8 Economic Baseline: "${m8LineCost}" → ${lineCostEur}€/h`;
+  } else {
+    lineCostEur = 300; lineCostIsReal = false; lineCostSource = 'sin dato → benchmark 300€/h';
+  }
+
+  // ── COMPONENTE 1: Paradas ──
+  const downtimeNumRaw = a('fab', 'downtime_hours_week_num');
+  const downtimeRangeRaw = a('fab', 'downtime_hours_week');
+  const downtimeMap = {'menos de 2h':1.5,'2h - 5h':3.5,'5h - 10h':7.5,'10h - 20h':15,'más de 20h':22};
+  let downtimeH, downtimeIsReal, downtimeInputLabel;
+  if (parseFloat(downtimeNumRaw) > 0) {
+    downtimeH = parseFloat(downtimeNumRaw); downtimeIsReal = true;
+    downtimeInputLabel = `${downtimeH}h/semana (dato real)`;
+  } else {
+    downtimeH = downtimeMap[downtimeRangeRaw] || 0; downtimeIsReal = false;
+    downtimeInputLabel = downtimeRangeRaw ? `rango "${downtimeRangeRaw}" → ${downtimeH}h` : 'sin dato';
+  }
+  const downtimeValue = Math.round(downtimeH * lineCostEur * scopeFactor * productiveWeeks);
+  components.push({
+    key: 'downtime', label: 'Paradas no planificadas',
+    inputSummary: `${downtimeInputLabel} · coste línea: ${lineCostSource} · alcance: ${scopeLabel} (×${scopeFactor}) · ${productiveWeeks} sem/año`,
+    formula: `${downtimeH}h × ${lineCostEur}€/h × ${scopeFactor} × ${productiveWeeks} sem`,
+    value: downtimeValue, isEstimate: !downtimeIsReal || !lineCostIsReal
+  });
+
+  // ── COMPONENTE 2: Merma ──
+  const scrapRaw = a('fab', 'scrap_pct');
+  const scrapMap = {'menos del 2%':0.015,'2% - 5%':0.035,'5% - 10%':0.075,'10% - 20%':0.15,'más del 20%':0.25};
+  const scrapPctNum = scrapMap[scrapRaw] || 0;
+  const cogsBase = revenueNum * cogsPct;
+  const scrapValue = Math.round(scrapPctNum * cogsBase);
+  components.push({
+    key: 'scrap', label: 'Merma / desperdicio',
+    inputSummary: `merma "${scrapRaw||'sin dato'}" (${(scrapPctNum*100).toFixed(1)}%) · COGS: ${cogsIsReal ? (cogsPct*100).toFixed(0)+'% real' : '40% benchmark'} sobre facturación`,
+    formula: `${(scrapPctNum*100).toFixed(1)}% × ${cogsBase.toLocaleString('es-ES')}€ (COGS)`,
+    value: scrapValue, isEstimate: !cogsIsReal || !scrapRaw
+  });
+
+  // ── COMPONENTE 3: Retrabajo ──
+  const reworkHoursWeek = parseFloat(a('fab', 'rework_hours_week')) || 0;
+  const reworkValue = Math.round(reworkHoursWeek * operatorHourCost * productiveWeeks);
+  components.push({
+    key: 'rework', label: 'Retrabajo / reproceso',
+    inputSummary: `${reworkHoursWeek}h/sem retrabajo · operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h real' : '22€/h benchmark'}`,
+    formula: `${reworkHoursWeek}h × ${operatorHourCost}€/h × ${productiveWeeks} sem`,
+    value: reworkValue, isEstimate: !operatorHourCostIsReal
+  });
+
+  // ── COMPONENTE 4: Changeover ──
+  const changeoversWeek = parseFloat(a('fab', 'changeovers_week')) || 0;
+  const changeoverTime = parseFloat(a('fab', 'changeover_time')) || 0;
+  const changeoverValue = Math.round((changeoverTime/60) * changeoversWeek * lineCostEur * productiveWeeks);
+  components.push({
+    key: 'changeover', label: 'Cambios de formato',
+    inputSummary: `${changeoversWeek}/sem × ${changeoverTime}min · coste línea: ${lineCostSource}`,
+    formula: `(${changeoverTime}/60)h × ${changeoversWeek}/sem × ${lineCostEur}€/h × ${productiveWeeks} sem`,
+    value: changeoverValue, isEstimate: !lineCostIsReal
+  });
+
+  // ── COMPONENTE 5: Mantenimiento reactivo (solo M7 — dato de sesión Sistemas) ──
+  const majorFailuresMonth = parseFloat(a('sys', 'major_failures_month')) || 0;
+  let maintenanceValue = 0;
+  if (majorFailuresMonth > 0) {
+    // Asumimos 2h de parada media por avería grave — declarado, no oculto
+    maintenanceValue = Math.round(majorFailuresMonth * 2 * lineCostEur * 12);
+    components.push({
+      key: 'maintenance', label: 'Averías graves (mantenimiento reactivo)',
+      inputSummary: `${majorFailuresMonth} averías graves/mes · 2h parada media por avería (supuesto) · coste línea: ${lineCostSource}`,
+      formula: `${majorFailuresMonth}/mes × 2h × ${lineCostEur}€/h × 12 meses`,
+      value: maintenanceValue, isEstimate: true
+    });
+  }
+
+  const total = components.reduce((s,c) => s + c.value, 0);
+
+  return { components, total, meta: { revenueNum, operatorHourCost, lineCostEur, productiveWeeks, scopeLabel } };
+}
+// ══════════════════════════════════════════════════════
+// ── M7 · MINI-REVISIÓN DEL IMPACTO OPERATIVO ──
+// Se interpone entre el botón "Generar informe" y generateReport().
+// Solo cubre lo que hoy es "número inventado": el impacto operativo.
+// El resto (OFI, VSM, M6) ya está bien calculado — se blinda en
+// el prompt, no necesita pantalla propia.
+// ══════════════════════════════════════════════════════
+
+let m7ImpactBreakdown = null;
+let m7ImpactEdited = null;
+
+function openM7ImpactReview() {
+  m7ImpactBreakdown = calcM7OperationalImpact();
+  if (!m7ImpactBreakdown || !m7ImpactBreakdown.components.length) {
+    // No hay datos suficientes para el impacto operativo — saltar directo
+    generateReport();
+    return;
+  }
+  m7ImpactEdited = JSON.parse(JSON.stringify(m7ImpactBreakdown));
+  renderM7ImpactReview();
+}
+
+function m7ImpactRow(c) {
+  return `<div style="padding:13px 15px;background:var(--s2);border:0.5px solid ${c.isEstimate ? 'rgba(186,117,23,0.3)' : 'var(--border)'};border-radius:var(--r-sm);margin-bottom:8px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:5px;">
+      <div style="font-size:12.5px;font-weight:600;color:var(--text);">${c.label}</div>
+      ${c.isEstimate ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(186,117,23,0.12);color:var(--amber);font-weight:600;flex-shrink:0;">CON SUPUESTOS</span>` : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(29,158,117,0.12);color:var(--green);font-weight:600;flex-shrink:0;">DATO REAL</span>`}
+    </div>
+    <div style="font-size:10.5px;color:var(--text3);line-height:1.45;margin-bottom:3px;">${c.inputSummary}</div>
+    <div style="font-size:9.5px;color:var(--text4);font-family:var(--mono);margin-bottom:7px;">${c.formula}</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:10.5px;color:var(--text3);">Resultado:</span>
+      <input type="number" value="${c.value}" data-key="${c.key}" onchange="m7EditImpactComponent(this)" style="width:130px;background:var(--s1);border:1px solid var(--border2);border-radius:var(--r-xs);padding:5px 9px;color:var(--text);font-size:13px;font-family:var(--mono);font-weight:600;outline:none;">
+      <span style="font-size:10.5px;color:var(--text3);">€</span>
+    </div>
+  </div>`;
+}
+
+function m7EditImpactComponent(input) {
+  const key = input.dataset.key;
+  const newVal = parseFloat(input.value) || 0;
+  const comp = m7ImpactEdited.components.find(c => c.key === key);
+  if (comp) comp.value = newVal;
+  m7ImpactEdited.total = m7ImpactEdited.components.reduce((s,c) => s + c.value, 0);
+  renderM7ImpactReview(true);
+}
+
+function renderM7ImpactReview(skipScroll) {
+  const target = document.getElementById('report-body');
+  if (!target || !m7ImpactEdited) return;
+
+  let html = `
+  <div style="background:var(--s1);border:0.5px solid var(--border);border-radius:16px;padding:24px 28px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+      <div style="width:36px;height:36px;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:16px;">🔍</div>
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);">Revisar impacto operativo</div>
+        <div style="font-size:11.5px;color:var(--text3);">Este número alimenta el resumen ejecutivo y el ROI del informe. Ajústalo antes de generar.</div>
+      </div>
+    </div>
+    <div style="padding:10px 14px;background:rgba(0,173,181,0.05);border:0.5px solid rgba(0,173,181,0.15);border-radius:var(--r-sm);margin:14px 0 18px;font-size:11px;color:var(--text2);line-height:1.5;">
+      El resto del informe (OFI™, VSM, portfolio M6, benchmark) ya usa cálculos validados en otros módulos. Esta es la única cifra que se construye aquí desde cero.
+    </div>
+    ${m7ImpactEdited.components.map(c => m7ImpactRow(c)).join('')}
+    <div style="padding:13px 15px;background:rgba(0,173,181,0.06);border:1px solid var(--teal);border-radius:var(--r-sm);margin:12px 0 20px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;color:var(--text2);font-weight:600;">Total impacto operativo</span>
+      <span style="font-size:19px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${m7ImpactEdited.total.toLocaleString('es-ES')}€</span>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="cancelM7ImpactReview()" style="padding:9px 16px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Cancelar</button>
+      <button onclick="confirmM7ImpactAndGenerate()" id="m7-confirm-btn" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">✓ Confirmar y generar informe DIOP →</button>
+    </div>
+  </div>`;
+
+  target.innerHTML = html;
+  if (!skipScroll) document.getElementById('main-content').scrollTop = 0;
+}
+
+function cancelM7ImpactReview() {
+  m7ImpactBreakdown = null; m7ImpactEdited = null;
+  openReport();
+}
+
+async function confirmM7ImpactAndGenerate() {
+  const btn = document.getElementById('m7-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generando...'; }
+  await generateReport(m7ImpactEdited);
+}
+
+// ══════════════════════════════════════════════════════
+// ── M7 · BENCHMARK SECTORIAL REAL ──
+// Cruza el dato real del cliente contra SECTOR_BENCHMARKS
+// (ya existente en el código). Ningún número se inventa: si
+// no hay dato del cliente para un KPI, ese KPI simplemente no
+// aparece en el benchmark, en vez de rellenarse con texto IA.
+// ══════════════════════════════════════════════════════
+
+function ftParseRangeMidpoint(rangeStr) {
+  // "55–70%" -> 62.5 ; "<0.1%" -> 0.1 ; "200–600h" -> 400
+  if (!rangeStr) return null;
+  const nums = rangeStr.match(/[\d.]+/g);
+  if (!nums || !nums.length) return null;
+  if (nums.length === 1) return parseFloat(nums[0]);
+  return (parseFloat(nums[0]) + parseFloat(nums[1])) / 2;
+}
+
+function ftPositionVsRange(clientVal, rangeStr) {
+  if (clientVal === null || !rangeStr) return null;
+  const nums = rangeStr.match(/[\d.]+/g);
+  if (!nums || nums.length < 2) return null;
+  const lo = parseFloat(nums[0]), hi = parseFloat(nums[1]);
+  if (clientVal < lo) return 'below';
+  if (clientVal > hi) return 'above';
+  return 'within';
+}
+
+function calcM7RealBenchmark() {
+  if (!currentClient) return [];
+  const cid = currentClient.id;
+  const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
+  const sector = currentClient.sector || 'default';
+  const bench = SECTOR_BENCHMARKS[sector] || SECTOR_BENCHMARKS['default'];
+
+  const items = [];
+
+  // ── OEE ──
+  const oeeRaw = a('fab', 'oee_current') || a('sys', 'oee_current');
+  const oeeMap = {'menos del 50%':40,'50% - 65%':57.5,'65% - 75%':70,'75% - 85%':80,'más del 85%':90};
+  const oeeClient = oeeMap[oeeRaw];
+  if (oeeClient !== undefined) {
+    const pos = ftPositionVsRange(oeeClient, bench.oee);
+    items.push({
+      nombre: 'OEE global', valor_cliente: oeeRaw, valor_sector: bench.oee,
+      posicion: pos, // 'below' = peor que el sector (para OEE, más bajo es peor)
+      esBueno: pos !== 'below',
+      gap_label: pos === 'below' ? 'por debajo del sector' : pos === 'above' ? 'por encima del sector' : 'dentro del rango del sector'
+    });
+  }
+
+  // ── Tasa de rechazo / merma ──
+  const scrapRaw = a('fab', 'scrap_pct');
+  const scrapMap = {'menos del 2%':1, '2% - 5%':3.5, '5% - 10%':7.5, '10% - 20%':15, 'más del 20%':25};
+  const scrapClient = scrapMap[scrapRaw];
+  if (scrapClient !== undefined) {
+    const pos = ftPositionVsRange(scrapClient, bench.rechazo);
+    items.push({
+      nombre: 'Tasa de rechazo / merma', valor_cliente: scrapRaw, valor_sector: bench.rechazo,
+      posicion: pos === 'above' ? 'below' : pos === 'below' ? 'above' : pos, // invertido: más merma = peor
+      esBueno: pos !== 'above',
+      gap_label: pos === 'above' ? 'por encima del sector (peor)' : pos === 'below' ? 'por debajo del sector (mejor)' : 'dentro del rango del sector'
+    });
+  }
+
+  // ── Mantenimiento reactivo ──
+  const maintRaw = a('sys', 'maintenance_type_pct');
+  const maintMap = {'Casi todo reactivo (+80%)':90,'Mayoría reactivo (50-80%)':65,'Mitad y mitad':50,'Mayoría preventivo (50-80%)':30,'Casi todo preventivo (+80%)':10};
+  const maintClient = maintMap[maintRaw];
+  if (maintClient !== undefined) {
+    const pos = ftPositionVsRange(maintClient, bench.maint_react);
+    items.push({
+      nombre: '% Mantenimiento reactivo', valor_cliente: maintRaw, valor_sector: bench.maint_react,
+      posicion: pos === 'above' ? 'below' : pos === 'below' ? 'above' : pos,
+      esBueno: pos !== 'above',
+      gap_label: pos === 'above' ? 'por encima del sector (peor)' : pos === 'below' ? 'por debajo del sector (mejor)' : 'dentro del rango del sector'
+    });
+  }
+
+  // ── Tiempo de changeover ──
+  const changeoverTimeMin = parseFloat(a('fab', 'changeover_time'));
+  if (changeoverTimeMin > 0) {
+    const pos = ftPositionVsRange(changeoverTimeMin, bench.changeover);
+    items.push({
+      nombre: 'Tiempo de cambio de formato', valor_cliente: `${changeoverTimeMin} min`, valor_sector: bench.changeover,
+      posicion: pos === 'above' ? 'below' : pos === 'below' ? 'above' : pos,
+      esBueno: pos !== 'above',
+      gap_label: pos === 'above' ? 'por encima del sector (peor)' : pos === 'below' ? 'por debajo del sector (mejor)' : 'dentro del rango del sector'
+    });
+  }
+
+  return items;
 }
 
 </script>
