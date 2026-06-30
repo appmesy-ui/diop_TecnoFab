@@ -872,14 +872,20 @@ const SESSIONS = {
         {id:'key_person_field', text:'La persona clave que identificaste en campo', type:'sel', prio:'c', roi:'Confirma o matiza la dependencia declarada en la pregunta key_person_dependency', opts:['El responsable de producción lo sabe todo','Un operario específico es el que realmente sabe','El propio CEO es el cuello de botella','No hay una persona clave — el conocimiento está distribuido']},
         {id:'root_cause_hypothesis', text:'Tu hipótesis de causa raíz al salir', type:'sel', prio:'c', roi:'Tu intuición de consultor — la IA la usa como ancla narrativa para el diagnóstico del Free Trial', opts:['El problema es de procesos — no están definidos','El problema es de personas — dependencia crítica','El problema es de datos — no saben lo que pasa','El problema es de capacidad — la fábrica no da más','El problema es de gestión — saben qué pasa pero no actúan']},
       ]},
-      { id:'kpis', name:'KPIs operativos estimados', obj:'Los números que el CEO no sabe que tiene — el corazón del diagnóstico', questions:[
-        {id:'downtime_hours_week', text:'¿Cuántas horas de parada no planificada tienen por semana de media?', type:'sel', prio:'c', roi:'Horas paradas × coste hora línea = pérdida directa. Suele ser el número más impactante', opts:['menos de 2h','2h - 5h','5h - 10h','10h - 20h','más de 20h','No lo saben']},
+      { id:'kpis', name:'KPIs operativos estimados', obj:'Los números que el CEO no sabe que tiene — el corazón del diagnóstico. Donde sea posible, pide el número más aproximado real, no un rango — esto es la base del cálculo del Free Trial', questions:[
+        {id:'downtime_hours_week_num', text:'¿Cuántas horas de parada no planificada tuvisteis de media la semana pasada / el mes pasado? (número aproximado, no rango)', type:'num', prio:'c', roi:'Base directa del cálculo de impacto — un número real reduce mucho el margen de error frente a un rango'},
+        {id:'downtime_hours_week', text:'Si no tienes el número exacto arriba, dame al menos un rango', type:'sel', prio:'i', roi:'Solo se usa si no hay número exacto. Se toma el punto medio del rango, lo cual infla menos precisión que un dato real', opts:['menos de 2h','2h - 5h','5h - 10h','10h - 20h','más de 20h','No lo saben']},
         {id:'downtime_scope', text:'Las paradas que me describes — ¿afectan a una línea crítica, varias líneas, o toda la fábrica?', type:'sel', prio:'c', roi:'Determina si el coste de paradas se calcula sobre 1 línea o sobre toda la capacidad — cambia el número radicalmente', opts:['Una línea crítica específica','Varias líneas a la vez','Toda la fábrica','No lo saben']},
         {id:'production_lines_total', text:'¿Cuántas líneas de producción tiene la fábrica en total?', type:'num', prio:'c', roi:'Base para prorratear el coste de paradas si solo afecta a una parte de la fábrica'},
-        {id:'line_hour_cost', text:'¿Cuánto cuesta aproximadamente una hora de línea parada? (mano de obra directa + amortización + overhead)', type:'sel', prio:'c', roi:'Es el multiplicador del número grande del Free Trial. Si no lo saben, se usa benchmark del sector', opts:['menos de 200€','200€ - 400€','400€ - 800€','más de 800€','No lo sabemos']},
-        {id:'scrap_pct', text:'¿Qué porcentaje de merma o desperdicio estiman sobre la producción total?', type:'sel', prio:'c', roi:'% merma × coste MP × producción anual = pérdida real en euros. Benchmarked contra sector', opts:['menos del 2%','2% - 5%','5% - 10%','10% - 20%','más del 20%','No lo saben']},
+        {id:'productive_weeks_year', text:'¿Cuántas semanas productivas tiene la fábrica al año? (descontando vacaciones, paradas programadas)', type:'num', prio:'i', roi:'Sustituye el supuesto fijo de 48 semanas — algunas fábricas tienen menos por convenio o estacionalidad'},
+        {id:'operator_hour_cost', text:'¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)', type:'num', prio:'c', roi:'Se reutiliza en retrabajo, onboarding y dependencia de personas — evita inventar este coste por separado en cada cálculo'},
+        {id:'line_hour_cost_num', text:'¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)', type:'num', prio:'c', roi:'Es el multiplicador principal del número grande del Free Trial — mejor un número real que un rango amplio'},
+        {id:'line_hour_cost', text:'Si no tienes el número exacto arriba, dame al menos un rango', type:'sel', prio:'i', roi:'Solo se usa si no hay número exacto', opts:['menos de 200€','200€ - 400€','400€ - 800€','más de 800€','No lo sabemos']},
+        {id:'scrap_pct', text:'¿Qué porcentaje de merma o desperdicio estiman sobre la producción total?', type:'sel', prio:'c', roi:'% merma × coste de producto = pérdida real en euros. Benchmarked contra sector', opts:['menos del 2%','2% - 5%','5% - 10%','10% - 20%','más del 20%','No lo saben']},
+        {id:'cogs_pct_revenue', text:'¿Qué porcentaje de la facturación representa el coste de materia prima y producto (COGS)?', type:'sel', prio:'i', roi:'La merma se aplica sobre el coste de producto, no sobre toda la facturación — sin este dato se asume un 40% genérico del sector', opts:['menos del 25%','25% - 40%','40% - 55%','más del 55%','No lo saben']},
         {id:'rework_pct', text:'¿Qué porcentaje del producto final requiere retrabajo o es rechazado en calidad?', type:'sel', prio:'c', roi:'% rechazo × coste producción = coste de no calidad. Puede superar 5-15% de la facturación', opts:['menos del 1%','1% - 3%','3% - 8%','más del 8%','No lo saben']},
-        {id:'rework_hours_week', text:'¿Cuántas horas semanales se dedican a retrabajo o reproceso?', type:'num', prio:'c', roi:'Horas retrabajo × coste hora operario × 52 semanas = coste anual del retrabajo'},
+        {id:'rework_hours_week', text:'¿Cuántas horas semanales se dedican a retrabajo o reproceso?', type:'num', prio:'c', roi:'Horas retrabajo × coste hora operario real (no inventado) × semanas productivas = coste anual del retrabajo'},
+        {id:'key_person_absence_impact', text:'Si la persona clave que identificaste en observaciones de campo faltara una semana entera, ¿qué pasaría con la producción?', type:'sel', prio:'c', roi:'Cuantifica el riesgo real de dependencia — no la rotación, sino el impacto de una ausencia concreta', opts:['Se pararía casi por completo','Bajaría mucho el ritmo (40-60%)','Se notaría pero seguiría funcionando (15-25%)','Apenas se notaría','No hay una persona así']},
         {id:'growth_capacity_pct', text:'Si la operación no fuera el límite, ¿cuánto volumen adicional podríais vender este año?', type:'sel', prio:'c', roi:'Cuantifica el coste de oportunidad de crecimiento perdido por falta de capacidad operativa', opts:['menos del 10% más','10% - 25% más','25% - 50% más','más del 50% más','No lo saben']},
       ]},
     ]
@@ -6421,12 +6427,12 @@ function renderFreeTrialScreen(ceoReady, fabReady) {
 
   html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
     <div style="font-size:13px;color:var(--text2);">
-      ${hasReport ? 'Informe listo para presentar. Puedes regenerarlo si cambiaron los datos.' : 'Listo para generar el informe de impacto. Hazlo desde casa, después de la visita 1.'}
+      ${hasReport ? 'Informe listo para presentar. Puedes recalcular y revisar de nuevo si cambiaron los datos.' : 'Calcula el desglose, revísalo y ajústalo, y solo entonces se genera el informe.'}
     </div>
     <div style="display:flex;gap:8px;">
       ${hasReport ? `<button onclick="exportFreeTrialPDF()" style="display:flex;align-items:center;gap:6px;padding:9px 18px;background:rgba(29,158,117,0.1);border:0.5px solid var(--green);border-radius:var(--r-sm);color:var(--green-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">↓ Exportar PDF</button>` : ''}
-      <button id="ft-gen-btn" onclick="generateFreeTrialReport()" style="display:flex;align-items:center;gap:6px;padding:9px 20px;background:${hasReport?'rgba(0,173,181,0.08)':'var(--teal-d)'};border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">
-        ${hasReport ? '↺ Regenerar' : '✦ Generar Free Trial →'}
+      <button id="ft-gen-btn" onclick="startFreeTrialReview()" style="display:flex;align-items:center;gap:6px;padding:9px 20px;background:${hasReport?'rgba(0,173,181,0.08)':'var(--teal-d)'};border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">
+        ${hasReport ? '↺ Recalcular y revisar' : '🔍 Calcular y revisar →'}
       </button>
     </div>
   </div>`;
@@ -6442,183 +6448,6 @@ function renderFreeTrialScreen(ceoReady, fabReady) {
   el.innerHTML = html;
 }
 
-async function generateFreeTrialReport() {
-  if (ftGenerating) return;
-  ftGenerating = true;
-
-  const btn = document.getElementById('ft-gen-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Generando...'; }
-
-  const cid = currentClient.id;
-  const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
-  const sector = currentClient.sector || 'Alimentación y bebidas';
-
-  // ── DOLOR 1: No llego al mes (margen) ──
-  const downtimeRaw = a('fab', 'downtime_hours_week');
-  const downtimeMap = {'menos de 2h':1.5,'2h - 5h':3.5,'5h - 10h':7.5,'10h - 20h':15,'más de 20h':22};
-  const downtimeH = downtimeMap[downtimeRaw] || 0;
-
-  const lineCostRaw = a('fab', 'line_hour_cost');
-  const lineCostMap = {'menos de 200€':150,'200€ - 400€':300,'400€ - 800€':600,'más de 800€':1000,'No lo sabemos':300};
-  const lineCostEur = lineCostMap[lineCostRaw] || 300;
-
-  const scopeRaw = a('fab', 'downtime_scope');
-  const linesTotal = parseInt(a('fab', 'production_lines_total')) || 1;
-  let scopeFactor = 1;
-  let scopeLabel = 'la línea afectada';
-  if (scopeRaw === 'Una línea crítica específica') { scopeFactor = 1; scopeLabel = 'la línea crítica afectada'; }
-  else if (scopeRaw === 'Varias líneas a la vez') { scopeFactor = Math.max(2, Math.round(linesTotal/2)); scopeLabel = 'las líneas afectadas'; }
-  else if (scopeRaw === 'Toda la fábrica') { scopeFactor = linesTotal || 1; scopeLabel = 'toda la fábrica'; }
-
-  const downtimeCostAnnual = Math.round(downtimeH * lineCostEur * scopeFactor * 48);
-
-  const scrapRaw = a('fab', 'scrap_pct');
-  const scrapMap = {'menos del 2%':0.015,'2% - 5%':0.035,'5% - 10%':0.075,'10% - 20%':0.15,'más del 20%':0.25};
-  const scrapPctNum = scrapMap[scrapRaw] || 0;
-  const revenueRaw = a('ceo', 'revenue');
-  const revenueMap = {'menos de 2M€':1500000,'2M€ - 5M€':3500000,'5M€ - 10M€':7500000,'10M€ - 25M€':17500000,'25M€ - 50M€':37500000,'más de 50M€':60000000};
-  const revenueNum = revenueMap[revenueRaw] || 3500000;
-  const scrapCostAnnual = Math.round(scrapPctNum * revenueNum * 0.4);
-
-  const reworkHoursWeek = parseFloat(a('fab', 'rework_hours_week')) || 0;
-  const reworkCostAnnual = Math.round(reworkHoursWeek * 25 * 52);
-
-  const changeoversWeek = parseFloat(a('fab', 'changeovers_week')) || 0;
-  const changeoverTime = parseFloat(a('fab', 'changeover_time')) || 0;
-  const changeoverCostAnnual = Math.round((changeoverTime/60) * changeoversWeek * lineCostEur * 48);
-
-  const dolor1Total = downtimeCostAnnual + scrapCostAnnual + reworkCostAnnual + changeoverCostAnnual;
-
-  // ── DOLOR 2: Dependencia de personas ──
-  const keyPersonDep = a('fab', 'key_person_dependency');
-  const newOperatorsYear = parseFloat(a('fab', 'new_operators_year')) || 0;
-  const onboardingRaw = a('fab', 'onboarding_weeks');
-  const onboardingMap = {'1 - 2 semanas':1.5,'2 - 4 semanas':3,'1 - 3 meses':8,'más de 3 meses':16};
-  const onboardingWeeksNum = onboardingMap[onboardingRaw] || 0;
-  const rotationCostAnnual = Math.round(newOperatorsYear * onboardingWeeksNum * 25 * 20);
-  const keyPersonFieldRaw = a('fab', 'key_person_field');
-
-  // ── DOLOR 3: Capacidad de crecer ──
-  const lostOrders = a('ceo', 'lost_orders');
-  const growthCapacityRaw = a('fab', 'growth_capacity_pct');
-
-  // ── Observaciones de campo (narrativa) ──
-  const obsCampo = {
-    physical_bottleneck: a('fab', 'physical_bottleneck'),
-    operator_behavior: a('fab', 'operator_behavior'),
-    visual_mgmt: a('fab', 'visual_mgmt'),
-    order_cleanliness: a('fab', 'order_cleanliness'),
-    improvisation_signals: a('fab', 'improvisation_signals'),
-    revealing_comment: a('fab', 'revealing_comment'),
-    key_person_field: keyPersonFieldRaw,
-    root_cause_hypothesis: a('fab', 'root_cause_hypothesis')
-  };
-
-  const prompt = `Eres un consultor senior de Tecno-Fab. Acabas de completar las sesiones CEO + Fábrica de un Free Trial DIOP con ${currentClient.name}, sector ${sector}.
-
-Tu objetivo NO es mostrar síntomas — es generar un DIAGNÓSTICO que sorprenda al CEO y le haga sentir que entendiste su fábrica mejor que nadie. La estructura se basa en 3 dolores reales de un CEO de pyme manufacturera:
-
-DOLOR 1 — "No llego al mes" (pérdida de margen oculta)
-DOLOR 2 — "Dependo de personas que no puedo perder"
-DOLOR 3 — "No puedo crecer sin que todo explote"
-
-DATOS ECONÓMICOS CALCULADOS (ya hechos — úsalos tal cual, no los recalcules):
-- Coste anual paradas: ${downtimeCostAnnual}€ (${downtimeH}h/sem × ${lineCostEur}€/h × factor ${scopeFactor} × 48 sem, afecta a ${scopeLabel})
-- Coste anual merma: ${scrapCostAnnual}€
-- Coste anual retrabajo: ${reworkCostAnnual}€
-- Coste anual changeover: ${changeoverCostAnnual}€
-- TOTAL DOLOR 1: ${dolor1Total}€/año
-- Coste anual rotación/onboarding (Dolor 2): ${rotationCostAnnual}€
-- Dependencia de personas clave declarada: ${keyPersonDep || 'No especificado'}
-- Persona clave identificada en campo: ${keyPersonFieldRaw || 'No especificado'}
-- Pierde pedidos por capacidad (Dolor 3): ${lostOrders || 'No especificado'}
-- Volumen adicional que podría vender sin límite operativo: ${growthCapacityRaw || 'No especificado'}
-
-OBSERVACIONES DE CAMPO (esto es lo que viste con tus propios ojos — es tu munición narrativa, no datos genéricos):
-- Acumulación física: ${obsCampo.physical_bottleneck || 'No registrado'}
-- Comportamiento operarios: ${obsCampo.operator_behavior || 'No registrado'}
-- Gestión visual: ${obsCampo.visual_mgmt || 'No registrado'}
-- Orden y limpieza: ${obsCampo.order_cleanliness || 'No registrado'}
-- Señales de improvisación: ${obsCampo.improvisation_signals || 'No registrado'}
-- Comentario revelador: ${obsCampo.revealing_comment || 'No registrado'}
-- Persona clave en campo: ${obsCampo.key_person_field || 'No registrado'}
-- Tu hipótesis de causa raíz: ${obsCampo.root_cause_hypothesis || 'No registrado'}
-
-CONTEXTO ADICIONAL:
-- Problema principal declarado por el CEO: ${a('ceo','main_problem') || 'No especificado'}
-- Facturación: ${revenueRaw || 'No especificada'}
-- Margen bruto: ${a('ceo','gross_margin') || 'No especificado'}
-
-INSTRUCCIONES CRÍTICAS:
-1. NO escribas un informe de números. Escribe un DIAGNÓSTICO que use las observaciones de campo como evidencia — el CEO tiene que sentir "este tío estuvo aquí y vio lo que nadie había visto".
-2. La narrativa debe nombrar un patrón (ej. "Operación Reactiva Consolidada") y conectarlo con la observación de campo más reveladora.
-3. dolor1_label: una frase corta de negocio, no técnica, que resuma el Dolor 1.
-4. dolor2_texto: si hay dependencia de personas clave, escribe 2-3 frases conectando la persona identificada en campo con el riesgo real (qué pasa si falta).
-5. dolor3_texto: si pierden pedidos o tienen capacidad de crecimiento, escribe 2-3 frases sobre qué limita exactamente el crecimiento.
-6. la_pregunta: una pregunta estratégica que el CEO no se ha hecho, que genere incomodidad productiva — no técnica, de negocio.
-7. quick_wins: 2 acciones concretas y accionables en 60 días, cuantificadas en euros, basadas en lo observado.
-8. NO inventes datos que no están arriba. Si algo no se puede calcular, omite esa sección del JSON (pon null).
-
-Devuelve SOLO este JSON, sin texto adicional:
-{
-  "arquetipo": "nombre del patrón observado (ej: Reactive Factory, Growing Complexity, etc)",
-  "urgencia": "alta|media|baja",
-  "dolor1": {
-    "valor": ${dolor1Total},
-    "label": "frase corta de negocio sobre qué representa este número",
-    "calculo": "desglose breve tipo: paradas X€ + merma Y€ + retrabajo Z€ + changeover W€",
-    "contexto": "1-2 frases conectando el número con la observación de campo más relevante"
-  },
-  "dolor2": {
-    "valor": ${rotationCostAnnual > 0 ? rotationCostAnnual : 'null'},
-    "texto": "2-3 frases sobre la dependencia de personas, usando la persona identificada en campo si la hay"
-  },
-  "dolor3": {
-    "texto": "2-3 frases sobre el límite de crecimiento, usando lost_orders y growth_capacity si los hay"
-  },
-  "diagnostico_narrativo": {
-    "patron": "1 párrafo nombrando el patrón operativo observado",
-    "causa_raiz": "1 párrafo de causa raíz conectado a la observación de campo más reveladora",
-    "posibilidad": "1 párrafo sobre qué hace posible resolver esto, sin vender"
-  },
-  "benchmark_kpis": [
-    { "nombre": "KPI relevante", "valor_cliente": "valor", "valor_sector": "rango sector", "gap_label": "X puntos por debajo/encima", "urgencia": "alta|media" }
-  ],
-  "la_pregunta": "pregunta estratégica de negocio",
-  "quick_wins": [
-    { "titulo": "título en lenguaje CEO", "impacto_euros": "rango €/año", "plazo_dias": 45, "descripcion": "qué hacer exactamente" }
-  ]
-}`;
-
-  try {
-    const res = await fetch('/api/generate-report', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
-    const data = await res.json();
-    let text = (data.content || '').replace(/```json|```/g, '').trim();
-    ftReport = JSON.parse(text);
-
-    const j = JSON.stringify(ftReport);
-    allAnswers[`${cid}_freetrial_data`] = j;
-    allAnswers[`${cid}_freetrial_generated`] = 'true';
-    await sb.from('diop_answers').upsert([
-      { client_id: cid, session: 'freetrial', question_id: 'report_data', answer: j, updated_at: new Date().toISOString() },
-      { client_id: cid, session: 'freetrial', question_id: 'generated', answer: 'true', updated_at: new Date().toISOString() }
-    ]);
-
-    ftGenerating = false;
-    renderSidebarRoadmap();
-    renderFreeTrialScreen(true, true);
-
-  } catch(err) {
-    console.error('Free Trial generation error:', err);
-    ftGenerating = false;
-    if (btn) { btn.disabled = false; btn.textContent = '↺ Reintentar'; }
-    showToast('Error al generar. Inténtalo de nuevo.');
-  }
-}
 
 function renderFreeTrialReport(r) {
   if (!r) return '';
@@ -6657,13 +6486,18 @@ function renderFreeTrialReport(r) {
     <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#628f98;font-weight:700;margin-bottom:8px;">01 · El número que no sabían</div>
     <div style="font-size:48px;font-weight:700;color:#0a0a0a;font-family:'DM Mono',monospace;line-height:1;">${d1Val || '—'}</div>
     <div style="font-size:13px;color:#628f98;margin-top:6px;">${esc(d1.label || 'coste anual estimado del Dolor 1')}</div>
-    ${d1.calculo ? `<div style="font-size:11px;padding:4px 10px;border-radius:20px;background:#f0f0f0;color:#666;display:inline-block;margin-top:10px;font-family:'DM Mono',monospace;">${esc(d1.calculo)}</div>` : ''}
+    ${(d1.components && d1.components.length) ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">
+      ${d1.components.map(c => `<span style="font-size:10.5px;padding:3px 10px;border-radius:20px;background:#f0f0f0;color:#666;font-family:'DM Mono',monospace;">${esc(c.label)}: ${c.value.toLocaleString('es-ES')}€</span>`).join('')}
+    </div>` : ''}
     ${d1.contexto ? `<div style="font-size:13px;color:#2a2a2a;line-height:1.6;margin-top:12px;">${esc(d1.contexto)}</div>` : ''}
   </div>
 
-  ${(d2.valor || d2.texto) ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:10px;">02 · Dependéis de personas que no podéis perder</div>
-    ${d2.valor ? `<div style="font-size:30px;font-weight:700;color:#0a0a0a;font-family:'DM Mono',monospace;margin-bottom:6px;">${fmtMoney(d2.valor)}</div>` : ''}
+  ${(d2.valor || d2.valorRiesgoAusencia || d2.texto) ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:12px;">02 · Dependéis de personas que no podéis perder</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;">
+      ${d2.valor ? `<div><div style="font-size:24px;font-weight:700;color:#0a0a0a;font-family:'DM Mono',monospace;">${fmtMoney(d2.valor)}</div><div style="font-size:10.5px;color:#999;">coste anual de rotación</div></div>` : ''}
+      ${d2.valorRiesgoAusencia ? `<div><div style="font-size:24px;font-weight:700;color:#a32d2d;font-family:'DM Mono',monospace;">${fmtMoney(d2.valorRiesgoAusencia)}</div><div style="font-size:10.5px;color:#999;">riesgo si falta 1 semana</div></div>` : ''}
+    </div>
     <div style="font-size:13.5px;color:#2a2a2a;line-height:1.65;">${esc(d2.texto || '')}</div>
   </div>` : ''}
 
@@ -6855,6 +6689,448 @@ ${qws.length ? `<div class="section no-break">
   const win = window.open('', '_blank', 'width=900,height=700');
   win.document.write(html);
   win.document.close();
+}
+
+// ══════════════════════════════════════════════════════
+// ── FREE TRIAL · CÁLCULO DETERMINISTA (Paso 2) ──
+// Todo el cálculo vive aquí, en JS puro. La IA NUNCA calcula
+// números — solo recibe estos resultados ya hechos y escribe
+// la narrativa alrededor. Cada componente queda registrado
+// con su input original, supuesto aplicado y comparación de
+// benchmark, para que el consultor pueda auditarlo y editarlo
+// antes de generar el informe final.
+// ══════════════════════════════════════════════════════
+
+const FT_SECTOR_BENCHMARKS = {
+  'Alimentación y bebidas': { downtime_pct_revenue: [0.01, 0.04], scrap_pct_cogs: [0.02, 0.06] },
+  'Farmacéutico': { downtime_pct_revenue: [0.005, 0.02], scrap_pct_cogs: [0.005, 0.02] },
+  'Metal y componentes': { downtime_pct_revenue: [0.015, 0.05], scrap_pct_cogs: [0.01, 0.04] },
+  'default': { downtime_pct_revenue: [0.01, 0.045], scrap_pct_cogs: [0.015, 0.05] }
+};
+
+function ftBenchmarkCheck(value, revenueOrBase, rangeKey, sector) {
+  const bench = FT_SECTOR_BENCHMARKS[sector] || FT_SECTOR_BENCHMARKS['default'];
+  const range = bench[rangeKey];
+  if (!range || !revenueOrBase) return { withinBenchmark: null, pctOfBase: null, rangeLabel: null };
+  const pct = value / revenueOrBase;
+  const within = pct >= range[0] && pct <= range[1];
+  return {
+    withinBenchmark: within,
+    pctOfBase: pct,
+    rangeLabel: `${(range[0]*100).toFixed(1)}% – ${(range[1]*100).toFixed(1)}%`
+  };
+}
+
+function calcFreeTrialBreakdown() {
+  const cid = currentClient.id;
+  const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
+  const sector = currentClient.sector || 'default';
+
+  const components = [];
+
+  // ── Inputs base reutilizados en varios componentes ──
+  const operatorHourCostRaw = a('fab', 'operator_hour_cost');
+  const operatorHourCost = parseFloat(operatorHourCostRaw) || 22; // fallback benchmark, marcado como tal
+  const operatorHourCostIsReal = !!parseFloat(operatorHourCostRaw);
+
+  const productiveWeeksRaw = a('fab', 'productive_weeks_year');
+  const productiveWeeks = parseFloat(productiveWeeksRaw) || 48;
+  const productiveWeeksIsReal = !!parseFloat(productiveWeeksRaw);
+
+  const revenueRaw = a('ceo', 'revenue');
+  const revenueMap = {'menos de 2M€':1500000,'2M€ - 5M€':3500000,'5M€ - 10M€':7500000,'10M€ - 25M€':17500000,'25M€ - 50M€':37500000,'más de 50M€':60000000};
+  const revenueNum = revenueMap[revenueRaw] || 3500000;
+
+  const cogsRaw = a('fab', 'cogs_pct_revenue');
+  const cogsMap = {'menos del 25%':0.20,'25% - 40%':0.32,'40% - 55%':0.47,'más del 55%':0.60};
+  const cogsPct = cogsMap[cogsRaw] || 0.40;
+  const cogsIsReal = !!cogsMap[cogsRaw];
+
+  const downtimeScopeRaw = a('fab', 'downtime_scope');
+  const linesTotal = parseInt(a('fab', 'production_lines_total')) || 1;
+  let scopeFactor = 1, scopeLabel = 'la línea afectada';
+  if (downtimeScopeRaw === 'Una línea crítica específica') { scopeFactor = 1; scopeLabel = 'la línea crítica afectada'; }
+  else if (downtimeScopeRaw === 'Varias líneas a la vez') { scopeFactor = Math.max(2, Math.round(linesTotal/2)); scopeLabel = 'las líneas afectadas'; }
+  else if (downtimeScopeRaw === 'Toda la fábrica') { scopeFactor = linesTotal || 1; scopeLabel = 'toda la fábrica'; }
+
+  // ── COMPONENTE 1: Paradas ──
+  const downtimeNumRaw = a('fab', 'downtime_hours_week_num');
+  const downtimeRangeRaw = a('fab', 'downtime_hours_week');
+  const downtimeMap = {'menos de 2h':1.5,'2h - 5h':3.5,'5h - 10h':7.5,'10h - 20h':15,'más de 20h':22};
+  let downtimeH, downtimeIsReal, downtimeInputLabel;
+  if (parseFloat(downtimeNumRaw) > 0) {
+    downtimeH = parseFloat(downtimeNumRaw); downtimeIsReal = true;
+    downtimeInputLabel = `${downtimeH}h/semana (dato real aportado)`;
+  } else {
+    downtimeH = downtimeMap[downtimeRangeRaw] || 0; downtimeIsReal = false;
+    downtimeInputLabel = downtimeRangeRaw ? `rango "${downtimeRangeRaw}" → punto medio ${downtimeH}h` : 'sin dato';
+  }
+
+  const lineCostNumRaw = a('fab', 'line_hour_cost_num');
+  const lineCostRangeRaw = a('fab', 'line_hour_cost');
+  const lineCostMap = {'menos de 200€':150,'200€ - 400€':300,'400€ - 800€':600,'más de 800€':1000,'No lo sabemos':300};
+  let lineCostEur, lineCostIsReal, lineCostInputLabel;
+  if (parseFloat(lineCostNumRaw) > 0) {
+    lineCostEur = parseFloat(lineCostNumRaw); lineCostIsReal = true;
+    lineCostInputLabel = `${lineCostEur}€/h (dato real aportado)`;
+  } else {
+    lineCostEur = lineCostMap[lineCostRangeRaw] || 300; lineCostIsReal = false;
+    lineCostInputLabel = lineCostRangeRaw ? `rango "${lineCostRangeRaw}" → punto medio ${lineCostEur}€/h` : 'sin dato → benchmark 300€/h';
+  }
+
+  const downtimeValue = Math.round(downtimeH * lineCostEur * scopeFactor * productiveWeeks);
+  const downtimeBench = ftBenchmarkCheck(downtimeValue, revenueNum, 'downtime_pct_revenue', sector);
+  components.push({
+    key: 'downtime', label: 'Paradas no planificadas',
+    inputSummary: `${downtimeInputLabel} · coste línea: ${lineCostInputLabel} · alcance: ${scopeLabel} (factor ${scopeFactor}) · ${productiveWeeksIsReal ? productiveWeeks+' semanas reales' : productiveWeeks+' semanas (benchmark)'}`,
+    formula: `${downtimeH}h × ${lineCostEur}€/h × factor ${scopeFactor} × ${productiveWeeks} sem`,
+    value: downtimeValue,
+    isEstimate: !downtimeIsReal || !lineCostIsReal,
+    benchmark: downtimeBench
+  });
+
+  // ── COMPONENTE 2: Merma ──
+  const scrapRaw = a('fab', 'scrap_pct');
+  const scrapMap = {'menos del 2%':0.015,'2% - 5%':0.035,'5% - 10%':0.075,'10% - 20%':0.15,'más del 20%':0.25};
+  const scrapPctNum = scrapMap[scrapRaw] || 0;
+  const cogsBase = revenueNum * cogsPct;
+  const scrapValue = Math.round(scrapPctNum * cogsBase);
+  const scrapBench = ftBenchmarkCheck(scrapValue, cogsBase, 'scrap_pct_cogs', sector);
+  components.push({
+    key: 'scrap', label: 'Merma / desperdicio',
+    inputSummary: `merma: "${scrapRaw||'sin dato'}" → ${(scrapPctNum*100).toFixed(1)}% · coste de producto (COGS): ${cogsIsReal ? (cogsPct*100).toFixed(0)+'% real' : '40% benchmark sector (sin dato)'} sobre facturación`,
+    formula: `${(scrapPctNum*100).toFixed(1)}% × ${cogsBase.toLocaleString('es-ES')}€ (COGS)`,
+    value: scrapValue,
+    isEstimate: !cogsIsReal || !scrapRaw,
+    benchmark: scrapBench
+  });
+
+  // ── COMPONENTE 3: Retrabajo ──
+  const reworkHoursWeek = parseFloat(a('fab', 'rework_hours_week')) || 0;
+  const reworkValue = Math.round(reworkHoursWeek * operatorHourCost * productiveWeeks);
+  components.push({
+    key: 'rework', label: 'Retrabajo / reproceso',
+    inputSummary: `${reworkHoursWeek}h/semana de retrabajo · coste operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h real' : '22€/h benchmark (sin dato)'}`,
+    formula: `${reworkHoursWeek}h × ${operatorHourCost}€/h × ${productiveWeeks} sem`,
+    value: reworkValue,
+    isEstimate: !operatorHourCostIsReal,
+    benchmark: { withinBenchmark: null }
+  });
+
+  // ── COMPONENTE 4: Changeover ──
+  const changeoversWeek = parseFloat(a('fab', 'changeovers_week')) || 0;
+  const changeoverTime = parseFloat(a('fab', 'changeover_time')) || 0;
+  const changeoverValue = Math.round((changeoverTime/60) * changeoversWeek * lineCostEur * productiveWeeks);
+  components.push({
+    key: 'changeover', label: 'Cambios de formato (changeover)',
+    inputSummary: `${changeoversWeek} cambios/sem × ${changeoverTime}min cada uno · coste línea: ${lineCostInputLabel}`,
+    formula: `(${changeoverTime}/60)h × ${changeoversWeek}/sem × ${lineCostEur}€/h × ${productiveWeeks} sem`,
+    value: changeoverValue,
+    isEstimate: !lineCostIsReal,
+    benchmark: { withinBenchmark: null }
+  });
+
+  const dolor1Total = components.reduce((s,c) => s + c.value, 0);
+
+  // ── DOLOR 2A: Coste de rotación ──
+  const newOperatorsYear = parseFloat(a('fab', 'new_operators_year')) || 0;
+  const onboardingRaw = a('fab', 'onboarding_weeks');
+  const onboardingMap = {'1 - 2 semanas':1.5,'2 - 4 semanas':3,'1 - 3 meses':8,'más de 3 meses':16};
+  const onboardingWeeksNum = onboardingMap[onboardingRaw] || 0;
+  // Asumimos dedicación de formación de 50% del tiempo del nuevo operario durante onboarding — declarado, no oculto
+  const rotationValue = Math.round(newOperatorsYear * onboardingWeeksNum * operatorHourCost * 20);
+  const rotationComponent = {
+    key: 'rotation', label: 'Coste de rotación / onboarding',
+    inputSummary: `${newOperatorsYear} operarios nuevos/año · onboarding "${onboardingRaw||'sin dato'}" (${onboardingWeeksNum} sem) · coste operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h real' : '22€/h benchmark'} · 20h/sem de dedicación a formación (supuesto)`,
+    formula: `${newOperatorsYear} × ${onboardingWeeksNum} sem × ${operatorHourCost}€/h × 20h/sem`,
+    value: rotationValue,
+    isEstimate: true,
+    benchmark: { withinBenchmark: null }
+  };
+
+  // ── DOLOR 2B: Riesgo de ausencia de persona clave ──
+  const absenceImpactRaw = a('fab', 'key_person_absence_impact');
+  const absenceImpactMap = {
+    'Se pararía casi por completo': 0.85,
+    'Bajaría mucho el ritmo (40-60%)': 0.50,
+    'Se notaría pero seguiría funcionando (15-25%)': 0.20,
+    'Apenas se notaría': 0.05,
+    'No hay una persona así': 0
+  };
+  const absenceImpactPct = absenceImpactMap[absenceImpactRaw];
+  let absenceRiskValue = null;
+  let absenceComponent = null;
+  if (absenceImpactPct > 0) {
+    absenceRiskValue = Math.round(lineCostEur * 40 * absenceImpactPct); // 1 semana = 40h productivas
+    absenceComponent = {
+      key: 'absence_risk', label: 'Riesgo si la persona clave falta 1 semana',
+      inputSummary: `impacto declarado: "${absenceImpactRaw}" → ${(absenceImpactPct*100).toFixed(0)}% de la producción de esa línea · coste línea: ${lineCostInputLabel}`,
+      formula: `${lineCostEur}€/h × 40h (1 semana) × ${(absenceImpactPct*100).toFixed(0)}%`,
+      value: absenceRiskValue,
+      isEstimate: !lineCostIsReal,
+      benchmark: { withinBenchmark: null }
+    };
+  }
+
+  // ── DOLOR 3: contexto cualitativo (no se calcula en €, se usa como narrativa) ──
+  const lostOrders = a('ceo', 'lost_orders');
+  const growthCapacityRaw = a('fab', 'growth_capacity_pct');
+
+  return {
+    sector,
+    dolor1: { components, total: dolor1Total },
+    dolor2: { rotation: rotationComponent, absenceRisk: absenceComponent, keyPersonField: a('fab','key_person_field') },
+    dolor3: { lostOrders, growthCapacityRaw },
+    meta: { revenueNum, operatorHourCost, operatorHourCostIsReal, productiveWeeks, scopeLabel }
+  };
+}
+// ══════════════════════════════════════════════════════
+// ── FREE TRIAL · PANTALLA DE REVISIÓN (Paso 3) ──
+// Aparece tras pulsar "Calcular" y antes de generar el informe.
+// Cada número es auditable y editable. Solo cuando el consultor
+// confirma, se llama a la IA para la narrativa — usando estos
+// valores ya validados, no recalculados.
+// ══════════════════════════════════════════════════════
+
+let ftBreakdown = null;
+let ftBreakdownEdited = null;
+
+function startFreeTrialReview() {
+  ftBreakdown = calcFreeTrialBreakdown();
+  ftBreakdownEdited = JSON.parse(JSON.stringify(ftBreakdown));
+  renderFreeTrialReview();
+}
+
+function ftReviewComponentRow(c, idx, group) {
+  const benchIcon = c.benchmark && c.benchmark.withinBenchmark === true ? '✓'
+    : c.benchmark && c.benchmark.withinBenchmark === false ? '⚠' : '';
+  const benchColor = c.benchmark && c.benchmark.withinBenchmark === true ? 'var(--green)'
+    : c.benchmark && c.benchmark.withinBenchmark === false ? 'var(--amber)' : 'var(--text3)';
+  const benchText = c.benchmark && c.benchmark.rangeLabel
+    ? `Sector: ${c.benchmark.rangeLabel} de la base · Tu cálculo: ${(c.benchmark.pctOfBase*100).toFixed(1)}%`
+    : '';
+
+  return `<div style="padding:14px 16px;background:var(--s2);border:0.5px solid ${c.isEstimate ? 'rgba(186,117,23,0.3)' : 'var(--border)'};border-radius:var(--r-sm);margin-bottom:8px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);">${c.label}</div>
+      ${c.isEstimate ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(186,117,23,0.12);color:var(--amber);font-weight:600;flex-shrink:0;">CON SUPUESTOS</span>` : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(29,158,117,0.12);color:var(--green);font-weight:600;flex-shrink:0;">DATO REAL</span>`}
+    </div>
+    <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:4px;">${c.inputSummary}</div>
+    <div style="font-size:10px;color:var(--text4);font-family:var(--mono);margin-bottom:8px;">${c.formula}</div>
+    ${benchText ? `<div style="font-size:10.5px;color:${benchColor};margin-bottom:8px;">${benchIcon} ${benchText}</div>` : ''}
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:11px;color:var(--text3);">Resultado:</span>
+      <input type="number" value="${c.value}" data-group="${group}" data-key="${c.key}" data-idx="${idx===undefined?'':idx}" onchange="ftEditComponent(this)" style="width:140px;background:var(--s1);border:1px solid var(--border2);border-radius:var(--r-xs);padding:6px 10px;color:var(--text);font-size:14px;font-family:var(--mono);font-weight:600;outline:none;">
+      <span style="font-size:11px;color:var(--text3);">€</span>
+    </div>
+  </div>`;
+}
+
+function ftEditComponent(input) {
+  const group = input.dataset.group;
+  const key = input.dataset.key;
+  const idx = input.dataset.idx;
+  const newVal = parseFloat(input.value) || 0;
+
+  if (group === 'dolor1') {
+    const comp = ftBreakdownEdited.dolor1.components.find(c => c.key === key);
+    if (comp) comp.value = newVal;
+    ftBreakdownEdited.dolor1.total = ftBreakdownEdited.dolor1.components.reduce((s,c) => s + c.value, 0);
+  } else if (group === 'rotation') {
+    ftBreakdownEdited.dolor2.rotation.value = newVal;
+  } else if (group === 'absence') {
+    ftBreakdownEdited.dolor2.absenceRisk.value = newVal;
+  }
+  renderFreeTrialReview(true);
+}
+
+function renderFreeTrialReview(skipScroll) {
+  const el = document.getElementById('freetrial-content');
+  if (!el || !ftBreakdownEdited) return;
+  const d1 = ftBreakdownEdited.dolor1;
+  const d2 = ftBreakdownEdited.dolor2;
+
+  let html = `
+  <div class="session-hero">
+    <div class="sh-icon" style="background:rgba(186,117,23,0.1);color:var(--amber);">🔍</div>
+    <div class="sh-info">
+      <div class="sh-title">Revisar antes de generar</div>
+      <div class="sh-sub">Cada número viene de un dato o un supuesto declarado. Edítalo si tienes mejor información de campo.</div>
+    </div>
+  </div>
+
+  <div style="padding:12px 16px;background:rgba(0,173,181,0.05);border:0.5px solid rgba(0,173,181,0.15);border-radius:var(--r-sm);margin-bottom:18px;font-size:11.5px;color:var(--text2);line-height:1.5;">
+    Las tarjetas marcadas <strong style="color:var(--amber);">CON SUPUESTOS</strong> usan un benchmark porque no había dato exacto. Las marcadas <strong style="color:var(--green);">DATO REAL</strong> vienen directamente de lo que respondió el cliente. Ajusta cualquier valor antes de confirmar — el informe final usará exactamente lo que dejes aquí.
+  </div>
+
+  <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;">Dolor 1 — No llego al mes</div>
+  ${d1.components.map((c,i) => ftReviewComponentRow(c, i, 'dolor1')).join('')}
+  <div style="padding:14px 16px;background:rgba(0,173,181,0.06);border:1px solid var(--teal);border-radius:var(--r-sm);margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-size:12px;color:var(--text2);font-weight:600;">Total Dolor 1</span>
+    <span style="font-size:20px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${d1.total.toLocaleString('es-ES')}€</span>
+  </div>
+
+  ${d2.rotation ? `<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;">Dolor 2 — Dependencia de personas</div>
+  ${ftReviewComponentRow(d2.rotation, null, 'rotation')}` : ''}
+  ${d2.absenceRisk ? ftReviewComponentRow(d2.absenceRisk, null, 'absence') : `<div style="font-size:11px;color:var(--text3);margin-bottom:16px;padding:10px 14px;background:var(--s2);border-radius:var(--r-sm);">No se identificó riesgo de ausencia de persona clave en las respuestas de Fábrica.</div>`}
+
+  <div style="display:flex;gap:10px;margin-top:24px;">
+    <button onclick="cancelFreeTrialReview()" style="padding:10px 18px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Cancelar</button>
+    <button onclick="confirmFreeTrialReview()" id="ft-confirm-btn" style="flex:1;padding:10px 18px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">✓ Confirmar números y generar informe →</button>
+  </div>`;
+
+  el.innerHTML = html;
+  if (!skipScroll) document.getElementById('main-content').scrollTop = 0;
+}
+
+function cancelFreeTrialReview() {
+  ftBreakdown = null; ftBreakdownEdited = null;
+  const prog = getProgress(currentClient);
+  renderFreeTrialScreen(prog.sessions['ceo']==='done', prog.sessions['fab']==='done');
+}
+// ══════════════════════════════════════════════════════
+// ── FREE TRIAL · GENERACIÓN FINAL (Paso 4) ──
+// La IA recibe los números YA confirmados por el consultor.
+// Su único trabajo es redactar narrativa alrededor — nunca
+// recalcula ni reinterpreta las cifras.
+// ══════════════════════════════════════════════════════
+
+async function confirmFreeTrialReview() {
+  if (ftGenerating) return;
+  ftGenerating = true;
+  const btn = document.getElementById('ft-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generando narrativa...'; }
+
+  const cid = currentClient.id;
+  const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
+  const sector = currentClient.sector || 'Alimentación y bebidas';
+  const d1 = ftBreakdownEdited.dolor1;
+  const d2 = ftBreakdownEdited.dolor2;
+  const d3 = ftBreakdownEdited.dolor3;
+
+  const obsCampo = {
+    physical_bottleneck: a('fab', 'physical_bottleneck'),
+    operator_behavior: a('fab', 'operator_behavior'),
+    visual_mgmt: a('fab', 'visual_mgmt'),
+    order_cleanliness: a('fab', 'order_cleanliness'),
+    improvisation_signals: a('fab', 'improvisation_signals'),
+    revealing_comment: a('fab', 'revealing_comment'),
+    key_person_field: a('fab', 'key_person_field'),
+    root_cause_hypothesis: a('fab', 'root_cause_hypothesis')
+  };
+
+  const d1Breakdown = d1.components.map(c => `  - ${c.label}: ${c.value.toLocaleString('es-ES')}€ (${c.formula})`).join('\n');
+
+  const prompt = `Eres un consultor senior de Tecno-Fab. Acabas de completar las sesiones CEO + Fábrica de un Free Trial DIOP con ${currentClient.name}, sector ${sector}.
+
+LOS NÚMEROS YA ESTÁN CALCULADOS Y VALIDADOS POR EL CONSULTOR — NO LOS RECALCULES, NO LOS CAMBIES, NO LOS REDONDEES DE FORMA DISTINTA. Tu único trabajo es escribir la narrativa que los rodea.
+
+DOLOR 1 — TOTAL: ${d1.total.toLocaleString('es-ES')}€/año
+Desglose exacto (úsalo tal cual en el texto si haces referencia a cifras):
+${d1Breakdown}
+
+DOLOR 2 — Dependencia de personas:
+${d2.rotation ? `- Coste de rotación/onboarding: ${d2.rotation.value.toLocaleString('es-ES')}€/año` : ''}
+${d2.absenceRisk ? `- Riesgo si falta 1 semana la persona clave: ${d2.absenceRisk.value.toLocaleString('es-ES')}€` : '- No se identificó persona clave de riesgo crítico'}
+- Persona clave identificada en campo: ${d2.keyPersonField || 'No especificada'}
+
+DOLOR 3 — Capacidad de crecer:
+- Pierde pedidos por capacidad: ${d3.lostOrders || 'No especificado'}
+- Volumen adicional posible sin límite operativo: ${d3.growthCapacityRaw || 'No especificado'}
+
+OBSERVACIONES DE CAMPO (tu evidencia narrativa — esto es lo que viste con tus propios ojos):
+- Acumulación física: ${obsCampo.physical_bottleneck || 'No registrado'}
+- Comportamiento operarios: ${obsCampo.operator_behavior || 'No registrado'}
+- Gestión visual: ${obsCampo.visual_mgmt || 'No registrado'}
+- Orden y limpieza: ${obsCampo.order_cleanliness || 'No registrado'}
+- Señales de improvisación: ${obsCampo.improvisation_signals || 'No registrado'}
+- Comentario revelador: ${obsCampo.revealing_comment || 'No registrado'}
+- Tu hipótesis de causa raíz: ${obsCampo.root_cause_hypothesis || 'No registrado'}
+
+CONTEXTO:
+- Problema principal declarado por el CEO: ${a('ceo','main_problem') || 'No especificado'}
+- Margen bruto: ${a('ceo','gross_margin') || 'No especificado'}
+
+INSTRUCCIONES:
+1. NO inventes ni cambies ningún número — usa exactamente los de arriba si los mencionas.
+2. La narrativa debe nombrar un patrón operativo y conectarlo con la observación de campo más reveladora.
+3. dolor1_label: frase corta de negocio sobre qué representa el total del Dolor 1.
+4. dolor1_contexto: 1-2 frases conectando el número con la observación de campo más relevante — NO repitas el desglose numérico, eso ya se muestra aparte.
+5. dolor2_texto: 2-3 frases sobre la dependencia de personas, usando la persona identificada en campo.
+6. dolor3_texto: 2-3 frases sobre qué limita el crecimiento.
+7. la_pregunta: una pregunta estratégica de negocio, no técnica.
+8. quick_wins: 2 acciones concretas en 60 días, basadas en lo observado, con impacto en euros coherente con los números de arriba (no inventes cifras nuevas grandes).
+
+Devuelve SOLO este JSON, sin texto adicional:
+{
+  "arquetipo": "nombre del patrón observado",
+  "urgencia": "alta|media|baja",
+  "dolor1_label": "frase corta de negocio",
+  "dolor1_contexto": "1-2 frases conectando con observación de campo",
+  "dolor2_texto": "2-3 frases",
+  "dolor3_texto": "2-3 frases",
+  "diagnostico_narrativo": {
+    "patron": "1 párrafo nombrando el patrón operativo observado",
+    "causa_raiz": "1 párrafo de causa raíz conectado a la observación de campo más reveladora",
+    "posibilidad": "1 párrafo sobre qué hace posible resolver esto, sin vender"
+  },
+  "la_pregunta": "pregunta estratégica de negocio",
+  "quick_wins": [
+    { "titulo": "título en lenguaje CEO", "impacto_euros": "rango €/año coherente", "plazo_dias": 45, "descripcion": "qué hacer exactamente" }
+  ]
+}`;
+
+  try {
+    const res = await fetch('/api/generate-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    let text = (data.content || '').replace(/```json|```/g, '').trim();
+    const narrative = JSON.parse(text);
+
+    // Ensamblamos el informe final: números validados (JS) + narrativa (IA), nunca mezclados
+    ftReport = {
+      arquetipo: narrative.arquetipo,
+      urgencia: narrative.urgencia,
+      dolor1: {
+        valor: d1.total,
+        label: narrative.dolor1_label,
+        components: d1.components,
+        contexto: narrative.dolor1_contexto
+      },
+      dolor2: {
+        valor: d2.rotation ? d2.rotation.value : null,
+        valorRiesgoAusencia: d2.absenceRisk ? d2.absenceRisk.value : null,
+        texto: narrative.dolor2_texto
+      },
+      dolor3: { texto: narrative.dolor3_texto },
+      diagnostico_narrativo: narrative.diagnostico_narrativo,
+      la_pregunta: narrative.la_pregunta,
+      quick_wins: narrative.quick_wins,
+      benchmark_kpis: []
+    };
+
+    const j = JSON.stringify(ftReport);
+    allAnswers[`${cid}_freetrial_data`] = j;
+    allAnswers[`${cid}_freetrial_generated`] = 'true';
+    await sb.from('diop_answers').upsert([
+      { client_id: cid, session: 'freetrial', question_id: 'report_data', answer: j, updated_at: new Date().toISOString() },
+      { client_id: cid, session: 'freetrial', question_id: 'generated', answer: 'true', updated_at: new Date().toISOString() }
+    ]);
+
+    ftGenerating = false;
+    ftBreakdown = null; ftBreakdownEdited = null;
+    renderSidebarRoadmap();
+    renderFreeTrialScreen(true, true);
+
+  } catch(err) {
+    console.error('Free Trial generation error:', err);
+    ftGenerating = false;
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar números y generar informe →'; }
+    showToast('Error al generar la narrativa. Inténtalo de nuevo.');
+  }
 }
 
 </script>
