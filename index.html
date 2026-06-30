@@ -738,6 +738,11 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
       <div id="m3ext-content"></div>
     </div>
 
+    <!-- FREE TRIAL: Entregable cliente -->
+    <div class="screen" id="screen-freetrial">
+      <div id="freetrial-content"></div>
+    </div>
+
   </main>
 </div>
 
@@ -844,11 +849,25 @@ const SESSIONS = {
         {id:'ergonomics_issues', text:'¿Se observan problemas de ergonomía o seguridad en la línea?', type:'yn', prio:'s'},
         {id:'fab_notes', text:'Observaciones libres de la visita en fábrica', type:'txt', prio:'s'},
       ]},
+      { id:'obs_campo', name:'Observaciones de campo', obj:'Lo que ves, no lo que te cuentan — convierte la visita en diagnóstico, no en encuesta', questions:[
+        {id:'physical_bottleneck', text:'Material acumulado / cuellos de botella físicos', type:'sel', prio:'c', roi:'Señal directa de dónde se rompe el flujo — alimenta el diagnóstico narrativo del Free Trial', opts:['No hay acumulación visible','Hay stock entre máquinas en algún punto','Hay acumulación clara delante de una máquina específica','Hay caos general — material por todas partes']},
+        {id:'operator_behavior', text:'Estado de los operarios en planta', type:'sel', prio:'c', opts:['Todos ocupados, ritmo constante','Hay momentos de espera visibles','Hay operarios parados esperando máquina o material','Cada uno hace lo suyo sin coordinación visible']},
+        {id:'visual_mgmt', text:'Gestión visual de la información', type:'sel', prio:'c', roi:'Indica madurez de comunicación operativa — clave para el diagnóstico de dependencia de personas', opts:['Pantallas o tableros con datos en tiempo real','Pizarras o papel con información del día','Nada visible — la información está en la cabeza de alguien','Hay información pero nadie la mira']},
+        {id:'order_cleanliness', text:'Estado general de orden y limpieza', type:'sel', prio:'i', opts:['Limpio y organizado — cada cosa en su sitio','Aceptable pero con zonas problemáticas','Desorganizado — cuesta encontrar las cosas','Caótico — señal clara de falta de sistema']},
+        {id:'improvisation_signals', text:'Señales de improvisación', type:'sel', prio:'c', opts:['Todo parece planificado y estable','Alguna solución provisional que lleva tiempo ahí','Varias reparaciones o soluciones caseras visibles','La improvisación es el sistema']},
+        {id:'revealing_comment', text:'El comentario espontáneo más revelador', type:'sel', prio:'c', roi:'Esto es lo que diferencia un diagnóstico de un informe de números — capta la causa raíz emocional', opts:['"Esto siempre ha sido así"','"Cuando [persona] no está, esto es un caos"','"Sabemos que hay que arreglarlo pero no hay tiempo"','"Esto lo tenemos controlado" — pero no lo tienen','No hubo comentario revelador']},
+        {id:'key_person_field', text:'La persona clave que identificaste en campo', type:'sel', prio:'c', roi:'Confirma o matiza la dependencia declarada en la pregunta key_person_dependency', opts:['El responsable de producción lo sabe todo','Un operario específico es el que realmente sabe','El propio CEO es el cuello de botella','No hay una persona clave — el conocimiento está distribuido']},
+        {id:'root_cause_hypothesis', text:'Tu hipótesis de causa raíz al salir', type:'sel', prio:'c', roi:'Tu intuición de consultor — la IA la usa como ancla narrativa para el diagnóstico del Free Trial', opts:['El problema es de procesos — no están definidos','El problema es de personas — dependencia crítica','El problema es de datos — no saben lo que pasa','El problema es de capacidad — la fábrica no da más','El problema es de gestión — saben qué pasa pero no actúan']},
+      ]},
       { id:'kpis', name:'KPIs operativos estimados', obj:'Los números que el CEO no sabe que tiene — el corazón del diagnóstico', questions:[
         {id:'downtime_hours_week', text:'¿Cuántas horas de parada no planificada tienen por semana de media?', type:'sel', prio:'c', roi:'Horas paradas × coste hora línea = pérdida directa. Suele ser el número más impactante', opts:['menos de 2h','2h - 5h','5h - 10h','10h - 20h','más de 20h','No lo saben']},
+        {id:'downtime_scope', text:'Las paradas que me describes — ¿afectan a una línea crítica, varias líneas, o toda la fábrica?', type:'sel', prio:'c', roi:'Determina si el coste de paradas se calcula sobre 1 línea o sobre toda la capacidad — cambia el número radicalmente', opts:['Una línea crítica específica','Varias líneas a la vez','Toda la fábrica','No lo saben']},
+        {id:'production_lines_total', text:'¿Cuántas líneas de producción tiene la fábrica en total?', type:'num', prio:'c', roi:'Base para prorratear el coste de paradas si solo afecta a una parte de la fábrica'},
+        {id:'line_hour_cost', text:'¿Cuánto cuesta aproximadamente una hora de línea parada? (mano de obra directa + amortización + overhead)', type:'sel', prio:'c', roi:'Es el multiplicador del número grande del Free Trial. Si no lo saben, se usa benchmark del sector', opts:['menos de 200€','200€ - 400€','400€ - 800€','más de 800€','No lo sabemos']},
         {id:'scrap_pct', text:'¿Qué porcentaje de merma o desperdicio estiman sobre la producción total?', type:'sel', prio:'c', roi:'% merma × coste MP × producción anual = pérdida real en euros. Benchmarked contra sector', opts:['menos del 2%','2% - 5%','5% - 10%','10% - 20%','más del 20%','No lo saben']},
         {id:'rework_pct', text:'¿Qué porcentaje del producto final requiere retrabajo o es rechazado en calidad?', type:'sel', prio:'c', roi:'% rechazo × coste producción = coste de no calidad. Puede superar 5-15% de la facturación', opts:['menos del 1%','1% - 3%','3% - 8%','más del 8%','No lo saben']},
         {id:'rework_hours_week', text:'¿Cuántas horas semanales se dedican a retrabajo o reproceso?', type:'num', prio:'c', roi:'Horas retrabajo × coste hora operario × 52 semanas = coste anual del retrabajo'},
+        {id:'growth_capacity_pct', text:'Si la operación no fuera el límite, ¿cuánto volumen adicional podríais vender este año?', type:'sel', prio:'c', roi:'Cuantifica el coste de oportunidad de crecimiento perdido por falta de capacidad operativa', opts:['menos del 10% más','10% - 25% más','25% - 50% más','más del 50% más','No lo saben']},
       ]},
     ]
   },
@@ -3431,6 +3450,7 @@ function renderSidebarRoadmap() {
   const m5Done = m5Findings.length >= 6 && m5Findings.every(f => !!(f && f.confidence));
   const m5HasData = m5Findings.some(f => !!(f && (f.confidence || (f.finding && f.finding.trim && f.finding.trim()))));
   const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
+  const ftHasData = currentClient && allAnswers[`${currentClient.id}_freetrial_generated`] === 'true';
 
   function ss(sid){ return prog?.sessions[sid]||'pending'; }
   function ic(state,dirty){ return state==='done'?(dirty?'!':'✓'):state==='active'?'→':'○'; }
@@ -3476,6 +3496,7 @@ function renderSidebarRoadmap() {
         { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Done ? '✓' : (m5HasData ? '→' : '○'), state: m5Done ? 'rc-done' : (m5HasData ? 'rc-active' : 'rc-pending'), labelClass: m5Done ? 'rld' : (m5HasData ? 'rla' : ''), action: 'openM5()' },
         { id:'m6', label:'M6 · Portfolio + RIM™', icon: m6HasData ? '✓' : '○', state: m6HasData ? 'rc-done' : 'rc-pending', labelClass: m6HasData ? 'rld' : '', action: 'openM6()' },
         { id:'report', label:'M7 · Executive Report', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
+        { id:'freetrial', label:'Free Trial · Entregable cliente', icon: ftHasData ? '✓' : '○', state: ftHasData ? 'rc-done' : 'rc-pending', labelClass: ftHasData ? 'rld' : '', action: 'openFreeTrial()' },
       ]
     }
   ];
@@ -6177,4 +6198,597 @@ function getFieldIntelligenceReportContext(){
   ctx+=`\nINSTRUCCIÓN: Estas señales son hallazgos de campo de alto valor consultivo. Deben influir directamente en el resumen ejecutivo, los riesgos principales, y la priorización de quick wins. Las discrepancias entre perfiles deben mencionarse explícitamente en el análisis. Los Quick Wins reales (lo que cada perfil cambiaría mañana) tienen prioridad sobre los generados por la IA.\n`;
   return ctx;
 }
+
+// ══════════════════════════════════════════════════════
+// ── VISUAL KIT™ · Funciones SVG reutilizables (Free Trial + M7) ──
+// Solo para entregables. El workbench (sesiones de captura) no usa gráficos.
+// ══════════════════════════════════════════════════════
+
+function svgGauge(value, max, color, sizePx) {
+  const size = sizePx || 100;
+  const r = size * 0.4;
+  const cx = size / 2, cy = size / 2;
+  const circumference = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(1, (value || 0) / (max || 100)));
+  const offset = circumference * (1 - pct);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(120,120,120,0.15)" stroke-width="${size*0.09}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${size*0.09}" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round" transform="rotate(-90 ${cx} ${cy})"/>
+  </svg>`;
+}
+
+function svgSparkline(points, color, w, h) {
+  w = w || 100; h = h || 28;
+  if (!points || points.length < 2) return `<svg width="${w}" height="${h}"></svg>`;
+  const max = Math.max(...points), min = Math.min(...points);
+  const range = (max - min) || 1;
+  const step = w / (points.length - 1);
+  const coords = points.map((p, i) => `${(i*step).toFixed(1)},${(h - ((p-min)/range)*h*0.85 - h*0.075).toFixed(1)}`).join(' ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polyline points="${coords}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+function svgAreaChart(seriesList, w, h) {
+  w = w || 560; h = h || 110;
+  if (!seriesList || !seriesList.length) return `<svg width="${w}" height="${h}"></svg>`;
+  const allVals = seriesList.flatMap(s => s.points);
+  const max = Math.max(...allVals, 1), min = Math.min(...allVals, 0);
+  const range = (max - min) || 1;
+  let svg = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs>`;
+  seriesList.forEach((s, si) => {
+    svg += `<linearGradient id="ftgrad${si}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${s.color}" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="${s.color}" stop-opacity="0"/>
+    </linearGradient>`;
+  });
+  svg += `</defs>`;
+  seriesList.forEach((s, si) => {
+    const n = s.points.length;
+    const step = w / (n - 1 || 1);
+    const coords = s.points.map((p, i) => [i*step, h - ((p-min)/range)*h*0.85 - h*0.05]);
+    const line = coords.map(c => `${c[0].toFixed(1)},${c[1].toFixed(1)}`).join(' ');
+    const poly = `0,${h} ${line} ${w},${h}`;
+    svg += `<polygon points="${poly}" fill="url(#ftgrad${si})"/>`;
+    svg += `<polyline points="${line}" fill="none" stroke="${s.color}" stroke-width="2.2"/>`;
+  });
+  svg += `</svg>`;
+  return svg;
+}
+
+function svgHeatGrid(items) {
+  if (!items || !items.length) return '';
+  const cols = Math.min(items.length, 5);
+  let html = `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:5px;">`;
+  items.forEach(it => {
+    html += `<div style="aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${it.textColor||'#fff'};background:${it.color};">${it.label}</div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderBenchmarkBar(label, clientLabel, sectorLabel, clientPct, sectorRangeStart, sectorRangeEnd, gapLabel, badColor) {
+  const col = badColor || '#E24B4A';
+  return `<div style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+      <span style="font-size:12.5px;font-weight:600;color:#1a1a1a;">${label}</span>
+      <span style="font-size:10.5px;padding:2px 9px;border-radius:20px;background:${col}18;color:${col};font-weight:600;">${gapLabel}</span>
+    </div>
+    <div style="height:10px;background:#f0f0ee;border-radius:5px;position:relative;">
+      <div style="position:absolute;height:100%;border-radius:5px;left:${sectorRangeStart}%;width:${sectorRangeEnd-sectorRangeStart}%;background:#e0f7f8;"></div>
+      <div style="position:absolute;width:16px;height:16px;border-radius:50%;top:50%;left:${clientPct}%;transform:translate(-50%,-50%);background:${col};border:3px solid #fff;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#999;margin-top:4px;">
+      <span>Vosotros: <strong style="color:${col};">${clientLabel}</strong></span>
+      <span>Sector: ${sectorLabel}</span>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════
+// ── FREE TRIAL · Entregable cliente ──
+// Flujo: visita 1 (CEO+Fábrica) → casa → genera → visita 2 → presenta
+// Estructura: 3 dolores del CEO (margen / dependencia personas / capacidad crecer)
+// ══════════════════════════════════════════════════════
+
+let ftGenerating = false;
+let ftReport = null;
+
+async function openFreeTrial() {
+  currentSession = 'freetrial';
+  document.getElementById('main-content').scrollTop = 0;
+  showScreen('freetrial');
+  renderSidebarRoadmap();
+
+  const prog = getProgress(currentClient);
+  const ceoReady = prog.sessions['ceo'] === 'done';
+  const fabReady = prog.sessions['fab'] === 'done';
+
+  const saved = allAnswers[`${currentClient.id}_freetrial_data`];
+  if (saved) {
+    try { ftReport = JSON.parse(saved); } catch(e) { ftReport = null; }
+  } else {
+    ftReport = null;
+  }
+
+  renderFreeTrialScreen(ceoReady, fabReady);
+}
+
+function renderFreeTrialScreen(ceoReady, fabReady) {
+  const el = document.getElementById('freetrial-content');
+  if (!el) return;
+
+  const canGenerate = ceoReady && fabReady;
+  const hasReport = !!ftReport;
+
+  let html = `
+  <div class="session-hero">
+    <div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🎯</div>
+    <div class="sh-info">
+      <div class="sh-title">Free Trial · Entregable cliente</div>
+      <div class="sh-sub">Informe de impacto para presentar en visita 2 · Genera el PDF para dejar con el cliente</div>
+    </div>
+  </div>`;
+
+  html += `<div style="display:flex;gap:10px;margin-bottom:20px;">
+    ${['ceo','fab'].map(s => {
+      const done = getProgress(currentClient).sessions[s] === 'done';
+      return `<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:${done?'rgba(29,158,117,0.08)':'var(--s1)'};border:0.5px solid ${done?'var(--green)':'var(--border)'};border-radius:20px;">
+        <div style="width:6px;height:6px;border-radius:50%;background:${done?'var(--green)':'var(--border2)'}"></div>
+        <span style="font-size:11px;color:${done?'var(--green)':'var(--text3)'};font-weight:${done?'600':'400'};">Sesión ${s.toUpperCase()} ${done?'completada':'pendiente'}</span>
+      </div>`;
+    }).join('')}
+    ${hasReport ? `<div style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(0,173,181,0.08);border:0.5px solid var(--teal);border-radius:20px;">
+      <span style="font-size:11px;color:var(--teal);">✓ Informe generado</span>
+    </div>` : ''}
+  </div>`;
+
+  if (!canGenerate) {
+    html += `<div style="padding:40px;text-align:center;background:var(--s1);border:0.5px solid var(--border);border-radius:16px;">
+      <div style="font-size:32px;margin-bottom:12px;">⏳</div>
+      <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Completa las sesiones CEO y Fábrica</div>
+      <div style="font-size:12px;color:var(--text3);">Son las únicas dos necesarias para generar el Free Trial. Recuerda rellenar también el bloque de Observaciones de campo en Fábrica.</div>
+    </div>`;
+    el.innerHTML = html;
+    return;
+  }
+
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div style="font-size:13px;color:var(--text2);">
+      ${hasReport ? 'Informe listo para presentar. Puedes regenerarlo si cambiaron los datos.' : 'Listo para generar el informe de impacto. Hazlo desde casa, después de la visita 1.'}
+    </div>
+    <div style="display:flex;gap:8px;">
+      ${hasReport ? `<button onclick="exportFreeTrialPDF()" style="display:flex;align-items:center;gap:6px;padding:9px 18px;background:rgba(29,158,117,0.1);border:0.5px solid var(--green);border-radius:var(--r-sm);color:var(--green-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">↓ Exportar PDF</button>` : ''}
+      <button id="ft-gen-btn" onclick="generateFreeTrialReport()" style="display:flex;align-items:center;gap:6px;padding:9px 20px;background:${hasReport?'rgba(0,173,181,0.08)':'var(--teal-d)'};border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">
+        ${hasReport ? '↺ Regenerar' : '✦ Generar Free Trial →'}
+      </button>
+    </div>
+  </div>`;
+
+  if (hasReport) {
+    html += renderFreeTrialReport(ftReport);
+  } else {
+    html += `<div style="padding:60px;text-align:center;background:var(--s1);border:0.5px dashed var(--border2);border-radius:16px;color:var(--text3);font-size:13px;">
+      El informe aparecerá aquí. Tarda unos segundos.
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+async function generateFreeTrialReport() {
+  if (ftGenerating) return;
+  ftGenerating = true;
+
+  const btn = document.getElementById('ft-gen-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generando...'; }
+
+  const cid = currentClient.id;
+  const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
+  const sector = currentClient.sector || 'Alimentación y bebidas';
+
+  // ── DOLOR 1: No llego al mes (margen) ──
+  const downtimeRaw = a('fab', 'downtime_hours_week');
+  const downtimeMap = {'menos de 2h':1.5,'2h - 5h':3.5,'5h - 10h':7.5,'10h - 20h':15,'más de 20h':22};
+  const downtimeH = downtimeMap[downtimeRaw] || 0;
+
+  const lineCostRaw = a('fab', 'line_hour_cost');
+  const lineCostMap = {'menos de 200€':150,'200€ - 400€':300,'400€ - 800€':600,'más de 800€':1000,'No lo sabemos':300};
+  const lineCostEur = lineCostMap[lineCostRaw] || 300;
+
+  const scopeRaw = a('fab', 'downtime_scope');
+  const linesTotal = parseInt(a('fab', 'production_lines_total')) || 1;
+  let scopeFactor = 1;
+  let scopeLabel = 'la línea afectada';
+  if (scopeRaw === 'Una línea crítica específica') { scopeFactor = 1; scopeLabel = 'la línea crítica afectada'; }
+  else if (scopeRaw === 'Varias líneas a la vez') { scopeFactor = Math.max(2, Math.round(linesTotal/2)); scopeLabel = 'las líneas afectadas'; }
+  else if (scopeRaw === 'Toda la fábrica') { scopeFactor = linesTotal || 1; scopeLabel = 'toda la fábrica'; }
+
+  const downtimeCostAnnual = Math.round(downtimeH * lineCostEur * scopeFactor * 48);
+
+  const scrapRaw = a('fab', 'scrap_pct');
+  const scrapMap = {'menos del 2%':0.015,'2% - 5%':0.035,'5% - 10%':0.075,'10% - 20%':0.15,'más del 20%':0.25};
+  const scrapPctNum = scrapMap[scrapRaw] || 0;
+  const revenueRaw = a('ceo', 'revenue');
+  const revenueMap = {'menos de 2M€':1500000,'2M€ - 5M€':3500000,'5M€ - 10M€':7500000,'10M€ - 25M€':17500000,'25M€ - 50M€':37500000,'más de 50M€':60000000};
+  const revenueNum = revenueMap[revenueRaw] || 3500000;
+  const scrapCostAnnual = Math.round(scrapPctNum * revenueNum * 0.4);
+
+  const reworkHoursWeek = parseFloat(a('fab', 'rework_hours_week')) || 0;
+  const reworkCostAnnual = Math.round(reworkHoursWeek * 25 * 52);
+
+  const changeoversWeek = parseFloat(a('fab', 'changeovers_week')) || 0;
+  const changeoverTime = parseFloat(a('fab', 'changeover_time')) || 0;
+  const changeoverCostAnnual = Math.round((changeoverTime/60) * changeoversWeek * lineCostEur * 48);
+
+  const dolor1Total = downtimeCostAnnual + scrapCostAnnual + reworkCostAnnual + changeoverCostAnnual;
+
+  // ── DOLOR 2: Dependencia de personas ──
+  const keyPersonDep = a('fab', 'key_person_dependency');
+  const newOperatorsYear = parseFloat(a('fab', 'new_operators_year')) || 0;
+  const onboardingRaw = a('fab', 'onboarding_weeks');
+  const onboardingMap = {'1 - 2 semanas':1.5,'2 - 4 semanas':3,'1 - 3 meses':8,'más de 3 meses':16};
+  const onboardingWeeksNum = onboardingMap[onboardingRaw] || 0;
+  const rotationCostAnnual = Math.round(newOperatorsYear * onboardingWeeksNum * 25 * 20);
+  const keyPersonFieldRaw = a('fab', 'key_person_field');
+
+  // ── DOLOR 3: Capacidad de crecer ──
+  const lostOrders = a('ceo', 'lost_orders');
+  const growthCapacityRaw = a('fab', 'growth_capacity_pct');
+
+  // ── Observaciones de campo (narrativa) ──
+  const obsCampo = {
+    physical_bottleneck: a('fab', 'physical_bottleneck'),
+    operator_behavior: a('fab', 'operator_behavior'),
+    visual_mgmt: a('fab', 'visual_mgmt'),
+    order_cleanliness: a('fab', 'order_cleanliness'),
+    improvisation_signals: a('fab', 'improvisation_signals'),
+    revealing_comment: a('fab', 'revealing_comment'),
+    key_person_field: keyPersonFieldRaw,
+    root_cause_hypothesis: a('fab', 'root_cause_hypothesis')
+  };
+
+  const prompt = `Eres un consultor senior de Tecno-Fab. Acabas de completar las sesiones CEO + Fábrica de un Free Trial DIOP con ${currentClient.name}, sector ${sector}.
+
+Tu objetivo NO es mostrar síntomas — es generar un DIAGNÓSTICO que sorprenda al CEO y le haga sentir que entendiste su fábrica mejor que nadie. La estructura se basa en 3 dolores reales de un CEO de pyme manufacturera:
+
+DOLOR 1 — "No llego al mes" (pérdida de margen oculta)
+DOLOR 2 — "Dependo de personas que no puedo perder"
+DOLOR 3 — "No puedo crecer sin que todo explote"
+
+DATOS ECONÓMICOS CALCULADOS (ya hechos — úsalos tal cual, no los recalcules):
+- Coste anual paradas: ${downtimeCostAnnual}€ (${downtimeH}h/sem × ${lineCostEur}€/h × factor ${scopeFactor} × 48 sem, afecta a ${scopeLabel})
+- Coste anual merma: ${scrapCostAnnual}€
+- Coste anual retrabajo: ${reworkCostAnnual}€
+- Coste anual changeover: ${changeoverCostAnnual}€
+- TOTAL DOLOR 1: ${dolor1Total}€/año
+- Coste anual rotación/onboarding (Dolor 2): ${rotationCostAnnual}€
+- Dependencia de personas clave declarada: ${keyPersonDep || 'No especificado'}
+- Persona clave identificada en campo: ${keyPersonFieldRaw || 'No especificado'}
+- Pierde pedidos por capacidad (Dolor 3): ${lostOrders || 'No especificado'}
+- Volumen adicional que podría vender sin límite operativo: ${growthCapacityRaw || 'No especificado'}
+
+OBSERVACIONES DE CAMPO (esto es lo que viste con tus propios ojos — es tu munición narrativa, no datos genéricos):
+- Acumulación física: ${obsCampo.physical_bottleneck || 'No registrado'}
+- Comportamiento operarios: ${obsCampo.operator_behavior || 'No registrado'}
+- Gestión visual: ${obsCampo.visual_mgmt || 'No registrado'}
+- Orden y limpieza: ${obsCampo.order_cleanliness || 'No registrado'}
+- Señales de improvisación: ${obsCampo.improvisation_signals || 'No registrado'}
+- Comentario revelador: ${obsCampo.revealing_comment || 'No registrado'}
+- Persona clave en campo: ${obsCampo.key_person_field || 'No registrado'}
+- Tu hipótesis de causa raíz: ${obsCampo.root_cause_hypothesis || 'No registrado'}
+
+CONTEXTO ADICIONAL:
+- Problema principal declarado por el CEO: ${a('ceo','main_problem') || 'No especificado'}
+- Facturación: ${revenueRaw || 'No especificada'}
+- Margen bruto: ${a('ceo','gross_margin') || 'No especificado'}
+
+INSTRUCCIONES CRÍTICAS:
+1. NO escribas un informe de números. Escribe un DIAGNÓSTICO que use las observaciones de campo como evidencia — el CEO tiene que sentir "este tío estuvo aquí y vio lo que nadie había visto".
+2. La narrativa debe nombrar un patrón (ej. "Operación Reactiva Consolidada") y conectarlo con la observación de campo más reveladora.
+3. dolor1_label: una frase corta de negocio, no técnica, que resuma el Dolor 1.
+4. dolor2_texto: si hay dependencia de personas clave, escribe 2-3 frases conectando la persona identificada en campo con el riesgo real (qué pasa si falta).
+5. dolor3_texto: si pierden pedidos o tienen capacidad de crecimiento, escribe 2-3 frases sobre qué limita exactamente el crecimiento.
+6. la_pregunta: una pregunta estratégica que el CEO no se ha hecho, que genere incomodidad productiva — no técnica, de negocio.
+7. quick_wins: 2 acciones concretas y accionables en 60 días, cuantificadas en euros, basadas en lo observado.
+8. NO inventes datos que no están arriba. Si algo no se puede calcular, omite esa sección del JSON (pon null).
+
+Devuelve SOLO este JSON, sin texto adicional:
+{
+  "arquetipo": "nombre del patrón observado (ej: Reactive Factory, Growing Complexity, etc)",
+  "urgencia": "alta|media|baja",
+  "dolor1": {
+    "valor": ${dolor1Total},
+    "label": "frase corta de negocio sobre qué representa este número",
+    "calculo": "desglose breve tipo: paradas X€ + merma Y€ + retrabajo Z€ + changeover W€",
+    "contexto": "1-2 frases conectando el número con la observación de campo más relevante"
+  },
+  "dolor2": {
+    "valor": ${rotationCostAnnual > 0 ? rotationCostAnnual : 'null'},
+    "texto": "2-3 frases sobre la dependencia de personas, usando la persona identificada en campo si la hay"
+  },
+  "dolor3": {
+    "texto": "2-3 frases sobre el límite de crecimiento, usando lost_orders y growth_capacity si los hay"
+  },
+  "diagnostico_narrativo": {
+    "patron": "1 párrafo nombrando el patrón operativo observado",
+    "causa_raiz": "1 párrafo de causa raíz conectado a la observación de campo más reveladora",
+    "posibilidad": "1 párrafo sobre qué hace posible resolver esto, sin vender"
+  },
+  "benchmark_kpis": [
+    { "nombre": "KPI relevante", "valor_cliente": "valor", "valor_sector": "rango sector", "gap_label": "X puntos por debajo/encima", "urgencia": "alta|media" }
+  ],
+  "la_pregunta": "pregunta estratégica de negocio",
+  "quick_wins": [
+    { "titulo": "título en lenguaje CEO", "impacto_euros": "rango €/año", "plazo_dias": 45, "descripcion": "qué hacer exactamente" }
+  ]
+}`;
+
+  try {
+    const res = await fetch('/api/generate-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    let text = (data.content || '').replace(/```json|```/g, '').trim();
+    ftReport = JSON.parse(text);
+
+    const j = JSON.stringify(ftReport);
+    allAnswers[`${cid}_freetrial_data`] = j;
+    allAnswers[`${cid}_freetrial_generated`] = 'true';
+    await sb.from('diop_answers').upsert([
+      { client_id: cid, session: 'freetrial', question_id: 'report_data', answer: j, updated_at: new Date().toISOString() },
+      { client_id: cid, session: 'freetrial', question_id: 'generated', answer: 'true', updated_at: new Date().toISOString() }
+    ]);
+
+    ftGenerating = false;
+    renderSidebarRoadmap();
+    renderFreeTrialScreen(true, true);
+
+  } catch(err) {
+    console.error('Free Trial generation error:', err);
+    ftGenerating = false;
+    if (btn) { btn.disabled = false; btn.textContent = '↺ Reintentar'; }
+    showToast('Error al generar. Inténtalo de nuevo.');
+  }
+}
+
+function renderFreeTrialReport(r) {
+  if (!r) return '';
+  const esc = v => String(v ?? '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const fmtMoney = v => (v === null || v === undefined || v === '' ) ? null : Number(v).toLocaleString('es-ES') + ' €';
+
+  const urgColor = r.urgencia === 'alta' ? '#E24B4A' : r.urgencia === 'media' ? '#BA7517' : '#1D9E75';
+  const d1 = r.dolor1 || {};
+  const d1Val = fmtMoney(d1.valor);
+  const d2 = r.dolor2 || {};
+  const d3 = r.dolor3 || {};
+  const diag = r.diagnostico_narrativo || {};
+  const benchKpis = r.benchmark_kpis || [];
+  const qws = r.quick_wins || [];
+
+  return `<div id="ft-report-body" style="max-width:880px;margin:0 auto;">
+
+  <!-- PORTADA -->
+  <div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:28px 32px;margin-bottom:16px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:6px;">Tecno-Fab · Diagnóstico de impacto operativo</div>
+        <div style="font-size:28px;font-weight:700;color:#0a0a0a;letter-spacing:-.02em;">${esc(currentClient.name)}</div>
+        <div style="font-size:13px;color:#888;margin-top:3px;">${esc(currentClient.sector || '')} · Free Trial</div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <span style="font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600;background:${urgColor}18;color:${urgColor};">Urgencia ${esc(r.urgencia || '—')}</span>
+          ${r.arquetipo ? `<span style="font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600;background:#e0f7f8;color:#007c82;">${esc(r.arquetipo)}</span>` : ''}
+        </div>
+      </div>
+      ${svgGauge(r.urgencia==='alta'?85:r.urgencia==='media'?55:30, 100, urgColor, 76)}
+    </div>
+  </div>
+
+  <!-- 01 · EL NÚMERO -->
+  <div style="background:#f7fdfd;border-left:4px solid #00adb5;border-radius:0 16px 16px 0;padding:24px 28px;margin-bottom:16px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#628f98;font-weight:700;margin-bottom:8px;">01 · El número que no sabían</div>
+    <div style="font-size:48px;font-weight:700;color:#0a0a0a;font-family:'DM Mono',monospace;line-height:1;">${d1Val || '—'}</div>
+    <div style="font-size:13px;color:#628f98;margin-top:6px;">${esc(d1.label || 'coste anual estimado del Dolor 1')}</div>
+    ${d1.calculo ? `<div style="font-size:11px;padding:4px 10px;border-radius:20px;background:#f0f0f0;color:#666;display:inline-block;margin-top:10px;font-family:'DM Mono',monospace;">${esc(d1.calculo)}</div>` : ''}
+    ${d1.contexto ? `<div style="font-size:13px;color:#2a2a2a;line-height:1.6;margin-top:12px;">${esc(d1.contexto)}</div>` : ''}
+  </div>
+
+  ${(d2.valor || d2.texto) ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:10px;">02 · Dependéis de personas que no podéis perder</div>
+    ${d2.valor ? `<div style="font-size:30px;font-weight:700;color:#0a0a0a;font-family:'DM Mono',monospace;margin-bottom:6px;">${fmtMoney(d2.valor)}</div>` : ''}
+    <div style="font-size:13.5px;color:#2a2a2a;line-height:1.65;">${esc(d2.texto || '')}</div>
+  </div>` : ''}
+
+  ${d3.texto ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:10px;">03 · No podéis crecer sin que todo explote</div>
+    <div style="font-size:13.5px;color:#2a2a2a;line-height:1.65;">${esc(d3.texto)}</div>
+  </div>` : ''}
+
+  ${(diag.patron || diag.causa_raiz) ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:14px;">04 · Diagnóstico</div>
+    ${diag.patron ? `<div style="font-size:14px;color:#0a0a0a;font-weight:500;line-height:1.7;margin-bottom:12px;">${esc(diag.patron)}</div>` : ''}
+    ${diag.causa_raiz ? `<div style="font-size:14px;color:#2a2a2a;line-height:1.7;margin-bottom:12px;padding-left:14px;border-left:2.5px solid #00adb5;">${esc(diag.causa_raiz)}</div>` : ''}
+    ${diag.posibilidad ? `<div style="font-size:14px;color:#444;line-height:1.7;">${esc(diag.posibilidad)}</div>` : ''}
+  </div>` : ''}
+
+  ${benchKpis.length ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:16px;">05 · Posición vs sector</div>
+    ${benchKpis.map(k => renderBenchmarkBar(esc(k.nombre), esc(k.valor_cliente), esc(k.valor_sector), 30, 45, 70, esc(k.gap_label), k.urgencia==='alta'?'#E24B4A':'#BA7517')).join('')}
+  </div>` : ''}
+
+  ${r.la_pregunta ? `<div style="background:#f7fdfd;border:1px solid rgba(0,173,181,0.18);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#00adb5;font-weight:700;margin-bottom:12px;">06 · La pregunta que no os habéis hecho</div>
+    <div style="font-size:17px;color:#0a0a0a;line-height:1.6;font-style:italic;">"${esc(r.la_pregunta)}"</div>
+  </div>` : ''}
+
+  ${qws.length ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:14px;">07 · Lo que es posible en 60 días</div>
+    ${qws.map((qw,i) => `<div style="display:flex;gap:14px;padding:14px;background:#fafaf8;border-radius:10px;margin-bottom:8px;">
+      <div style="width:26px;height:26px;border-radius:50%;background:rgba(0,173,181,0.12);border:1px solid #00adb5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#007c82;flex-shrink:0;">${i+1}</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#0a0a0a;margin-bottom:3px;">${esc(qw.titulo)}</div>
+        <div style="font-size:12px;color:#555;line-height:1.5;margin-bottom:6px;">${esc(qw.descripcion)}</div>
+        <span style="font-size:11px;padding:2px 9px;border-radius:20px;background:#eaf6f0;color:#1d9e75;font-weight:600;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</span>
+      </div>
+    </div>`).join('')}
+  </div>` : ''}
+
+  <div style="background:#fafaf8;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:20px 24px;margin-bottom:16px;">
+    <div style="font-size:11px;color:#999;margin-bottom:12px;">El diagnóstico inicial cubre una parte del análisis. Esto es lo que falta por descubrir:</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="border:1px solid rgba(0,0,0,0.07);border-radius:8px;padding:13px 14px;background:#fafaf8;">
+        <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:3px;">Diagnóstico sistemas IT/OT</div>
+        <div style="font-size:11px;color:#999;line-height:1.4;">Flujo de datos real, ciberseguridad.</div>
+      </div>
+      <div style="border:1px solid rgba(0,0,0,0.07);border-radius:8px;padding:13px 14px;background:#fafaf8;">
+        <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:3px;">Value Stream Map completo</div>
+        <div style="font-size:11px;color:#999;line-height:1.4;">Lead time real, cuellos de botella exactos.</div>
+      </div>
+      <div style="border:1px solid rgba(0,0,0,0.07);border-radius:8px;padding:13px 14px;background:#fafaf8;">
+        <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:3px;">OFI™ Score completo</div>
+        <div style="font-size:11px;color:#999;line-height:1.4;">Las 4 dimensiones, arquetipo confirmado.</div>
+      </div>
+      <div style="border:1px solid rgba(0,0,0,0.07);border-radius:8px;padding:13px 14px;background:#fafaf8;">
+        <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:3px;">Roadmap + ROI cuantificado</div>
+        <div style="font-size:11px;color:#999;line-height:1.4;">3 escenarios de retorno, plan a 90 días.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#0a2e2c;border-radius:16px;padding:24px 28px;">
+    <div style="font-size:10px;color:#5dcaa5;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">El siguiente paso</div>
+    <div style="font-size:14px;color:#e1f5ee;line-height:1.65;">El diagnóstico completo incluye las sesiones que faltan (Dirección de Operaciones, IT/OT, Operario) más el informe ejecutivo completo — OFI™ Score, Value Stream Map, roadmap priorizado y ROI en 3 escenarios. El alcance final y la inversión se ajustan al tamaño y complejidad de ${esc(currentClient.name)} — lo definimos juntos en la próxima reunión.</div>
+  </div>
+
+  <div style="text-align:center;padding:16px 0 4px;">
+    <div style="font-size:10px;color:#aaa;">Tecno-Fab · Free Trial · Documento confidencial</div>
+  </div>
+
+</div>`;
+}
+
+async function exportFreeTrialPDF() {
+  if (!ftReport) { showToast('Genera el informe primero'); return; }
+  const r = ftReport;
+  const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+  const esc = v => String(v ?? '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const fmtMoney = v => (v === null || v === undefined || v === '') ? '—' : Number(v).toLocaleString('es-ES') + ' €';
+  const urgColor = r.urgencia === 'alta' ? '#E24B4A' : r.urgencia === 'media' ? '#BA7517' : '#1D9E75';
+  const d1 = r.dolor1 || {}; const d2 = r.dolor2 || {}; const d3 = r.dolor3 || {};
+  const diag = r.diagnostico_narrativo || {};
+  const benchKpis = r.benchmark_kpis || [];
+  const qws = r.quick_wins || [];
+
+  const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<title>Free Trial DIOP — ${currentClient.name}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Arial,Helvetica,sans-serif;color:#0f1a2e;background:#fff;font-size:10pt;line-height:1.5;}
+  @page{margin:14mm 14mm;size:A4;}
+  @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact;}.no-break{page-break-inside:avoid;}}
+  .cover{background:#0a2e2c;color:#e1f5ee;padding:16mm 14mm;border-radius:6px;margin-bottom:8mm;}
+  .cover-kicker{font-size:8pt;text-transform:uppercase;letter-spacing:2px;color:#5dcaa5;margin-bottom:4mm;font-weight:bold;}
+  .cover-name{font-size:22pt;font-weight:bold;margin-bottom:2mm;}
+  .cover-meta{font-size:10pt;color:#9fe1cb;margin-bottom:5mm;}
+  .badge{font-size:8pt;padding:2px 10px;border-radius:20px;font-weight:bold;display:inline-block;margin-right:4mm;}
+  .section{margin-bottom:7mm;padding:6mm 7mm;border:1px solid #e0eef0;border-radius:6px;}
+  .section-label{font-size:7.5pt;text-transform:uppercase;letter-spacing:1.5px;color:#7ab0b8;font-weight:bold;margin-bottom:4mm;}
+  .number-big{font-size:30pt;font-weight:bold;font-family:'Courier New',monospace;color:#0a0a0a;margin-bottom:2mm;}
+  .number-label{font-size:9pt;color:#628f98;margin-bottom:3mm;}
+  .calc-pill{font-size:8pt;padding:2px 8px;border-radius:20px;background:#f0f0f0;color:#666;font-family:'Courier New',monospace;display:inline-block;margin-bottom:3mm;}
+  .narr{font-size:9.5pt;color:#2a2a2a;line-height:1.7;margin-bottom:3mm;}
+  .bench-item{margin-bottom:4mm;}
+  .bench-row{display:flex;justify-content:space-between;margin-bottom:1.5mm;}
+  .bench-name{font-size:9.5pt;font-weight:bold;}
+  .bench-gap{font-size:8pt;padding:2px 8px;border-radius:10px;font-weight:bold;background:#fef0f0;color:#a32d2d;}
+  .question-box{background:#f0f9fa;border-left:3px solid #00adb5;padding:5mm 6mm;border-radius:0 5px 5px 0;}
+  .qw-item{display:flex;gap:3mm;padding:3mm 4mm;border-radius:5px;margin-bottom:3mm;background:#f7fafa;border:1px solid #daedef;}
+  .qw-num{width:20px;height:20px;border-radius:50%;background:#00706e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:bold;flex-shrink:0;}
+  .cta{background:#0a2e2c;color:#e1f5ee;padding:7mm 8mm;border-radius:6px;}
+  .cta-label{font-size:8pt;color:#5dcaa5;text-transform:uppercase;letter-spacing:1px;font-weight:bold;margin-bottom:2mm;}
+  .locked-grid{display:grid;grid-template-columns:1fr 1fr;gap:4mm;}
+  .locked-card{background:#f7fafa;border:1px solid #e0eef0;border-radius:5px;padding:4mm;}
+  .locked-title{font-size:9pt;font-weight:bold;color:#7ab0b8;}
+  .locked-sub{font-size:8pt;color:#9ab5bd;margin-top:1.5mm;}
+  .footer{text-align:center;font-size:7.5pt;color:#aaa;margin-top:5mm;}
+</style>
+</head><body>
+
+<div class="cover">
+  <div class="cover-kicker">Tecno-Fab · Diagnóstico de Impacto Operativo · Free Trial</div>
+  <div class="cover-name">${esc(currentClient.name)}</div>
+  <div class="cover-meta">${esc(currentClient.sector||'')} · ${today}</div>
+  <span class="badge" style="background:${urgColor}22;color:${urgColor};">Urgencia ${esc(r.urgencia||'—')}</span>
+  ${r.arquetipo ? `<span class="badge" style="background:#0f6e56;color:#9fe1cb;">${esc(r.arquetipo)}</span>` : ''}
+</div>
+
+<div class="section no-break">
+  <div class="section-label">01 · El número que no sabían</div>
+  <div class="number-big">${fmtMoney(d1.valor)}</div>
+  <div class="number-label">${esc(d1.label||'')}</div>
+  ${d1.calculo ? `<div class="calc-pill">${esc(d1.calculo)}</div>` : ''}
+  ${d1.contexto ? `<div class="narr">${esc(d1.contexto)}</div>` : ''}
+</div>
+
+${(d2.valor || d2.texto) ? `<div class="section no-break">
+  <div class="section-label">02 · Dependéis de personas que no podéis perder</div>
+  ${d2.valor ? `<div class="number-big" style="font-size:20pt;">${fmtMoney(d2.valor)}</div>` : ''}
+  <div class="narr">${esc(d2.texto||'')}</div>
+</div>` : ''}
+
+${d3.texto ? `<div class="section no-break">
+  <div class="section-label">03 · No podéis crecer sin que todo explote</div>
+  <div class="narr">${esc(d3.texto)}</div>
+</div>` : ''}
+
+${(diag.patron||diag.causa_raiz) ? `<div class="section no-break">
+  <div class="section-label">04 · Diagnóstico</div>
+  ${diag.patron ? `<div class="narr" style="font-weight:bold;color:#0a0a0a;">${esc(diag.patron)}</div>` : ''}
+  ${diag.causa_raiz ? `<div class="narr">${esc(diag.causa_raiz)}</div>` : ''}
+  ${diag.posibilidad ? `<div class="narr">${esc(diag.posibilidad)}</div>` : ''}
+</div>` : ''}
+
+${benchKpis.length ? `<div class="section no-break">
+  <div class="section-label">05 · Posición vs sector</div>
+  ${benchKpis.map(k => `<div class="bench-item"><div class="bench-row"><span class="bench-name">${esc(k.nombre)}</span><span class="bench-gap">${esc(k.gap_label)}</span></div><div style="font-size:8.5pt;color:#666;">Vosotros: ${esc(k.valor_cliente)} · Sector: ${esc(k.valor_sector)}</div></div>`).join('')}
+</div>` : ''}
+
+${r.la_pregunta ? `<div class="section no-break">
+  <div class="section-label">06 · La pregunta que no os habéis hecho</div>
+  <div class="question-box"><div style="font-size:11pt;font-style:italic;">"${esc(r.la_pregunta)}"</div></div>
+</div>` : ''}
+
+${qws.length ? `<div class="section no-break">
+  <div class="section-label">07 · Lo que es posible en 60 días</div>
+  ${qws.map((qw,i) => `<div class="qw-item"><div class="qw-num">${i+1}</div><div><div style="font-size:9.5pt;font-weight:bold;">${esc(qw.titulo)}</div><div style="font-size:8.5pt;color:#666;margin:1mm 0;">${esc(qw.descripcion)}</div><div style="font-size:8pt;font-weight:bold;color:#1D9E75;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</div></div></div>`).join('')}
+</div>` : ''}
+
+<div class="section no-break">
+  <div class="section-label">Lo que falta por descubrir</div>
+  <div class="locked-grid">
+    <div class="locked-card"><div class="locked-title">Diagnóstico sistemas IT/OT</div><div class="locked-sub">Flujo de datos real, ciberseguridad.</div></div>
+    <div class="locked-card"><div class="locked-title">Value Stream Map completo</div><div class="locked-sub">Lead time real, cuellos de botella exactos.</div></div>
+    <div class="locked-card"><div class="locked-title">OFI™ Score completo</div><div class="locked-sub">Las 4 dimensiones, arquetipo confirmado.</div></div>
+    <div class="locked-card"><div class="locked-title">Roadmap + ROI cuantificado</div><div class="locked-sub">3 escenarios de retorno, plan a 90 días.</div></div>
+  </div>
+</div>
+
+<div class="cta no-break">
+  <div class="cta-label">El siguiente paso</div>
+  <div style="font-size:9.5pt;line-height:1.6;">El diagnóstico completo incluye las sesiones que faltan (Dirección de Operaciones, IT/OT, Operario) más el informe ejecutivo completo — OFI™ Score, Value Stream Map, roadmap priorizado y ROI en 3 escenarios. El alcance final y la inversión se ajustan al tamaño y complejidad de ${esc(currentClient.name)} — lo definimos juntos en la próxima reunión.</div>
+</div>
+
+<div class="footer">Tecno-Fab · Free Trial · ${today} · Documento confidencial — uso exclusivo del cliente</div>
+
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(html);
+  win.document.close();
+}
+
 </script>
