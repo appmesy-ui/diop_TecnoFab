@@ -2655,6 +2655,14 @@ function renderReport(r, reportsHistoryHtml = '') {
         <div class="diop-section">
           <div class="diop-section-title"><h3>04 · Organizational Readiness Premium</h3></div>
           ${(() => {
+            const allKeys = [...humanKeys, ...osKeys, ...exKeys];
+            const hasM4Data = allKeys.some(([s,k]) => m4?.[s]?.[k]);
+            if (!hasM4Data) {
+              return `<div style="padding:18px 20px;background:var(--s2);border:1px dashed var(--border2);border-radius:12px;text-align:center;">
+                <div style="font-size:12.5px;color:var(--text2);margin-bottom:4px;">Sin datos de M4 · Diagnóstico organizacional todavía</div>
+                <div style="font-size:11px;color:var(--text3);">Completa la pantalla "Readiness organizacional" en el sidebar para que esta sección se rellene en el próximo informe.</div>
+              </div>`;
+            }
             const scoreBlock = (section, label, icon, keys) => {
               const vals = keys.map(([s,k]) => m4?.[s]?.[k]).filter(v=>v);
               const scores = vals.map(v => v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0).filter(v=>v>0);
@@ -2667,13 +2675,13 @@ function renderReport(r, reportsHistoryHtml = '') {
               <div class="diop-metric">${scoreBlock('human','Human Capability™','🧠',humanKeys)}</div>
               <div class="diop-metric">${scoreBlock('operating','Operating System™','⚙️',osKeys)}</div>
               <div class="diop-metric">${scoreBlock('execution','Execution Readiness™','🚀',exKeys)}</div>
+            </div>
+            <div class="diop-grid-3">
+              <div class="diop-evidence-card"><div class="diop-tagline">Human Capability™</div>${renderSignalList(humanKeys)}</div>
+              <div class="diop-evidence-card"><div class="diop-tagline">Operating System™</div>${renderSignalList(osKeys)}</div>
+              <div class="diop-evidence-card"><div class="diop-tagline">Execution Readiness™</div>${renderSignalList(exKeys)}</div>
             </div>`;
           })()}
-          <div class="diop-grid-3">
-            <div class="diop-evidence-card"><div class="diop-tagline">Human Capability™</div>${renderSignalList(humanKeys)}</div>
-            <div class="diop-evidence-card"><div class="diop-tagline">Operating System™</div>${renderSignalList(osKeys)}</div>
-            <div class="diop-evidence-card"><div class="diop-tagline">Execution Readiness™</div>${renderSignalList(exKeys)}</div>
-          </div>
         </div>
 
         ${fiTotal > 0 ? `<div class="diop-section">
