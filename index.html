@@ -1843,11 +1843,16 @@ async function generateReport(confirmedOperationalImpact) {
   const ofiZone = ofiScore>=75?'Optimización avanzada':ofiScore>=50?'Mejora estructurada':ofiScore>=25?'Estabilización necesaria':'Intervención urgente';
   const ofiTTL = ofiScore<15?'L1':ofiScore<30?'L2':ofiScore<45?'L3':ofiScore<60?'L4':ofiScore<75?'L5':'L6';
   const econM6 = calcPortfolioEconomics(m6Data[currentClient.id]?.backlog || []);
+  const m7QuickWins = (opImpact && opImpact.components) ? calcDeterministicQuickWins(opImpact.components, 4) : [];
 
   let lockedNumbersCtx = '\n=== NÚMEROS YA CALCULADOS Y VALIDADOS — ÚSALOS EXACTOS, NO LOS RECALCULES NI LOS CAMBIES ===\n';
   if (opImpact && opImpact.total) {
     lockedNumbersCtx += `Impacto operativo anual (validado por el consultor): ${opImpact.total.toLocaleString('es-ES')}€\n`;
     lockedNumbersCtx += `Desglose: ${opImpact.components.map(c=>`${c.label} ${c.value.toLocaleString('es-ES')}€`).join(', ')}\n`;
+  }
+  if (m7QuickWins.length) {
+    lockedNumbersCtx += `\nQUICK WINS YA CALCULADOS (no inventes números nuevos, solo redacta título y descripción para cada uno, en este orden):\n`;
+    m7QuickWins.forEach((qw,i) => { lockedNumbersCtx += `${i+1}. Componente: ${qw.componenteLabel} · Acción: ${qw.accion} · Ahorro: ${qw.impactoLabel} · Cálculo: ${qw.calculoVisible}\n`; });
   }
   lockedNumbersCtx += `OFI™ Score: ${ofiScore}/100 — Zona: ${ofiZone} — Capa TTL™: ${ofiTTL}\n`;
   lockedNumbersCtx += `D1 Rendimiento: ${d1}/25 · D2 Datos: ${d2}/25 · D3 Digital: ${d3}/25 · D4 Organización: ${d4}/25\n`;
@@ -1932,13 +1937,12 @@ REGLAS CRÍTICAS:
 3. Si hay datos de VSM, dedica un párrafo específico al flujo de valor: lead time, ratio VA, cuellos de botella, y qué significa económicamente.
 4. Si hay datos de OFI, usa el score y las dimensiones para estructurar el análisis. El vector de fricción principal debe ser protagonista.
 5. Conecta SIEMPRE problemas operativos con impacto en negocio: margen, capacidad, riesgo, escalabilidad.
-6. Los quick_wins deben estar directamente vinculados a hallazgos específicos del diagnóstico, no genéricos.
-7. Coherencia económica: la suma de quick_wins debe ser 20-50% del impacto total. El resto es potencial estructural a medio plazo.
-8. Si hay iniciativas en M6, referéncialas en las recomendaciones.
-9. NO inventes datos numéricos. Los números de impacto operativo, OFI Score y portfolio M6 YA ESTÁN CALCULADOS arriba en "NÚMEROS YA CALCULADOS Y VALIDADOS" — úsalos literalmente en tu texto, nunca generes una cifra distinta para el mismo concepto.
-10. Herramientas realistas para pymes. No SAP ni soluciones enterprise.
-11. Tono: directo, profesional, sin florituras. Como un consultor senior que lleva 20 años en esto.
-12. CRÍTICO: no devuelvas campos numéricos de score, euros o porcentajes en kpis/ofi_resumen — esos los rellenamos nosotros con los valores reales. Tu trabajo es solo narrativa y análisis cualitativo.
+6. Los quick_wins YA ESTÁN CALCULADOS en "QUICK WINS YA CALCULADOS" arriba (componente, acción, ahorro). Tu único trabajo es escribir título en lenguaje CEO y descripción de cómo implementarlo, vinculándolo a hallazgos específicos del diagnóstico. NO inventes ahorros nuevos, NO cambies el orden.
+7. Si hay iniciativas en M6, referéncialas en las recomendaciones de implementación de los quick wins.
+8. NO inventes datos numéricos. Los números de impacto operativo, OFI Score y portfolio M6 YA ESTÁN CALCULADOS arriba en "NÚMEROS YA CALCULADOS Y VALIDADOS" — úsalos literalmente en tu texto, nunca generes una cifra distinta para el mismo concepto.
+9. Herramientas realistas para pymes. No SAP ni soluciones enterprise.
+10. Tono: directo, profesional, sin florituras. Como un consultor senior que lleva 20 años en esto.
+11. CRÍTICO: no devuelvas campos numéricos de score, euros o porcentajes en kpis/ofi_resumen — esos los rellenamos nosotros con los valores reales. Tu trabajo es solo narrativa y análisis cualitativo.
 
 Devuelve un JSON con este formato exacto:
 {
@@ -1973,9 +1977,7 @@ Devuelve un JSON con este formato exacto:
   "quick_wins": [
     {
       "titulo": "título en lenguaje CEO",
-      "descripcion": "qué hacer y por qué, detallado",
-      "impacto_euros": "ahorro estimado anual — debe ser coherente y proporcional al impacto operativo YA CALCULADO arriba, nunca mayor que el total",
-      "plazo_dias": 30,
+      "descripcion": "qué hacer y por qué, detallado, conectado a un hallazgo específico del diagnóstico",
       "prioridad": 1,
       "proceso_ref": "nombre exacto del proceso",
       "ttl_capa": "L1|L2|L3|L4"
@@ -2002,7 +2004,7 @@ Devuelve un JSON con este formato exacto:
   "siguiente_pregunta_ceo": "la pregunta más importante para la próxima reunión"
 }
 
-Para quick_wins incluye exactamente 4, ordenados por impacto.
+Para quick_wins: uno por cada quick win YA CALCULADO arriba (mismo orden, mismo número — normalmente 4).
 Para herramientas_mercado incluye exactamente 3 herramientas reales para pymes.
 Para riesgos_principales incluye exactamente 3.
 
@@ -2106,6 +2108,20 @@ Devuelve SOLO el JSON, sin texto adicional.`;
       r.benchmark_sectorial.valor_cliente = first.valor_cliente;
       r.benchmark_sectorial.valor_sector_medio = first.valor_sector;
       r.benchmark_sectorial.gap_euros = first.gap_label;
+    }
+
+    if (m7QuickWins.length) {
+      r.quick_wins = m7QuickWins.map((qw, i) => ({
+        titulo: r.quick_wins?.[i]?.titulo || qw.accion,
+        descripcion: r.quick_wins?.[i]?.descripcion || qw.accion,
+        proceso_ref: r.quick_wins?.[i]?.proceso_ref || qw.componenteLabel,
+        ttl_capa: r.quick_wins?.[i]?.ttl_capa || 'L1',
+        prioridad: i + 1,
+        impacto_euros: qw.impactoLabel,
+        calculoVisible: qw.calculoVisible,
+        fuente: qw.fuente,
+        plazo_dias: 60
+      }));
     }
 
     await sb.from('diop_reports').insert([
@@ -2775,7 +2791,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             ${econ.riskCount?`<div style="width:1px;height:20px;background:var(--border);"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
           </div>
           <div class="diop-list">
-            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div>${chip(`${esc(qw.impacto_euros || '—')} · ${esc(qw.plazo_dias || '—')} días`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div><div class="diop-list-desc">${esc(qw.descripcion)}</div></div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
+            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div>${chip(`${esc(qw.impacto_euros || '—')} · ${esc(qw.plazo_dias || '—')} días`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:var(--text4);margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
           </div>
         </div>
 
@@ -3327,6 +3343,8 @@ ${fieldIntelligencePDF}
       <div class="qw-title">${qw.titulo||''} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div>
       <div class="qw-desc">${qw.descripcion||''}</div>
       <div class="qw-meta" style="color:${['#E24B4A','#BA7517','#1D9E75'][i]}">${qw.impacto_euros||''} · ${qw.plazo_dias||'—'} días</div>
+      ${qw.calculoVisible?`<div style="font-size:7pt;color:#999;margin-top:1mm;font-family:'Courier New',monospace;">Cálculo: ${qw.calculoVisible}</div>`:''}
+      ${qw.fuente?`<div style="font-size:6.5pt;color:#aaa;font-style:italic;">Fuente: ${qw.fuente}</div>`:''}
     </div>
   </div>`).join('')}
 </div>
@@ -6598,6 +6616,8 @@ function renderFreeTrialReport(r) {
         </div>
         <div style="font-size:12px;color:#555;line-height:1.5;margin-bottom:6px;">${esc(qw.descripcion)}</div>
         <span style="font-size:11px;padding:2px 9px;border-radius:20px;background:#eaf6f0;color:#1d9e75;font-weight:600;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</span>
+        ${qw.calculoVisible ? `<div style="font-size:10px;color:#999;margin-top:6px;font-family:'DM Mono',monospace;">Cálculo: ${esc(qw.calculoVisible)}</div>` : ''}
+        ${qw.fuente ? `<div style="font-size:9.5px;color:#aaa;margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>` : ''}
       </div>
     </div>`).join('')}
   </div>` : ''}
@@ -6730,7 +6750,7 @@ ${r.la_pregunta ? `<div class="section no-break">
 
 ${qws.length ? `<div class="section no-break">
   <div class="section-label">07 · Lo que es posible en 60 días</div>
-  ${qws.map((qw,i) => `<div class="qw-item" style="${i===0?'border:1.5pt solid #1D9E75;background:#f0faf7;':''}"><div class="qw-num">${i+1}</div><div><div style="font-size:9.5pt;font-weight:bold;">${esc(qw.titulo)} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div><div style="font-size:8.5pt;color:#666;margin:1mm 0;">${esc(qw.descripcion)}</div><div style="font-size:8pt;font-weight:bold;color:#1D9E75;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</div></div></div>`).join('')}
+  ${qws.map((qw,i) => `<div class="qw-item" style="${i===0?'border:1.5pt solid #1D9E75;background:#f0faf7;':''}"><div class="qw-num">${i+1}</div><div><div style="font-size:9.5pt;font-weight:bold;">${esc(qw.titulo)} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div><div style="font-size:8.5pt;color:#666;margin:1mm 0;">${esc(qw.descripcion)}</div><div style="font-size:8pt;font-weight:bold;color:#1D9E75;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</div>${qw.calculoVisible?`<div style="font-size:7pt;color:#999;margin-top:1mm;font-family:'Courier New',monospace;">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:6.5pt;color:#aaa;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div></div>`).join('')}
 </div>` : ''}
 
 <div class="section no-break">
@@ -6786,6 +6806,84 @@ function ftBenchmarkCheck(value, revenueOrBase, rangeKey, sector) {
     pctOfBase: pct,
     rangeLabel: `${(range[0]*100).toFixed(1)}% – ${(range[1]*100).toFixed(1)}%`
   };
+}
+
+// ══════════════════════════════════════════════════════
+// ── QUICK WINS · CÁLCULO DETERMINISTA ──
+// Cada quick win nace de un componente YA CALCULADO (paradas,
+// merma, retrabajo, changeover) multiplicado por un % de mejora
+// típico de primer ciclo (benchmarks Lean/TPM sin CAPEX).
+// La IA ya NO inventa el ahorro — solo redacta la acción concreta
+// a partir del número y el % que le pasamos ya calculados.
+// ══════════════════════════════════════════════════════
+
+const QUICK_WIN_RULES = {
+  downtime: {
+    label: 'Paradas no planificadas',
+    accion: 'Estandarizar arranque y parada de línea',
+    pctMin: 0.15, pctMax: 0.20,
+    fuente: 'Benchmark Lean/TPM — reducción típica de paradas en primer ciclo sin inversión (estandarización de procedimientos)'
+  },
+  scrap: {
+    label: 'Merma / desperdicio',
+    accion: 'Reforzar control de proceso en puntos críticos',
+    pctMin: 0.10, pctMax: 0.15,
+    fuente: 'Benchmark Lean/TPM — reducción típica de merma con control de proceso, sin cambio de equipo'
+  },
+  rework: {
+    label: 'Retrabajo / reproceso',
+    accion: 'Checklist de calidad en línea antes de siguiente etapa',
+    pctMin: 0.20, pctMax: 0.25,
+    fuente: 'Benchmark Lean/TPM — reducción típica de retrabajo con verificación en el punto de origen'
+  },
+  changeover: {
+    label: 'Cambios de formato',
+    accion: 'Aplicar SMED básico — separar tareas internas y externas',
+    pctMin: 0.25, pctMax: 0.30,
+    fuente: 'Benchmark SMED — reducción típica de tiempo de cambio en primer ciclo, sin inversión en utillaje'
+  },
+  maintenance: {
+    label: 'Averías graves (mantenimiento reactivo)',
+    accion: 'Introducir revisión preventiva básica en puntos de fallo recurrente',
+    pctMin: 0.15, pctMax: 0.20,
+    fuente: 'Benchmark TPM — reducción típica de averías graves al introducir mantenimiento preventivo básico'
+  }
+};
+
+/**
+ * Genera quick wins deterministas a partir de un array de componentes
+ * ya calculados (el mismo `components` de calcFreeTrialBreakdown o
+ * calcM7OperationalImpact). Selecciona los N de mayor valor absoluto
+ * — así el de "mayor ROI" es matemáticamente el más grande, no una
+ * suposición de la IA.
+ */
+function calcDeterministicQuickWins(components, count = 2) {
+  const eligible = (components || [])
+    .filter(c => QUICK_WIN_RULES[c.key] && c.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, count);
+
+  return eligible.map(c => {
+    const rule = QUICK_WIN_RULES[c.key];
+    const pctMid = (rule.pctMin + rule.pctMax) / 2;
+    const ahorroMin = Math.round(c.value * rule.pctMin);
+    const ahorroMax = Math.round(c.value * rule.pctMax);
+    const ahorroMid = Math.round(c.value * pctMid);
+    return {
+      key: c.key,
+      componenteLabel: rule.label,
+      accion: rule.accion,
+      componenteValue: c.value,
+      pctMin: rule.pctMin,
+      pctMax: rule.pctMax,
+      ahorroMin,
+      ahorroMax,
+      ahorroMid,
+      impactoLabel: `${ahorroMin.toLocaleString('es-ES')}€ – ${ahorroMax.toLocaleString('es-ES')}€/año`,
+      calculoVisible: `${c.value.toLocaleString('es-ES')}€ (${rule.label}, ya calculado) × ${(rule.pctMin*100).toFixed(0)}–${(rule.pctMax*100).toFixed(0)}% mejora típica`,
+      fuente: rule.fuente
+    };
+  });
 }
 
 function calcFreeTrialBreakdown() {
@@ -7087,6 +7185,7 @@ async function confirmFreeTrialReview() {
   };
 
   const d1Breakdown = d1.components.map(c => `  - ${c.label}: ${c.value.toLocaleString('es-ES')}€ (${c.formula})`).join('\n');
+  const ftQuickWins = calcDeterministicQuickWins(d1.components, 2);
 
   const prompt = `Eres un consultor senior de Tecno-Fab. Acabas de completar las sesiones CEO + Fábrica de un Free Trial DIOP con ${currentClient.name}, sector ${sector}.
 
@@ -7118,6 +7217,10 @@ CONTEXTO:
 - Problema principal declarado por el CEO: ${a('ceo','main_problem') || 'No especificado'}
 - Margen bruto: ${a('ceo','gross_margin') || 'No especificado'}
 
+QUICK WINS — YA CALCULADOS, NO INVENTES NÚMEROS NUEVOS:
+${ftQuickWins.map((qw,i) => `${i+1}. Componente: ${qw.componenteLabel} · Acción sugerida: ${qw.accion} · Ahorro calculado: ${qw.impactoLabel} · Cálculo: ${qw.calculoVisible}`).join('\n')}
+Tu trabajo con esto es SOLO redactar un título en lenguaje CEO y una descripción de 1-2 frases de cómo implementarlo, usando la acción sugerida y conectándola si puedes con la observación de campo. NO cambies el ahorro ni el componente — ya están decididos.
+
 INSTRUCCIONES:
 1. NO inventes ni cambies ningún número — usa exactamente los de arriba si los mencionas.
 2. La narrativa debe nombrar un patrón operativo y conectarlo con la observación de campo más reveladora.
@@ -7126,7 +7229,7 @@ INSTRUCCIONES:
 5. dolor2_texto: 2-3 frases sobre la dependencia de personas, usando la persona identificada en campo.
 6. dolor3_texto: 2-3 frases sobre qué limita el crecimiento.
 7. la_pregunta: una pregunta estratégica de negocio, no técnica.
-8. quick_wins: 2 acciones concretas en 60 días, basadas en lo observado, con impacto en euros coherente con los números de arriba (no inventes cifras nuevas grandes). ORDÉNALAS de mayor a menor impacto económico — la primera del array debe ser siempre la de mayor ROI.
+8. quick_wins: para cada uno de los quick wins YA CALCULADOS arriba, escribe título + descripción. Mantén el mismo orden (ya vienen ordenados de mayor a menor ahorro).
 
 Devuelve SOLO este JSON, sin texto adicional:
 {
@@ -7143,7 +7246,7 @@ Devuelve SOLO este JSON, sin texto adicional:
   },
   "la_pregunta": "pregunta estratégica de negocio",
   "quick_wins": [
-    { "titulo": "título en lenguaje CEO", "impacto_euros": "rango €/año coherente", "plazo_dias": 45, "descripcion": "qué hacer exactamente" }
+    { "titulo": "título en lenguaje CEO", "descripcion": "cómo implementarlo, 1-2 frases" }
   ]
 }`;
 
@@ -7175,7 +7278,14 @@ Devuelve SOLO este JSON, sin texto adicional:
       dolor3: { texto: narrative.dolor3_texto },
       diagnostico_narrativo: narrative.diagnostico_narrativo,
       la_pregunta: narrative.la_pregunta,
-      quick_wins: narrative.quick_wins,
+      quick_wins: ftQuickWins.map((qw, i) => ({
+        titulo: narrative.quick_wins?.[i]?.titulo || qw.accion,
+        descripcion: narrative.quick_wins?.[i]?.descripcion || qw.accion,
+        impacto_euros: qw.impactoLabel,
+        calculoVisible: qw.calculoVisible,
+        fuente: qw.fuente,
+        plazo_dias: 60
+      })),
       benchmark_kpis: []
     };
 
