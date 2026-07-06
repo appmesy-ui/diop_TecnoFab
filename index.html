@@ -2775,7 +2775,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             ${econ.riskCount?`<div style="width:1px;height:20px;background:var(--border);"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
           </div>
           <div class="diop-list">
-            ${qws.map((qw, i) => `<div class="diop-list-item"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)}</div>${chip(`${esc(qw.impacto_euros || '—')} · ${esc(qw.plazo_dias || '—')} días`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div><div class="diop-list-desc">${esc(qw.descripcion)}</div></div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
+            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div>${chip(`${esc(qw.impacto_euros || '—')} · ${esc(qw.plazo_dias || '—')} días`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div><div class="diop-list-desc">${esc(qw.descripcion)}</div></div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
           </div>
         </div>
 
@@ -3321,10 +3321,10 @@ ${fieldIntelligencePDF}
 <div class="section no-break">
   <h2>Quick Wins priorizados por impacto económico</h2>
   ${qws.map((qw,i)=>`
-  <div class="qw-item qw${i+1}">
+  <div class="qw-item qw${i+1}" style="${i===0?'border:1.5pt solid #1D9E75;background:#f0faf7;':''}">
     <div class="qw-num qn${i+1}">${i+1}</div>
     <div>
-      <div class="qw-title">${qw.titulo||''}</div>
+      <div class="qw-title">${qw.titulo||''} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div>
       <div class="qw-desc">${qw.descripcion||''}</div>
       <div class="qw-meta" style="color:${['#E24B4A','#BA7517','#1D9E75'][i]}">${qw.impacto_euros||''} · ${qw.plazo_dias||'—'} días</div>
     </div>
@@ -6589,10 +6589,13 @@ function renderFreeTrialReport(r) {
 
   ${qws.length ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
     <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:14px;">07 · Lo que es posible en 60 días</div>
-    ${qws.map((qw,i) => `<div style="display:flex;gap:14px;padding:14px;background:#fafaf8;border-radius:10px;margin-bottom:8px;">
+    ${qws.map((qw,i) => `<div style="display:flex;gap:14px;padding:14px;background:${i===0?'#f0faf7':'#fafaf8'};border-radius:10px;margin-bottom:8px;${i===0?'border:1.5px solid #1d9e75;':''}">
       <div style="width:26px;height:26px;border-radius:50%;background:rgba(0,173,181,0.12);border:1px solid #00adb5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#007c82;flex-shrink:0;">${i+1}</div>
       <div>
-        <div style="font-size:13px;font-weight:600;color:#0a0a0a;margin-bottom:3px;">${esc(qw.titulo)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+          <div style="font-size:13px;font-weight:600;color:#0a0a0a;">${esc(qw.titulo)}</div>
+          ${i===0 ? `<span style="font-size:9px;padding:2px 8px;border-radius:20px;background:#1d9e75;color:#fff;font-weight:700;letter-spacing:.03em;">MAYOR ROI</span>` : ''}
+        </div>
         <div style="font-size:12px;color:#555;line-height:1.5;margin-bottom:6px;">${esc(qw.descripcion)}</div>
         <span style="font-size:11px;padding:2px 9px;border-radius:20px;background:#eaf6f0;color:#1d9e75;font-weight:600;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</span>
       </div>
@@ -6727,7 +6730,7 @@ ${r.la_pregunta ? `<div class="section no-break">
 
 ${qws.length ? `<div class="section no-break">
   <div class="section-label">07 · Lo que es posible en 60 días</div>
-  ${qws.map((qw,i) => `<div class="qw-item"><div class="qw-num">${i+1}</div><div><div style="font-size:9.5pt;font-weight:bold;">${esc(qw.titulo)}</div><div style="font-size:8.5pt;color:#666;margin:1mm 0;">${esc(qw.descripcion)}</div><div style="font-size:8pt;font-weight:bold;color:#1D9E75;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</div></div></div>`).join('')}
+  ${qws.map((qw,i) => `<div class="qw-item" style="${i===0?'border:1.5pt solid #1D9E75;background:#f0faf7;':''}"><div class="qw-num">${i+1}</div><div><div style="font-size:9.5pt;font-weight:bold;">${esc(qw.titulo)} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div><div style="font-size:8.5pt;color:#666;margin:1mm 0;">${esc(qw.descripcion)}</div><div style="font-size:8pt;font-weight:bold;color:#1D9E75;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</div></div></div>`).join('')}
 </div>` : ''}
 
 <div class="section no-break">
@@ -7123,7 +7126,7 @@ INSTRUCCIONES:
 5. dolor2_texto: 2-3 frases sobre la dependencia de personas, usando la persona identificada en campo.
 6. dolor3_texto: 2-3 frases sobre qué limita el crecimiento.
 7. la_pregunta: una pregunta estratégica de negocio, no técnica.
-8. quick_wins: 2 acciones concretas en 60 días, basadas en lo observado, con impacto en euros coherente con los números de arriba (no inventes cifras nuevas grandes).
+8. quick_wins: 2 acciones concretas en 60 días, basadas en lo observado, con impacto en euros coherente con los números de arriba (no inventes cifras nuevas grandes). ORDÉNALAS de mayor a menor impacto económico — la primera del array debe ser siempre la de mayor ROI.
 
 Devuelve SOLO este JSON, sin texto adicional:
 {
