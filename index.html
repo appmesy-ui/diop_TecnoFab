@@ -7180,10 +7180,54 @@ function calcFreeTrialBreakdown() {
 let ftBreakdown = null;
 let ftBreakdownEdited = null;
 
-function startFreeTrialReview() {
-  ftBreakdown = calcFreeTrialBreakdown();
-  ftBreakdownEdited = JSON.parse(JSON.stringify(ftBreakdown));
+async function startFreeTrialReview() {
+  const fresh = calcFreeTrialBreakdown();
+  ftBreakdown = fresh;
+  ftBreakdownEdited = JSON.parse(JSON.stringify(fresh));
+
+  // Recupera un borrador anterior (si el consultor había editado manualmente algún valor
+  // y salió sin confirmar). Solo se restaura la edición manual de un componente si su
+  // fórmula subyacente sigue siendo idéntica — si el dato fuente cambió, se usa el
+  // valor recién recalculado, no el borrador antiguo.
+  try {
+    const draftKey = `${currentClient.id}_freetrial_draft_review`;
+    let draftRaw = allAnswers[draftKey];
+    if (!draftRaw) {
+      const { data } = await sb.from('diop_answers').select('answer').eq('client_id', currentClient.id).eq('session','freetrial').eq('question_id','draft_review').single();
+      if (data?.answer) { draftRaw = data.answer; allAnswers[draftKey] = draftRaw; }
+    }
+    if (draftRaw) {
+      const draft = JSON.parse(draftRaw);
+      if (draft.dolor1?.components && ftBreakdownEdited.dolor1?.components) {
+        ftBreakdownEdited.dolor1.components.forEach(fc => {
+          const dc = draft.dolor1.components.find(d => d.key === fc.key);
+          if (dc && dc.formula === fc.formula && dc.value !== fc.value) fc.value = dc.value;
+        });
+        ftBreakdownEdited.dolor1.total = ftBreakdownEdited.dolor1.components.reduce((s,c) => s + c.value, 0);
+      }
+      if (draft.dolor2?.rotation && ftBreakdownEdited.dolor2?.rotation && draft.dolor2.rotation.formula === ftBreakdownEdited.dolor2.rotation.formula) {
+        ftBreakdownEdited.dolor2.rotation.value = draft.dolor2.rotation.value;
+      }
+      if (draft.dolor2?.absenceRisk && ftBreakdownEdited.dolor2?.absenceRisk && draft.dolor2.absenceRisk.formula === ftBreakdownEdited.dolor2.absenceRisk.formula) {
+        ftBreakdownEdited.dolor2.absenceRisk.value = draft.dolor2.absenceRisk.value;
+      }
+    }
+  } catch(e) { /* sin borrador previo — se usa el cálculo fresco tal cual */ }
+
   renderFreeTrialReview();
+}
+
+let ftDraftSaveTimer = null;
+function saveFtDraftReview() {
+  if (!currentClient || !ftBreakdownEdited) return;
+  clearTimeout(ftDraftSaveTimer);
+  ftDraftSaveTimer = setTimeout(async () => {
+    const j = JSON.stringify(ftBreakdownEdited);
+    allAnswers[`${currentClient.id}_freetrial_draft_review`] = j;
+    try {
+      await sb.from('diop_answers').upsert({ client_id: currentClient.id, session: 'freetrial', question_id: 'draft_review', answer: j, updated_at: new Date().toISOString() });
+    } catch(e) { /* si falla el guardado del borrador, no bloquea la edición en curso */ }
+  }, 500);
 }
 
 function ftReviewComponentRow(c, idx, group) {
@@ -7227,6 +7271,7 @@ function ftEditComponent(input) {
   } else if (group === 'absence') {
     ftBreakdownEdited.dolor2.absenceRisk.value = newVal;
   }
+  saveFtDraftReview();
   renderFreeTrialReview(true);
 }
 
@@ -7271,6 +7316,10 @@ function renderFreeTrialReview(skipScroll) {
 
 function cancelFreeTrialReview() {
   ftBreakdown = null; ftBreakdownEdited = null;
+  if (currentClient) {
+    delete allAnswers[`${currentClient.id}_freetrial_draft_review`];
+    sb.from('diop_answers').delete().eq('client_id', currentClient.id).eq('session','freetrial').eq('question_id','draft_review').then(()=>{}).catch(()=>{});
+  }
   const prog = getProgress(currentClient);
   renderFreeTrialScreen(prog.sessions['ceo']==='done', prog.sessions['fab']==='done');
 }
@@ -7420,6 +7469,8 @@ Devuelve SOLO este JSON, sin texto adicional:
 
     ftGenerating = false;
     ftBreakdown = null; ftBreakdownEdited = null;
+    delete allAnswers[`${cid}_freetrial_draft_review`];
+    sb.from('diop_answers').delete().eq('client_id', cid).eq('session','freetrial').eq('question_id','draft_review').then(()=>{}).catch(()=>{});
     renderSidebarRoadmap();
     renderFreeTrialScreen(true, true);
 
