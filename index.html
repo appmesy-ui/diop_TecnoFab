@@ -2021,13 +2021,16 @@ REGLAS CRÍTICAS:
 3. Si hay datos de VSM, dedica un párrafo específico al flujo de valor: lead time, ratio VA, cuellos de botella, y qué significa económicamente.
 4. Si hay datos de OFI, usa el score y las dimensiones para estructurar el análisis. El vector de fricción principal debe ser protagonista.
 5. Conecta SIEMPRE problemas operativos con impacto en negocio: margen, capacidad, riesgo, escalabilidad.
-6. Los quick_wins YA ESTÁN CALCULADOS en "QUICK WINS YA CALCULADOS" arriba (componente, acción, ahorro). Tu único trabajo es escribir título en lenguaje CEO y descripción de cómo implementarlo, vinculándolo a hallazgos específicos del diagnóstico. NO inventes ahorros nuevos, NO cambies el orden.
+6. Los quick_wins YA ESTÁN CALCULADOS en "QUICK WINS YA CALCULADOS" arriba (componente, acción, ahorro). Tu único trabajo es escribir título en lenguaje CEO y descripción de cómo implementarlo. La descripción NO puede ser la explicación genérica de la acción-tipo (ej. "aplicar SMED básico separando tareas internas y externas") — debe decir cómo se aplica ESO en el proceso/línea/situación concreta de este cliente, citando el detalle real del diagnóstico. NO inventes ahorros nuevos, NO cambies el orden.
 7. Si hay iniciativas en M6, referéncialas en las recomendaciones de implementación de los quick wins.
 8. NO inventes datos numéricos. Los números de impacto operativo, OFI Score y portfolio M6 YA ESTÁN CALCULADOS arriba en "NÚMEROS YA CALCULADOS Y VALIDADOS" — úsalos literalmente en tu texto, nunca generes una cifra distinta para el mismo concepto.
 9. Herramientas realistas para pymes. No SAP ni soluciones enterprise.
 10. Tono: directo, profesional, sin florituras. Como un consultor senior que lleva 20 años en esto.
 11. CRÍTICO: no devuelvas campos numéricos de score, euros o porcentajes en kpis/ofi_resumen — esos los rellenamos nosotros con los valores reales. Tu trabajo es solo narrativa y análisis cualitativo.
 12. Si existe la sección "ACLARACIONES ESCRITAS POR EL CLIENTE", trátalas como evidencia real y específica del cliente, con más peso que un benchmark genérico: deben influir en el diagnóstico y quedar reflejadas en el análisis, no solo mencionadas de pasada.
+13. ANCLAJE OBLIGATORIO: cada afirmación de resumen_ejecutivo, analisis_detallado e impacto_negocio debe apoyarse en un dato, nombre de proceso, cifra o cita concreta que aparezca en el contexto de ESTE cliente (ej. el nombre real del proceso, la cifra real de paradas, la aclaración textual que escribió). Si no puedes anclar una frase a un dato concreto del contexto, no la escribas.
+14. PROHIBIDO el lenguaje de relleno que serviría para cualquier pyme sin cambiar una palabra: evita frases como "optimizar procesos", "mejorar la eficiencia operativa", "aprovechar sinergias", "digitalizar la operación" sin especificar QUÉ proceso, CÓMO y POR QUÉ para este cliente en particular. Cada quick win y cada hallazgo debe leerse como si solo pudiera aplicar a esta fábrica concreta, no a cualquier otra del sector.
+15. Si dos hallazgos son del mismo tipo genérico (ej. merma alta), diferénciate usando el detalle específico de este cliente (en qué proceso ocurre, qué dijo el cliente al respecto, qué cifra tiene) en vez de repetir la explicación estándar del problema.
 
 Devuelve un JSON con este formato exacto:
 {
