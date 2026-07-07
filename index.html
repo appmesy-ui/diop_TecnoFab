@@ -6773,35 +6773,16 @@ function renderFreeTrialReport(r) {
     </div>`).join('')}
   </div>` : ''}
 
-  <div style="background:#fafaf8;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:20px 24px;margin-bottom:16px;">
-    <div style="font-size:11px;color:#999;margin-bottom:12px;">El diagnóstico inicial cubre una parte del análisis. Con lo que ya sabemos, esto es lo que esperamos encontrar al profundizar:</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div style="border:1px solid rgba(0,0,0,0.07);border-radius:8px;padding:13px 14px;background:#fafaf8;">
-        <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:3px;">Diagnóstico sistemas IT/OT</div>
-        <div style="font-size:11px;color:#999;line-height:1.4;">Flujo de datos real, ciberseguridad.</div>
-        ${hip.it_ot ? `<div style="font-size:10.5px;color:#00706e;line-height:1.4;margin-top:6px;padding-top:6px;border-top:1px dashed rgba(0,0,0,0.08);">💭 ${esc(hip.it_ot)}</div>` : ''}
-      </div>
-      <div style="border:1px solid rgba(0,0,0,0.07);border-radius:8px;padding:13px 14px;background:#fafaf8;">
-        <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:3px;">Value Stream Map completo</div>
-        <div style="font-size:11px;color:#999;line-height:1.4;">Lead time real, cuellos de botella exactos.</div>
-        ${hip.vsm ? `<div style="font-size:10.5px;color:#00706e;line-height:1.4;margin-top:6px;padding-top:6px;border-top:1px dashed rgba(0,0,0,0.08);">💭 ${esc(hip.vsm)}</div>` : ''}
-      </div>
-      <div style="border:1px solid rgba(0,0,0,0.07);border-radius:8px;padding:13px 14px;background:#fafaf8;">
-        <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:3px;">OFI™ Score completo</div>
-        <div style="font-size:11px;color:#999;line-height:1.4;">Las 4 dimensiones, arquetipo confirmado.</div>
-        ${hip.ofi ? `<div style="font-size:10.5px;color:#00706e;line-height:1.4;margin-top:6px;padding-top:6px;border-top:1px dashed rgba(0,0,0,0.08);">💭 ${esc(hip.ofi)}</div>` : ''}
-      </div>
-      <div style="border:1px solid rgba(0,0,0,0.07);border-radius:8px;padding:13px 14px;background:#fafaf8;">
-        <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:3px;">Roadmap + ROI cuantificado</div>
-        <div style="font-size:11px;color:#999;line-height:1.4;">3 escenarios de retorno, plan a 90 días.</div>
-        ${hip.roadmap ? `<div style="font-size:10.5px;color:#00706e;line-height:1.4;margin-top:6px;padding-top:6px;border-top:1px dashed rgba(0,0,0,0.08);">💭 ${esc(hip.roadmap)}</div>` : ''}
-      </div>
+  <div style="background:#0a2e2c;border-radius:16px;padding:24px 28px;margin-bottom:16px;">
+    <div style="font-size:10px;color:#5dcaa5;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">Esto ha sido solo el inicio</div>
+    <div style="font-size:13px;color:#c8e6dc;line-height:1.6;margin-bottom:16px;">Este Free Trial cubre una parte del análisis. Con lo que ya sabemos de ${esc(currentClient.name)}, esto es lo que el diagnóstico completo confirmaría:</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
+      <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>Diagnóstico sistemas IT/OT:</strong> ${esc(hip.it_ot || 'flujo de datos real entre sistemas y exposición de ciberseguridad.')}</div></div>
+      <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>Value Stream Map completo:</strong> ${esc(hip.vsm || 'lead time real y la localización exacta de los cuellos de botella.')}</div></div>
+      <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>OFI™ Score completo:</strong> ${esc(hip.ofi || 'las 4 dimensiones evaluadas y el arquetipo operativo confirmado.')}</div></div>
+      <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>Roadmap + ROI cuantificado:</strong> ${esc(hip.roadmap || '3 escenarios de retorno y un plan de implementación a 90 días.')}</div></div>
     </div>
-  </div>
-
-  <div style="background:#0a2e2c;border-radius:16px;padding:24px 28px;">
-    <div style="font-size:10px;color:#5dcaa5;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">El siguiente paso</div>
-    <div style="font-size:14px;color:#e1f5ee;line-height:1.65;">El diagnóstico completo incluye las sesiones que faltan (Dirección de Operaciones, IT/OT, Operario) más el informe ejecutivo completo — OFI™ Score, Value Stream Map, roadmap priorizado y ROI en 3 escenarios. El alcance final y la inversión se ajustan al tamaño y complejidad de ${esc(currentClient.name)} — lo definimos juntos en la próxima reunión.</div>
+    <div style="font-size:12px;color:#9fc9bd;line-height:1.6;padding-top:14px;border-top:1px solid rgba(93,202,165,0.15);">El diagnóstico completo incluye las sesiones que faltan (Dirección de Operaciones, IT/OT, Operario) más el informe ejecutivo completo. El alcance final y la inversión se ajustan al tamaño y complejidad de ${esc(currentClient.name)} — lo definimos juntos en la próxima reunión.</div>
   </div>
 
   <div style="text-align:center;padding:16px 0 4px;">
@@ -6910,19 +6891,16 @@ ${qws.length ? `<div class="section no-break">
   ${qws.map((qw,i) => `<div class="qw-item" style="${i===0?'border:1.5pt solid #1D9E75;background:#f0faf7;':''}"><div class="qw-num">${i+1}</div><div><div style="font-size:9.5pt;font-weight:bold;">${esc(qw.titulo)} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div><div style="font-size:8.5pt;color:#666;margin:1mm 0;">${esc(qw.descripcion)}</div><div style="font-size:8pt;font-weight:bold;color:#1D9E75;">💰 ${esc(qw.impacto_euros)} · 🕑 Implementación: ${qw.plazo_dias||'—'} días</div>${qw.calculoVisible?`<div style="font-size:7pt;color:#999;margin-top:1mm;font-family:'Courier New',monospace;">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:6.5pt;color:#aaa;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div></div>`).join('')}
 </div>` : ''}
 
-<div class="section no-break">
-  <div class="section-label">Con lo que ya sabemos, esto es lo que esperamos encontrar al profundizar</div>
-  <div class="locked-grid">
-    <div class="locked-card"><div class="locked-title">Diagnóstico sistemas IT/OT</div><div class="locked-sub">Flujo de datos real, ciberseguridad.</div>${hip.it_ot?`<div style="font-size:7.5pt;color:#00706e;margin-top:1.5mm;padding-top:1.5mm;border-top:0.5pt dashed rgba(0,0,0,0.15);">💭 ${esc(hip.it_ot)}</div>`:''}</div>
-    <div class="locked-card"><div class="locked-title">Value Stream Map completo</div><div class="locked-sub">Lead time real, cuellos de botella exactos.</div>${hip.vsm?`<div style="font-size:7.5pt;color:#00706e;margin-top:1.5mm;padding-top:1.5mm;border-top:0.5pt dashed rgba(0,0,0,0.15);">💭 ${esc(hip.vsm)}</div>`:''}</div>
-    <div class="locked-card"><div class="locked-title">OFI™ Score completo</div><div class="locked-sub">Las 4 dimensiones, arquetipo confirmado.</div>${hip.ofi?`<div style="font-size:7.5pt;color:#00706e;margin-top:1.5mm;padding-top:1.5mm;border-top:0.5pt dashed rgba(0,0,0,0.15);">💭 ${esc(hip.ofi)}</div>`:''}</div>
-    <div class="locked-card"><div class="locked-title">Roadmap + ROI cuantificado</div><div class="locked-sub">3 escenarios de retorno, plan a 90 días.</div>${hip.roadmap?`<div style="font-size:7.5pt;color:#00706e;margin-top:1.5mm;padding-top:1.5mm;border-top:0.5pt dashed rgba(0,0,0,0.15);">💭 ${esc(hip.roadmap)}</div>`:''}</div>
-  </div>
-</div>
-
 <div class="cta no-break">
-  <div class="cta-label">El siguiente paso</div>
-  <div style="font-size:9.5pt;line-height:1.6;">El diagnóstico completo incluye las sesiones que faltan (Dirección de Operaciones, IT/OT, Operario) más el informe ejecutivo completo — OFI™ Score, Value Stream Map, roadmap priorizado y ROI en 3 escenarios. El alcance final y la inversión se ajustan al tamaño y complejidad de ${esc(currentClient.name)} — lo definimos juntos en la próxima reunión.</div>
+  <div class="cta-label">Esto ha sido solo el inicio</div>
+  <div style="font-size:9.5pt;line-height:1.6;margin-bottom:3mm;">Este Free Trial cubre una parte del análisis. Con lo que ya sabemos de ${esc(currentClient.name)}, esto es lo que el diagnóstico completo confirmaría:</div>
+  <div style="display:flex;flex-direction:column;gap:2mm;margin-bottom:4mm;">
+    <div style="font-size:9pt;line-height:1.5;">→ <strong>Diagnóstico sistemas IT/OT:</strong> ${esc(hip.it_ot || 'flujo de datos real entre sistemas y exposición de ciberseguridad.')}</div>
+    <div style="font-size:9pt;line-height:1.5;">→ <strong>Value Stream Map completo:</strong> ${esc(hip.vsm || 'lead time real y la localización exacta de los cuellos de botella.')}</div>
+    <div style="font-size:9pt;line-height:1.5;">→ <strong>OFI™ Score completo:</strong> ${esc(hip.ofi || 'las 4 dimensiones evaluadas y el arquetipo operativo confirmado.')}</div>
+    <div style="font-size:9pt;line-height:1.5;">→ <strong>Roadmap + ROI cuantificado:</strong> ${esc(hip.roadmap || '3 escenarios de retorno y un plan de implementación a 90 días.')}</div>
+  </div>
+  <div style="font-size:8.5pt;line-height:1.6;padding-top:2.5mm;border-top:0.5pt solid rgba(255,255,255,0.15);">El diagnóstico completo incluye las sesiones que faltan (Dirección de Operaciones, IT/OT, Operario) más el informe ejecutivo completo. El alcance final y la inversión se ajustan al tamaño y complejidad de ${esc(currentClient.name)} — lo definimos juntos en la próxima reunión.</div>
 </div>
 
 <div class="footer">Tecno-Fab · Free Trial · ${today} · Documento confidencial — uso exclusivo del cliente</div>
