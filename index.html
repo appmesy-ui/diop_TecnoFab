@@ -6997,7 +6997,7 @@ function calcFreeTrialBreakdown() {
   const operatorHourCost = parseFloat(operatorHourCostRaw) || 22; // fallback benchmark, marcado como tal
   const operatorHourCostIsReal = !!parseFloat(operatorHourCostRaw);
   const operatorCostAnomaly = operatorHourCostIsReal && operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE;
-  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario es muy superior al rango típico (15-40€/h, incluso con overhead). Podría ser un error de unidad (¿mensual en vez de por hora?) — verificar con el cliente.` : null;
+  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario es muy superior al rango típico (15-40€/h, incluso con overhead). Podría ser un error de unidad (¿mensual en vez de por hora?). Revisa: Sesión Fábrica → bloque "KPIs operativos estimados" → pregunta "¿Cuánto cuesta aproximadamente una hora de un operario?"` : null;
 
   const productiveWeeksRaw = a('fab', 'productive_weeks_year');
   const productiveWeeks = parseFloat(productiveWeeksRaw) || 48;
@@ -7044,7 +7044,7 @@ function calcFreeTrialBreakdown() {
     lineCostInputLabel = lineCostRangeRaw ? `rango "${lineCostRangeRaw}" → punto medio ${lineCostEur}€/h` : 'sin dato → benchmark 300€/h';
   }
   const lineCostAnomaly = lineCostIsReal && lineCostEur > LINE_COST_MAX_PLAUSIBLE;
-  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada es muy superior al rango típico en pymes F&B (200-2.000€/h). Podría ser un error de unidad o de cifra — verificar con el cliente antes de usar.` : null;
+  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada es muy superior al rango típico en pymes F&B (200-2.000€/h). Podría ser un error de unidad o de cifra. Revisa: Sesión Fábrica → bloque "KPIs operativos estimados" → pregunta "¿Cuánto cuesta aproximadamente una hora de línea parada en total?"` : null;
 
   const maxWeeklyHours = getMaxWeeklyOpHours(cid);
   const downtimeImpliedWeeklyHours = downtimeH * scopeFactor;
@@ -7060,7 +7060,7 @@ function calcFreeTrialBreakdown() {
     isEstimate: !downtimeIsReal || !lineCostIsReal,
     benchmark: downtimeBench,
     anomaly: downtimeAnomaly || lineCostAnomaly,
-    anomalyNote: downtimeAnomaly ? `⚠ El dato implica ${downtimeImpliedWeeklyHours.toFixed(0)}h/semana de paradas, más que las ~${maxWeeklyHours}h de operación disponibles (según turnos). Capado a ${maxWeeklyHours}h/sem — revisar el dato con el cliente antes de usar esta cifra.` : lineCostAnomalyNote
+    anomalyNote: downtimeAnomaly ? `⚠ El dato implica ${downtimeImpliedWeeklyHours.toFixed(0)}h/semana de paradas, más que las ~${maxWeeklyHours}h de operación disponibles (según turnos). Capado a ${maxWeeklyHours}h/sem. Revisa: Sesión Fábrica → "KPIs operativos estimados" → preguntas "¿Cuántas horas de parada no planificada tuvisteis...?" y "¿...afectan a una línea crítica, varias líneas, o toda la fábrica?" (o el nº de líneas totales).` : lineCostAnomalyNote
   });
 
   // ── COMPONENTE 2: Merma ──
@@ -7108,7 +7108,7 @@ function calcFreeTrialBreakdown() {
     isEstimate: !lineCostIsReal,
     benchmark: { withinBenchmark: null },
     anomaly: changeoverAnomaly || lineCostAnomaly,
-    anomalyNote: changeoverAnomaly ? `⚠ El dato implica ${changeoverImpliedWeeklyHours.toFixed(0)}h/semana en cambios de formato, más que las ~${maxWeeklyHours}h de operación disponibles (según turnos). Capado a ${maxWeeklyHours}h/sem — revisar el dato con el cliente antes de usar esta cifra.` : lineCostAnomalyNote
+    anomalyNote: changeoverAnomaly ? `⚠ El dato implica ${changeoverImpliedWeeklyHours.toFixed(0)}h/semana en cambios de formato, más que las ~${maxWeeklyHours}h de operación disponibles (según turnos). Capado a ${maxWeeklyHours}h/sem. Revisa: Sesión Fábrica → "KPIs operativos estimados" → preguntas "¿Cuántos cambios de formato hacen por semana de media?" y "¿Cuánto tiempo tarda un cambio de formato de principio a fin?"` : lineCostAnomalyNote
   });
 
   const dolor1Total = components.reduce((s,c) => s + c.value, 0);
@@ -7454,7 +7454,7 @@ function calcM7OperationalImpact() {
   const operatorHourCost = parseFloat(operatorHourCostRaw) || 22;
   const operatorHourCostIsReal = !!parseFloat(operatorHourCostRaw);
   const operatorCostAnomaly = operatorHourCostIsReal && operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE;
-  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario es muy superior al rango típico (15-40€/h, incluso con overhead). Podría ser un error de unidad (¿mensual en vez de por hora?) — verificar con el cliente.` : null;
+  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario es muy superior al rango típico (15-40€/h, incluso con overhead). Podría ser un error de unidad (¿mensual en vez de por hora?). Revisa: Sesión Fábrica → bloque "KPIs operativos estimados" → pregunta "¿Cuánto cuesta aproximadamente una hora de un operario?"` : null;
 
   const productiveWeeksRaw = a('fab', 'productive_weeks_year');
   const productiveWeeks = parseFloat(productiveWeeksRaw) || 48;
@@ -7491,7 +7491,7 @@ function calcM7OperationalImpact() {
     lineCostEur = 300; lineCostIsReal = false; lineCostSource = 'sin dato → benchmark 300€/h';
   }
   const lineCostAnomaly = lineCostIsReal && lineCostEur > LINE_COST_MAX_PLAUSIBLE;
-  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada es muy superior al rango típico en pymes F&B (200-2.000€/h). Podría ser un error de unidad o de cifra — verificar con el cliente antes de usar.` : null;
+  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada es muy superior al rango típico en pymes F&B (200-2.000€/h). Podría ser un error de unidad o de cifra. Revisa: Sesión Fábrica → bloque "KPIs operativos estimados" → pregunta "¿Cuánto cuesta aproximadamente una hora de línea parada en total?"` : null;
 
   // ── COMPONENTE 1: Paradas ──
   const downtimeNumRaw = a('fab', 'downtime_hours_week_num');
@@ -7516,7 +7516,7 @@ function calcM7OperationalImpact() {
     formula: `${downtimeH}h × ${lineCostEur}€/h × ${scopeFactor} × ${productiveWeeks} sem`,
     value: downtimeValue, isEstimate: !downtimeIsReal || !lineCostIsReal,
     anomaly: downtimeAnomalyM7 || lineCostAnomaly,
-    anomalyNote: downtimeAnomalyM7 ? `⚠ El dato implica ${downtimeImpliedWeeklyHoursM7.toFixed(0)}h/semana de paradas, más que las ~${maxWeeklyHoursM7}h de operación disponibles. Capado a ${maxWeeklyHoursM7}h/sem — revisar el dato con el cliente.` : lineCostAnomalyNote
+    anomalyNote: downtimeAnomalyM7 ? `⚠ El dato implica ${downtimeImpliedWeeklyHoursM7.toFixed(0)}h/semana de paradas, más que las ~${maxWeeklyHoursM7}h de operación disponibles. Capado a ${maxWeeklyHoursM7}h/sem. Revisa: Sesión Fábrica → "KPIs operativos estimados" → preguntas "¿Cuántas horas de parada no planificada tuvisteis...?" y "¿...afectan a una línea crítica, varias líneas, o toda la fábrica?" (o el nº de líneas totales).` : lineCostAnomalyNote
   });
 
   // ── COMPONENTE 2: Merma ──
@@ -7556,7 +7556,7 @@ function calcM7OperationalImpact() {
     formula: `(${changeoverTime}/60)h × ${changeoversWeek}/sem × ${lineCostEur}€/h × ${productiveWeeks} sem`,
     value: changeoverValue, isEstimate: !lineCostIsReal,
     anomaly: changeoverAnomalyM7 || lineCostAnomaly,
-    anomalyNote: changeoverAnomalyM7 ? `⚠ El dato implica ${changeoverImpliedWeeklyHoursM7.toFixed(0)}h/semana en cambios de formato, más que las ~${maxWeeklyHoursM7}h de operación disponibles. Capado a ${maxWeeklyHoursM7}h/sem — revisar el dato con el cliente.` : lineCostAnomalyNote
+    anomalyNote: changeoverAnomalyM7 ? `⚠ El dato implica ${changeoverImpliedWeeklyHoursM7.toFixed(0)}h/semana en cambios de formato, más que las ~${maxWeeklyHoursM7}h de operación disponibles. Capado a ${maxWeeklyHoursM7}h/sem. Revisa: Sesión Fábrica → "KPIs operativos estimados" → preguntas "¿Cuántos cambios de formato hacen por semana de media?" y "¿Cuánto tiempo tarda un cambio de formato de principio a fin?"` : lineCostAnomalyNote
   });
 
   // ── COMPONENTE 5: Mantenimiento reactivo (solo M7 — dato de sesión Sistemas) ──
