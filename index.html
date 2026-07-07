@@ -6544,6 +6544,31 @@ function ftFingerprint(breakdown) {
 }
 let ftReportStale = false;
 
+// Estado simple: ¿este cliente tiene una revisión de Free Trial en curso?
+// Se enciende al pulsar "Calcular y revisar", se apaga al confirmar o cancelar.
+// Mientras esté encendido, abrir la pestaña Free Trial siempre recalcula y muestra
+// la revisión — independientemente de si se editó algo a mano o no.
+async function setFtReviewActive(cid, active) {
+  allAnswers[`${cid}_freetrial_review_active`] = active ? 'true' : '';
+  try {
+    if (active) {
+      await sb.from('diop_answers').upsert({ client_id: cid, session: 'freetrial', question_id: 'review_active', answer: 'true', updated_at: new Date().toISOString() });
+    } else {
+      await sb.from('diop_answers').delete().eq('client_id', cid).eq('session','freetrial').eq('question_id','review_active');
+    }
+  } catch(e) { /* si falla, la próxima apertura simplemente no auto-recupera */ }
+}
+
+async function isFtReviewActive(cid) {
+  const key = `${cid}_freetrial_review_active`;
+  if (allAnswers[key]) return allAnswers[key] === 'true';
+  try {
+    const { data } = await sb.from('diop_answers').select('answer').eq('client_id', cid).eq('session','freetrial').eq('question_id','review_active').single();
+    if (data?.answer) { allAnswers[key] = data.answer; return data.answer === 'true'; }
+  } catch(e) { /* sin registro — no hay revisión activa */ }
+  return false;
+}
+
 let ftGenerating = false;
 let ftReport = null;
 
@@ -6572,17 +6597,12 @@ async function openFreeTrial() {
     } catch(e) { /* si falla la comparación, no bloqueamos la vista */ }
   }
 
-  // Si había una revisión sin confirmar (ediste un dato y volviste), la recuperamos
-  // directamente en vez de mostrar la pantalla en blanco — así nunca parece que "se borró".
-  let hasDraft = !!allAnswers[`${currentClient.id}_freetrial_draft_review`];
-  if (!hasDraft) {
-    try {
-      const { data } = await sb.from('diop_answers').select('answer').eq('client_id', currentClient.id).eq('session','freetrial').eq('question_id','draft_review').single();
-      if (data?.answer) { allAnswers[`${currentClient.id}_freetrial_draft_review`] = data.answer; hasDraft = true; }
-    } catch(e) { /* sin borrador — comportamiento normal */ }
-  }
+  // Si el cliente tiene la revisión en curso (no confirmada ni cancelada todavía),
+  // la recuperamos y recalculamos directamente — nunca se muestra la pantalla en
+  // blanco mientras el estado siga "en revisión", vengas de donde vengas.
+  const reviewActive = await isFtReviewActive(currentClient.id);
 
-  if (hasDraft && ceoReady && fabReady) {
+  if (reviewActive && ceoReady && fabReady) {
     await startFreeTrialReview(true);
   } else {
     renderFreeTrialScreen(ceoReady, fabReady);
@@ -7223,6 +7243,7 @@ let ftDraftRestored = false;
 
 async function startFreeTrialReview(isAutoResume) {
   ftDraftRestored = false;
+  setFtReviewActive(currentClient.id, true);
   const fresh = calcFreeTrialBreakdown();
   ftBreakdown = fresh;
   ftBreakdownEdited = JSON.parse(JSON.stringify(fresh));
@@ -7364,6 +7385,7 @@ function cancelFreeTrialReview() {
   if (currentClient) {
     delete allAnswers[`${currentClient.id}_freetrial_draft_review`];
     sb.from('diop_answers').delete().eq('client_id', currentClient.id).eq('session','freetrial').eq('question_id','draft_review').then(()=>{}).catch(()=>{});
+    setFtReviewActive(currentClient.id, false);
   }
   const prog = getProgress(currentClient);
   renderFreeTrialScreen(prog.sessions['ceo']==='done', prog.sessions['fab']==='done');
@@ -7517,6 +7539,7 @@ Devuelve SOLO este JSON, sin texto adicional:
     ftBreakdown = null; ftBreakdownEdited = null;
     delete allAnswers[`${cid}_freetrial_draft_review`];
     sb.from('diop_answers').delete().eq('client_id', cid).eq('session','freetrial').eq('question_id','draft_review').then(()=>{}).catch(()=>{});
+    setFtReviewActive(cid, false);
     renderSidebarRoadmap();
     renderFreeTrialScreen(true, true);
 
