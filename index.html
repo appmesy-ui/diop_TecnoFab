@@ -197,6 +197,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .txt-input{width:100%;background:var(--s2);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:9px 12px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;min-height:72px;resize:vertical;line-height:1.5;transition:border-color .15s;}
 .txt-input:focus{border-color:var(--border3);}
 
+/* OTRO (free text fallback) */
+.opt-btn.opt-other-btn{border-style:dashed;color:var(--text3);}
+.opt-btn.opt-other-btn:hover{color:var(--text2);}
+.yn-row{flex-wrap:wrap;}
+.yn-btn.yn-other-btn{flex:1 1 100%;border-style:dashed;color:var(--text3);}
+.yn-btn.yn-sel-o{background:rgba(0,173,181,0.08);border-color:var(--teal);color:var(--teal-l);}
+.otro-input{width:100%;background:var(--s2);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;min-height:52px;resize:vertical;line-height:1.4;transition:border-color .15s,opacity .15s;margin-top:6px;display:none;}
+.otro-input.visible{display:block;}
+.otro-input:focus{border-color:var(--border3);}
+
 /* SAVE BAR */
 .save-bar{position:sticky;bottom:0;background:var(--bg);border-top:0.5px solid var(--border);padding:12px 32px;display:flex;align-items:center;justify-content:space-between;margin:-28px -32px 0;margin-top:24px;}
 .sb-info{font-size:11px;color:var(--text3);font-family:var(--mono);}
@@ -1155,15 +1165,25 @@ function openSession(sessionId) {
     <div class="q-text">${q.text}</div>`;
 
       if(q.type==='yn') {
+        const isOtroY = curVal.startsWith('Otro: ');
+        const otroTextY = isOtroY ? curVal.slice(6) : '';
         html += `<div class="yn-row" data-sess="${sessionId}" data-qid="${q.id}" data-type="yn">
           <button class="yn-btn${curVal==='Sí'?' yn-sel-y':''}" data-val="Sí">Sí</button>
           <button class="yn-btn${curVal==='No'?' yn-sel-n':''}" data-val="No">No</button>
-        </div>`;
+          <button class="yn-btn yn-other-btn${isOtroY?' yn-sel-o':''}" data-val="__otro__">Otro (especificar)</button>
+        </div>
+        <textarea class="otro-input${isOtroY?' visible':''}" placeholder="Especifica tu respuesta..." data-sess="${sessionId}" data-qid="${q.id}" data-type="otro">${otroTextY}</textarea>`;
       } else if(q.type==='sel') {
-        html += `<div class="opt-grid" data-sess="${sessionId}" data-qid="${q.id}" data-type="sel">${q.opts.map(o=>`<button class="opt-btn${curVal===o?' opt-sel':''}" data-val="${o.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}">${o}</button>`).join('')}</div>`;
+        const isOtroS = curVal.startsWith('Otro: ');
+        const otroTextS = isOtroS ? curVal.slice(6) : '';
+        html += `<div class="opt-grid" data-sess="${sessionId}" data-qid="${q.id}" data-type="sel">${q.opts.map(o=>`<button class="opt-btn${curVal===o?' opt-sel':''}" data-val="${o.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}">${o}</button>`).join('')}<button class="opt-btn opt-other-btn${isOtroS?' opt-sel':''}" data-val="__otro__">Otro (especificar)</button></div>
+        <textarea class="otro-input${isOtroS?' visible':''}" placeholder="Especifica tu respuesta..." data-sess="${sessionId}" data-qid="${q.id}" data-type="otro">${otroTextS}</textarea>`;
       } else if(q.type==='multi') {
         const selVals = curVal ? curVal.split('||') : [];
-        html += `<div class="opt-grid" data-sess="${sessionId}" data-qid="${q.id}" data-type="multi">${q.opts.map(o=>`<button class="opt-btn${selVals.includes(o)?' opt-multi-sel':''}" data-val="${o.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}">${o}</button>`).join('')}</div>`;
+        const otroEntryM = selVals.find(v=>v.startsWith('Otro: '));
+        const otroTextM = otroEntryM ? otroEntryM.slice(6) : '';
+        html += `<div class="opt-grid" data-sess="${sessionId}" data-qid="${q.id}" data-type="multi">${q.opts.map(o=>`<button class="opt-btn${selVals.includes(o)?' opt-multi-sel':''}" data-val="${o.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}">${o}</button>`).join('')}<button class="opt-btn opt-other-btn${otroEntryM?' opt-multi-sel':''}" data-val="__otro__">Otro (especificar)</button></div>
+        <textarea class="otro-input${otroEntryM?' visible':''}" placeholder="Especifica tu respuesta..." data-sess="${sessionId}" data-qid="${q.id}" data-type="otro">${otroTextM}</textarea>`;
       } else if(q.type==='num') {
         html += `<input class="num-input" type="number" min="0" value="${curVal}" placeholder="Introduce un número..." data-sess="${sessionId}" data-qid="${q.id}" data-type="num">`;
       } else if(q.type==='txt') {
@@ -1236,16 +1256,50 @@ function attachSessionEvents() {
     const type = container.dataset.type;
     
 
+    const card = container.closest('.q-card');
+    const otroInput = card ? card.querySelector('.otro-input') : null;
+
+    if(val === '__otro__') {
+      if(type === 'yn' || type === 'sel') {
+        container.querySelectorAll('button').forEach(b => b.classList.remove('yn-sel-y','yn-sel-n','yn-sel-o','opt-sel'));
+        btn.classList.add(type === 'yn' ? 'yn-sel-o' : 'opt-sel');
+        if(otroInput) { otroInput.classList.add('visible'); otroInput.focus(); }
+        const text = otroInput ? otroInput.value.trim() : '';
+        const newVal = text ? `Otro: ${text}` : '';
+        await persistAnswer(sess, qid, newVal);
+        markCardAnswered(card, newVal);
+      } else if(type === 'multi') {
+        const key = `${currentClient.id}_${sess}_${qid}`;
+        let current = allAnswers[key] ? allAnswers[key].split('||').filter(v => !v.startsWith('Otro: ')) : [];
+        const wasSel = btn.classList.contains('opt-multi-sel');
+        if(wasSel) {
+          btn.classList.remove('opt-multi-sel');
+          if(otroInput) otroInput.classList.remove('visible');
+        } else {
+          btn.classList.add('opt-multi-sel');
+          if(otroInput) { otroInput.classList.add('visible'); otroInput.focus(); }
+          const text = otroInput ? otroInput.value.trim() : '';
+          if(text) current.push(`Otro: ${text}`);
+        }
+        const newVal = current.join('||');
+        await persistAnswer(sess, qid, newVal);
+        markCardAnswered(card, newVal);
+      }
+      return;
+    }
+
     if(type === 'yn') {
-      container.querySelectorAll('button').forEach(b => b.classList.remove('yn-sel-y','yn-sel-n'));
+      container.querySelectorAll('button').forEach(b => b.classList.remove('yn-sel-y','yn-sel-n','yn-sel-o'));
       btn.classList.add(val === 'Sí' ? 'yn-sel-y' : 'yn-sel-n');
+      if(otroInput) otroInput.classList.remove('visible');
       await persistAnswer(sess, qid, val);
-      markCardAnswered(btn.closest('.q-card'), val);
+      markCardAnswered(card, val);
     } else if(type === 'sel') {
       container.querySelectorAll('button').forEach(b => b.classList.remove('opt-sel'));
       btn.classList.add('opt-sel');
+      if(otroInput) otroInput.classList.remove('visible');
       await persistAnswer(sess, qid, val);
-      markCardAnswered(btn.closest('.q-card'), val);
+      markCardAnswered(card, val);
     } else if(type === 'multi') {
       const key = `${currentClient.id}_${sess}_${qid}`;
       let current = allAnswers[key] ? allAnswers[key].split('||') : [];
@@ -1258,7 +1312,7 @@ function attachSessionEvents() {
       }
       const newVal = current.join('||');
       await persistAnswer(sess, qid, newVal);
-      markCardAnswered(btn.closest('.q-card'), newVal);
+      markCardAnswered(card, newVal);
     }
   });
 
@@ -1268,8 +1322,27 @@ function attachSessionEvents() {
     const key = el.dataset.sess + '_' + el.dataset.qid;
     clearTimeout(saveTimers[key]);
     saveTimers[key] = setTimeout(async () => {
+      const card = el.closest('.q-card');
+      if(el.dataset.type === 'otro') {
+        const container = card ? card.querySelector('[data-sess][data-qid]') : null;
+        const qType = container ? container.dataset.type : null;
+        const text = el.value.trim();
+        if(qType === 'multi') {
+          const fullKey = `${currentClient.id}_${el.dataset.sess}_${el.dataset.qid}`;
+          let current = allAnswers[fullKey] ? allAnswers[fullKey].split('||').filter(v => !v.startsWith('Otro: ')) : [];
+          if(text) current.push(`Otro: ${text}`);
+          const newVal = current.join('||');
+          await persistAnswer(el.dataset.sess, el.dataset.qid, newVal);
+          markCardAnswered(card, newVal);
+        } else {
+          const newVal = text ? `Otro: ${text}` : '';
+          await persistAnswer(el.dataset.sess, el.dataset.qid, newVal);
+          markCardAnswered(card, newVal);
+        }
+        return;
+      }
       await persistAnswer(el.dataset.sess, el.dataset.qid, el.value);
-      markCardAnswered(el.closest('.q-card'), el.value);
+      markCardAnswered(card, el.value);
     }, 600);
   });
 }
@@ -1873,15 +1946,26 @@ async function generateReport(confirmedOperationalImpact) {
 if (procesosSeleccionados) {
   ctx += `\n=== PROCESOS DE PLANTA IDENTIFICADOS ===\n${procesosSeleccionados.replace(/\|\|/g, ', ')}\n`;
 }
+  let aclaracionesCtx = '';
   SESSION_ORDER.forEach(sid => {
     ctx += `\n=== ${SESSIONS[sid].label.toUpperCase()} ===\n`;
     SESSIONS[sid].blocks.forEach(b => {
       b.questions.forEach(q => {
         const ans = allAnswers[`${currentClient.id}_${sid}_${q.id}`];
-        if (ans) ctx += `${q.text}: ${ans}\n`;
+        if (!ans) return;
+        const parts = ans.split('||');
+        const otroParts = parts.filter(p => p.startsWith('Otro: '));
+        const normalParts = parts.filter(p => !p.startsWith('Otro: '));
+        if (normalParts.length) ctx += `${q.text}: ${normalParts.join(', ')}\n`;
+        otroParts.forEach(p => {
+          aclaracionesCtx += `- Sobre "${q.text}": ${p.slice(6).trim()}\n`;
+        });
       });
     });
   });
+  if (aclaracionesCtx) {
+    ctx += `\n=== ACLARACIONES ESCRITAS POR EL CLIENTE (respuesta "Otro", ninguna opción predefinida encajaba) ===\nEstas son explicaciones específicas escritas a mano por el cliente porque las opciones cerradas no reflejaban su realidad. SON EVIDENCIA REAL, no texto decorativo: analízalas e incorpóralas activamente en resumen_ejecutivo, analisis_detallado, impacto_negocio, vector_friccion y arquetipo cuando sean relevantes. No las ignores ni las resumas de forma genérica.\n${aclaracionesCtx}\n`;
+  }
 
   // Add VSM data if available
   ctx += getVSMReportContext();
@@ -1943,6 +2027,7 @@ REGLAS CRÍTICAS:
 9. Herramientas realistas para pymes. No SAP ni soluciones enterprise.
 10. Tono: directo, profesional, sin florituras. Como un consultor senior que lleva 20 años en esto.
 11. CRÍTICO: no devuelvas campos numéricos de score, euros o porcentajes en kpis/ofi_resumen — esos los rellenamos nosotros con los valores reales. Tu trabajo es solo narrativa y análisis cualitativo.
+12. Si existe la sección "ACLARACIONES ESCRITAS POR EL CLIENTE", trátalas como evidencia real y específica del cliente, con más peso que un benchmark genérico: deben influir en el diagnóstico y quedar reflejadas en el análisis, no solo mencionadas de pasada.
 
 Devuelve un JSON con este formato exacto:
 {
@@ -2120,8 +2205,7 @@ Devuelve SOLO el JSON, sin texto adicional.`;
         impacto_euros: qw.impactoLabel,
         calculoVisible: qw.calculoVisible,
         fuente: qw.fuente,
-        plazo_dias: 60,
-        plazoLabel: qw.plazoLabel
+        plazo_dias: 60
       }));
     }
 
@@ -2792,7 +2876,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             ${econ.riskCount?`<div style="width:1px;height:20px;background:var(--border);"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
           </div>
           <div class="diop-list">
-            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div>${chip(`${esc(qw.impacto_euros || '—')} · implementación ${esc(qw.plazo_dias || '—')} días`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.plazoLabel?`<div style="font-size:10px;color:var(--text3);margin-top:2px;">⏱ ${esc(qw.plazoLabel)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:var(--text4);margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
+            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div>${chip(`${esc(qw.impacto_euros || '—')} · ${esc(qw.plazo_dias || '—')} días`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:var(--text4);margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
           </div>
         </div>
 
@@ -3343,9 +3427,8 @@ ${fieldIntelligencePDF}
     <div>
       <div class="qw-title">${qw.titulo||''} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div>
       <div class="qw-desc">${qw.descripcion||''}</div>
-      <div class="qw-meta" style="color:${['#E24B4A','#BA7517','#1D9E75'][i]}">${qw.impacto_euros||''} · implementación ${qw.plazo_dias||'—'} días</div>
+      <div class="qw-meta" style="color:${['#E24B4A','#BA7517','#1D9E75'][i]}">${qw.impacto_euros||''} · ${qw.plazo_dias||'—'} días</div>
       ${qw.calculoVisible?`<div style="font-size:7pt;color:#999;margin-top:1mm;font-family:'Courier New',monospace;">Cálculo: ${qw.calculoVisible}</div>`:''}
-      ${qw.plazoLabel?`<div style="font-size:7pt;color:#999;">⏱ ${qw.plazoLabel}</div>`:''}
       ${qw.fuente?`<div style="font-size:6.5pt;color:#aaa;font-style:italic;">Fuente: ${qw.fuente}</div>`:''}
     </div>
   </div>`).join('')}
@@ -6608,7 +6691,7 @@ function renderFreeTrialReport(r) {
   </div>` : ''}
 
   ${qws.length ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:14px;">07 · Lo que es posible empezar en 60 días</div>
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:14px;">07 · Lo que es posible en 60 días</div>
     ${qws.map((qw,i) => `<div style="display:flex;gap:14px;padding:14px;background:${i===0?'#f0faf7':'#fafaf8'};border-radius:10px;margin-bottom:8px;${i===0?'border:1.5px solid #1d9e75;':''}">
       <div style="width:26px;height:26px;border-radius:50%;background:rgba(0,173,181,0.12);border:1px solid #00adb5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#007c82;flex-shrink:0;">${i+1}</div>
       <div>
@@ -6617,9 +6700,8 @@ function renderFreeTrialReport(r) {
           ${i===0 ? `<span style="font-size:9px;padding:2px 8px;border-radius:20px;background:#1d9e75;color:#fff;font-weight:700;letter-spacing:.03em;">MAYOR ROI</span>` : ''}
         </div>
         <div style="font-size:12px;color:#555;line-height:1.5;margin-bottom:6px;">${esc(qw.descripcion)}</div>
-        <span style="font-size:11px;padding:2px 9px;border-radius:20px;background:#eaf6f0;color:#1d9e75;font-weight:600;">${esc(qw.impacto_euros)} · implementación ${qw.plazo_dias||'—'} días</span>
+        <span style="font-size:11px;padding:2px 9px;border-radius:20px;background:#eaf6f0;color:#1d9e75;font-weight:600;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</span>
         ${qw.calculoVisible ? `<div style="font-size:10px;color:#999;margin-top:6px;font-family:'DM Mono',monospace;">Cálculo: ${esc(qw.calculoVisible)}</div>` : ''}
-        ${qw.plazoLabel ? `<div style="font-size:10px;color:#999;margin-top:2px;">⏱ ${esc(qw.plazoLabel)}</div>` : ''}
         ${qw.fuente ? `<div style="font-size:9.5px;color:#aaa;margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>` : ''}
       </div>
     </div>`).join('')}
@@ -6752,8 +6834,8 @@ ${r.la_pregunta ? `<div class="section no-break">
 </div>` : ''}
 
 ${qws.length ? `<div class="section no-break">
-  <div class="section-label">07 · Lo que es posible empezar en 60 días</div>
-  ${qws.map((qw,i) => `<div class="qw-item" style="${i===0?'border:1.5pt solid #1D9E75;background:#f0faf7;':''}"><div class="qw-num">${i+1}</div><div><div style="font-size:9.5pt;font-weight:bold;">${esc(qw.titulo)} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div><div style="font-size:8.5pt;color:#666;margin:1mm 0;">${esc(qw.descripcion)}</div><div style="font-size:8pt;font-weight:bold;color:#1D9E75;">${esc(qw.impacto_euros)} · implementación ${qw.plazo_dias||'—'} días</div>${qw.calculoVisible?`<div style="font-size:7pt;color:#999;margin-top:1mm;font-family:'Courier New',monospace;">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.plazoLabel?`<div style="font-size:7pt;color:#999;">⏱ ${esc(qw.plazoLabel)}</div>`:''}${qw.fuente?`<div style="font-size:6.5pt;color:#aaa;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div></div>`).join('')}
+  <div class="section-label">07 · Lo que es posible en 60 días</div>
+  ${qws.map((qw,i) => `<div class="qw-item" style="${i===0?'border:1.5pt solid #1D9E75;background:#f0faf7;':''}"><div class="qw-num">${i+1}</div><div><div style="font-size:9.5pt;font-weight:bold;">${esc(qw.titulo)} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div><div style="font-size:8.5pt;color:#666;margin:1mm 0;">${esc(qw.descripcion)}</div><div style="font-size:8pt;font-weight:bold;color:#1D9E75;">${esc(qw.impacto_euros)} · ${qw.plazo_dias||'—'} días</div>${qw.calculoVisible?`<div style="font-size:7pt;color:#999;margin-top:1mm;font-family:'Courier New',monospace;">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:6.5pt;color:#aaa;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div></div>`).join('')}
 </div>` : ''}
 
 <div class="section no-break">
@@ -6884,9 +6966,6 @@ function calcDeterministicQuickWins(components, count = 2) {
       ahorroMid,
       impactoLabel: `${ahorroMin.toLocaleString('es-ES')}€ – ${ahorroMax.toLocaleString('es-ES')}€/año`,
       calculoVisible: `${c.value.toLocaleString('es-ES')}€ (${rule.label}, ya calculado) × ${(rule.pctMin*100).toFixed(0)}–${(rule.pctMax*100).toFixed(0)}% mejora típica`,
-      plazoImplementacionDias: 60,
-      plazoAhorroCompletoMeses: 12,
-      plazoLabel: 'Se implementa en 60 días · el ahorro anual completo se alcanza tras 12 meses aplicándolo',
       fuente: rule.fuente
     };
   });
@@ -7290,8 +7369,7 @@ Devuelve SOLO este JSON, sin texto adicional:
         impacto_euros: qw.impactoLabel,
         calculoVisible: qw.calculoVisible,
         fuente: qw.fuente,
-        plazo_dias: 60,
-        plazoLabel: qw.plazoLabel
+        plazo_dias: 60
       })),
       benchmark_kpis: []
     };
