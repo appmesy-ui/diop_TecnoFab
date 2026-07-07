@@ -6533,6 +6533,17 @@ function renderBenchmarkBar(label, clientLabel, sectorLabel, clientPct, sectorRa
 // Estructura: 3 dolores del CEO (margen / dependencia personas / capacidad crecer)
 // ══════════════════════════════════════════════════════
 
+// Huella simple de los datos usados en un cálculo — sirve para detectar si el origen
+// cambió desde que se generó el informe final (y avisar de que conviene recalcular).
+function ftFingerprint(breakdown) {
+  const parts = [];
+  (breakdown?.dolor1?.components || []).forEach(c => parts.push(`${c.key}:${c.formula}:${c.value}`));
+  if (breakdown?.dolor2?.rotation) parts.push(`rotation:${breakdown.dolor2.rotation.formula}:${breakdown.dolor2.rotation.value}`);
+  if (breakdown?.dolor2?.absenceRisk) parts.push(`absence:${breakdown.dolor2.absenceRisk.formula}:${breakdown.dolor2.absenceRisk.value}`);
+  return parts.join('|');
+}
+let ftReportStale = false;
+
 let ftGenerating = false;
 let ftReport = null;
 
@@ -6551,6 +6562,14 @@ async function openFreeTrial() {
     try { ftReport = JSON.parse(saved); } catch(e) { ftReport = null; }
   } else {
     ftReport = null;
+  }
+
+  ftReportStale = false;
+  if (ftReport && ftReport.generationSnapshot && ceoReady && fabReady) {
+    try {
+      const freshFp = ftFingerprint(calcFreeTrialBreakdown());
+      ftReportStale = ftReport.generationSnapshot !== freshFp;
+    } catch(e) { /* si falla la comparación, no bloqueamos la vista */ }
   }
 
   // Si había una revisión sin confirmar (ediste un dato y volviste), la recuperamos
@@ -6622,6 +6641,12 @@ function renderFreeTrialScreen(ceoReady, fabReady) {
   </div>`;
 
   if (hasReport) {
+    if (ftReportStale) {
+      html += `<div style="padding:12px 16px;background:rgba(226,75,74,0.08);border:0.5px solid var(--red);border-radius:var(--r-sm);margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div style="font-size:12px;color:var(--red);line-height:1.5;">⚠ Los datos de origen han cambiado desde que se generó este informe. Las cifras que ves abajo pueden no reflejar la corrección más reciente — recomendamos recalcular antes de presentarlo.</div>
+        <button onclick="startFreeTrialReview()" style="flex-shrink:0;padding:8px 16px;background:var(--red);border:none;border-radius:var(--r-sm);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);white-space:nowrap;">Recalcular ahora</button>
+      </div>`;
+    }
     html += renderFreeTrialReport(ftReport);
   } else {
     html += `<div style="padding:60px;text-align:center;background:var(--s1);border:0.5px dashed var(--border2);border-radius:16px;color:var(--text3);font-size:13px;">
@@ -7452,6 +7477,7 @@ Devuelve SOLO este JSON, sin texto adicional:
 
     // Ensamblamos el informe final: números validados (JS) + narrativa (IA), nunca mezclados
     ftReport = {
+      generationSnapshot: ftFingerprint(ftBreakdownEdited),
       arquetipo: narrative.arquetipo,
       urgencia: narrative.urgencia,
       dolor1: {
