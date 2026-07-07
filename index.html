@@ -6974,6 +6974,14 @@ function calcDeterministicQuickWins(components, count = 2) {
   });
 }
 
+// Límite de horas/semana físicamente disponibles, según turnos declarados (M8) o valor conservador por defecto.
+// Sirve para detectar inputs que, multiplicados, implican más horas de pérdida de las que la planta puede operar.
+function getMaxWeeklyOpHours(cid) {
+  const shiftsMap = { '1 turno': 45, '2 turnos': 90, '3 turnos': 130, 'Continuo': 160 };
+  const shifts = m8Data[cid]?.shifts;
+  return shiftsMap[shifts] || 90; // 90h/sem (2 turnos) como supuesto conservador si no hay dato
+}
+
 function calcFreeTrialBreakdown() {
   const cid = currentClient.id;
   const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
@@ -7031,7 +7039,11 @@ function calcFreeTrialBreakdown() {
     lineCostInputLabel = lineCostRangeRaw ? `rango "${lineCostRangeRaw}" → punto medio ${lineCostEur}€/h` : 'sin dato → benchmark 300€/h';
   }
 
-  const downtimeValue = Math.round(downtimeH * lineCostEur * scopeFactor * productiveWeeks);
+  const maxWeeklyHours = getMaxWeeklyOpHours(cid);
+  const downtimeImpliedWeeklyHours = downtimeH * scopeFactor;
+  const downtimeAnomaly = downtimeImpliedWeeklyHours > maxWeeklyHours;
+  const downtimeCappedHours = downtimeAnomaly ? maxWeeklyHours : downtimeImpliedWeeklyHours;
+  const downtimeValue = Math.round(downtimeCappedHours * lineCostEur * productiveWeeks);
   const downtimeBench = ftBenchmarkCheck(downtimeValue, revenueNum, 'downtime_pct_revenue', sector);
   components.push({
     key: 'downtime', label: 'Paradas no planificadas',
@@ -7039,7 +7051,9 @@ function calcFreeTrialBreakdown() {
     formula: `${downtimeH}h × ${lineCostEur}€/h × factor ${scopeFactor} × ${productiveWeeks} sem`,
     value: downtimeValue,
     isEstimate: !downtimeIsReal || !lineCostIsReal,
-    benchmark: downtimeBench
+    benchmark: downtimeBench,
+    anomaly: downtimeAnomaly,
+    anomalyNote: downtimeAnomaly ? `⚠ El dato implica ${downtimeImpliedWeeklyHours.toFixed(0)}h/semana de paradas, más que las ~${maxWeeklyHours}h de operación disponibles (según turnos). Capado a ${maxWeeklyHours}h/sem — revisar el dato con el cliente antes de usar esta cifra.` : null
   });
 
   // ── COMPONENTE 2: Merma ──
@@ -7073,14 +7087,19 @@ function calcFreeTrialBreakdown() {
   // ── COMPONENTE 4: Changeover ──
   const changeoversWeek = parseFloat(a('fab', 'changeovers_week')) || 0;
   const changeoverTime = parseFloat(a('fab', 'changeover_time')) || 0;
-  const changeoverValue = Math.round((changeoverTime/60) * changeoversWeek * lineCostEur * productiveWeeks);
+  const changeoverImpliedWeeklyHours = (changeoverTime/60) * changeoversWeek;
+  const changeoverAnomaly = changeoverImpliedWeeklyHours > maxWeeklyHours;
+  const changeoverCappedHours = changeoverAnomaly ? maxWeeklyHours : changeoverImpliedWeeklyHours;
+  const changeoverValue = Math.round(changeoverCappedHours * lineCostEur * productiveWeeks);
   components.push({
     key: 'changeover', label: 'Cambios de formato (changeover)',
     inputSummary: `${changeoversWeek} cambios/sem × ${changeoverTime}min cada uno · coste línea: ${lineCostInputLabel}`,
     formula: `(${changeoverTime}/60)h × ${changeoversWeek}/sem × ${lineCostEur}€/h × ${productiveWeeks} sem`,
     value: changeoverValue,
     isEstimate: !lineCostIsReal,
-    benchmark: { withinBenchmark: null }
+    benchmark: { withinBenchmark: null },
+    anomaly: changeoverAnomaly,
+    anomalyNote: changeoverAnomaly ? `⚠ El dato implica ${changeoverImpliedWeeklyHours.toFixed(0)}h/semana en cambios de formato, más que las ~${maxWeeklyHours}h de operación disponibles (según turnos). Capado a ${maxWeeklyHours}h/sem — revisar el dato con el cliente antes de usar esta cifra.` : null
   });
 
   const dolor1Total = components.reduce((s,c) => s + c.value, 0);
@@ -7163,11 +7182,12 @@ function ftReviewComponentRow(c, idx, group) {
     ? `Sector: ${c.benchmark.rangeLabel} de la base · Tu cálculo: ${(c.benchmark.pctOfBase*100).toFixed(1)}%`
     : '';
 
-  return `<div style="padding:14px 16px;background:var(--s2);border:0.5px solid ${c.isEstimate ? 'rgba(186,117,23,0.3)' : 'var(--border)'};border-radius:var(--r-sm);margin-bottom:8px;">
+  return `<div style="padding:14px 16px;background:var(--s2);border:0.5px solid ${c.anomaly ? 'rgba(226,75,74,0.5)' : c.isEstimate ? 'rgba(186,117,23,0.3)' : 'var(--border)'};border-radius:var(--r-sm);margin-bottom:8px;">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;">
       <div style="font-size:13px;font-weight:600;color:var(--text);">${c.label}</div>
       ${c.isEstimate ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(186,117,23,0.12);color:var(--amber);font-weight:600;flex-shrink:0;">CON SUPUESTOS</span>` : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(29,158,117,0.12);color:var(--green);font-weight:600;flex-shrink:0;">DATO REAL</span>`}
     </div>
+    ${c.anomalyNote ? `<div style="font-size:11px;color:var(--red);background:rgba(226,75,74,0.08);border-radius:var(--r-xs);padding:6px 9px;margin-bottom:8px;line-height:1.5;">${c.anomalyNote}</div>` : ''}
     <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:4px;">${c.inputSummary}</div>
     <div style="font-size:10px;color:var(--text4);font-family:var(--mono);margin-bottom:8px;">${c.formula}</div>
     ${benchText ? `<div style="font-size:10.5px;color:${benchColor};margin-bottom:8px;">${benchIcon} ${benchText}</div>` : ''}
@@ -7465,12 +7485,18 @@ function calcM7OperationalImpact() {
     downtimeH = downtimeMap[downtimeRangeRaw] || 0; downtimeIsReal = false;
     downtimeInputLabel = downtimeRangeRaw ? `rango "${downtimeRangeRaw}" → ${downtimeH}h` : 'sin dato';
   }
-  const downtimeValue = Math.round(downtimeH * lineCostEur * scopeFactor * productiveWeeks);
+  const maxWeeklyHoursM7 = getMaxWeeklyOpHours(cid);
+  const downtimeImpliedWeeklyHoursM7 = downtimeH * scopeFactor;
+  const downtimeAnomalyM7 = downtimeImpliedWeeklyHoursM7 > maxWeeklyHoursM7;
+  const downtimeCappedHoursM7 = downtimeAnomalyM7 ? maxWeeklyHoursM7 : downtimeImpliedWeeklyHoursM7;
+  const downtimeValue = Math.round(downtimeCappedHoursM7 * lineCostEur * productiveWeeks);
   components.push({
     key: 'downtime', label: 'Paradas no planificadas',
     inputSummary: `${downtimeInputLabel} · coste línea: ${lineCostSource} · alcance: ${scopeLabel} (×${scopeFactor}) · ${productiveWeeks} sem/año`,
     formula: `${downtimeH}h × ${lineCostEur}€/h × ${scopeFactor} × ${productiveWeeks} sem`,
-    value: downtimeValue, isEstimate: !downtimeIsReal || !lineCostIsReal
+    value: downtimeValue, isEstimate: !downtimeIsReal || !lineCostIsReal,
+    anomaly: downtimeAnomalyM7,
+    anomalyNote: downtimeAnomalyM7 ? `⚠ El dato implica ${downtimeImpliedWeeklyHoursM7.toFixed(0)}h/semana de paradas, más que las ~${maxWeeklyHoursM7}h de operación disponibles. Capado a ${maxWeeklyHoursM7}h/sem — revisar el dato con el cliente.` : null
   });
 
   // ── COMPONENTE 2: Merma ──
@@ -7499,12 +7525,17 @@ function calcM7OperationalImpact() {
   // ── COMPONENTE 4: Changeover ──
   const changeoversWeek = parseFloat(a('fab', 'changeovers_week')) || 0;
   const changeoverTime = parseFloat(a('fab', 'changeover_time')) || 0;
-  const changeoverValue = Math.round((changeoverTime/60) * changeoversWeek * lineCostEur * productiveWeeks);
+  const changeoverImpliedWeeklyHoursM7 = (changeoverTime/60) * changeoversWeek;
+  const changeoverAnomalyM7 = changeoverImpliedWeeklyHoursM7 > maxWeeklyHoursM7;
+  const changeoverCappedHoursM7 = changeoverAnomalyM7 ? maxWeeklyHoursM7 : changeoverImpliedWeeklyHoursM7;
+  const changeoverValue = Math.round(changeoverCappedHoursM7 * lineCostEur * productiveWeeks);
   components.push({
     key: 'changeover', label: 'Cambios de formato',
     inputSummary: `${changeoversWeek}/sem × ${changeoverTime}min · coste línea: ${lineCostSource}`,
     formula: `(${changeoverTime}/60)h × ${changeoversWeek}/sem × ${lineCostEur}€/h × ${productiveWeeks} sem`,
-    value: changeoverValue, isEstimate: !lineCostIsReal
+    value: changeoverValue, isEstimate: !lineCostIsReal,
+    anomaly: changeoverAnomalyM7,
+    anomalyNote: changeoverAnomalyM7 ? `⚠ El dato implica ${changeoverImpliedWeeklyHoursM7.toFixed(0)}h/semana en cambios de formato, más que las ~${maxWeeklyHoursM7}h de operación disponibles. Capado a ${maxWeeklyHoursM7}h/sem — revisar el dato con el cliente.` : null
   });
 
   // ── COMPONENTE 5: Mantenimiento reactivo (solo M7 — dato de sesión Sistemas) ──
