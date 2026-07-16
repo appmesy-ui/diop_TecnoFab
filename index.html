@@ -1837,7 +1837,7 @@ document.getElementById('report-content').innerHTML = `
     ? `<button
          class="gen-btn"
          id="gen-btn"
-         onclick="openM7ImpactReview()"
+         onclick="openQualityChecklistGate()"
          style="${reportOutdated ? 'background:linear-gradient(135deg,var(--amber),#d38a1f);color:#fff;' : ''}"
        >${
          latestReport
@@ -1990,6 +1990,12 @@ if (procesosSeleccionados) {
 
   // Add Field Intelligence
   ctx += getFieldIntelligenceReportContext();
+
+  // Add Risk Log M0 (limitaciones del diagnóstico)
+  ctx += getRiskLogReportContext();
+
+  // Add Quality Checklist status (Parte V)
+  ctx += getQualityChecklistReportContext();
 
   const prompt = `Eres un consultor senior de Tecno-Fab, consultora de digitalización industrial IT/OT y eficiencia operacional. Especializados en pymes industriales de 50-500 empleados.
 
@@ -3894,7 +3900,14 @@ const SECTOR_BENCHMARKS = {
   'default': { oee:'55–75%', rechazo:'1–5%', mtbf:'300–800h', mttr:'2–5h', maint_react:'40–70%', changeover:'30–120 min', servicio:'90–97%', inv_rotation:'6–15x', stock_days:'20–60 días' }
 };
 
-function defaultF0() { return { archetype_hypothesis:'', archetype_signals:'', archetype_secondary:'', pre_kickoff_notes:'', data_requested:{ oee:false, scrap:false, mtbf:false, it_systems:false, ot_systems:false, orgchart:false }, stakeholders:[{name:'',role:'',profile:'CEO',availability:'',notes:''},{name:'',role:'',profile:'Dir. Operaciones',availability:'',notes:''},{name:'',role:'',profile:'IT/OT',availability:'',notes:''},{name:'',role:'',profile:'Operario',availability:'',notes:''}] }; }
+const RISK_LOG_DEFAULT = () => ([
+  { risk: 'Datos históricos nivel D (inexistentes)', impact: 'Alto', mitigation: 'Activar Protocolo Sin Datos: muestreo propio 2–3 días. La ausencia de datos es en sí misma un hallazgo.', status: 'Abierto', evidence: '' },
+  { risk: 'Stakeholder clave no disponible', impact: 'Alto', mitigation: 'Backup identificado en kick-off. No avanzar en el área sin el responsable.', status: 'Abierto', evidence: '' },
+  { risk: 'Resistencia activa del personal', impact: 'Alto', mitigation: 'Comunicar el propósito del diagnóstico a todos los niveles. No es auditoría de rendimiento individual.', status: 'Abierto', evidence: '' },
+  { risk: 'Cliente oculta información', impact: 'Alto', mitigation: 'Triangular dirección vs. supervisores vs. operarios. Las discrepancias son hallazgos.', status: 'Abierto', evidence: '' },
+  { risk: 'Presión para dar conclusiones prematuras', impact: 'Alto', mitigation: 'No hay conclusiones sin evidencia. Avance preliminar siempre con nivel de confianza explícito (Confidence Layer™).', status: 'Abierto', evidence: '' },
+]);
+function defaultF0() { return { archetype_hypothesis:'', archetype_signals:'', archetype_secondary:'', pre_kickoff_notes:'', data_requested:{ oee:false, scrap:false, mtbf:false, it_systems:false, ot_systems:false, orgchart:false }, stakeholders:[{name:'',role:'',profile:'CEO',availability:'',notes:''},{name:'',role:'',profile:'Dir. Operaciones',availability:'',notes:''},{name:'',role:'',profile:'IT/OT',availability:'',notes:''},{name:'',role:'',profile:'Operario',availability:'',notes:''}], risk_log: RISK_LOG_DEFAULT(), acta_firmada: { signed:false, date:'' } }; }
 function getF0() { if(!currentClient)return defaultF0(); if(!f0Data[currentClient.id]) f0Data[currentClient.id]=defaultF0(); return f0Data[currentClient.id]; }
 
 async function loadF0Data(clientId) {
@@ -4006,6 +4019,30 @@ function renderF0() {
   });
   html+=`<div class="vsm-add-btn" onclick="getF0().stakeholders.push({name:'',role:'',profile:'Otro',availability:'',notes:''});renderF0();f0Changed();" style="margin-top:6px;">+ Añadir stakeholder</div>`;
   html+=`</div>`;
+
+  // RISK LOG M0
+  if(!f.risk_log)f.risk_log=RISK_LOG_DEFAULT();
+  if(!f.acta_firmada)f.acta_firmada={signed:false,date:''};
+  html+=`<div class="vsm-section"><div class="vsm-section-title">⚠️ Risk Log — M0 Kick-off</div><div class="vsm-section-sub">5 riesgos estándar de la Metodología. Actualizar estado a medida que avanza el diagnóstico.</div>`;
+  f.risk_log.forEach((r,i)=>{
+    const statusColor = r.status==='Mitigado'?'var(--green)':r.status==='Materializado'?'var(--red)':'var(--amber)';
+    html+=`<div style="padding:12px 14px;background:var(--s2);border:0.5px solid ${statusColor}55;border-radius:var(--r-sm);margin-bottom:8px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);flex:1;">${r.risk}</div>
+        <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(226,75,74,0.1);color:var(--red);font-weight:600;flex-shrink:0;">Impacto ${r.impact}</span>
+      </div>
+      <div style="font-size:10.5px;color:var(--text3);line-height:1.45;margin-bottom:8px;">${r.mitigation}</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        ${['Abierto','Mitigado','Materializado'].map(s=>{const sc=s==='Mitigado'?'var(--green)':s==='Materializado'?'var(--red)':'var(--amber)';return `<button onclick="getF0().risk_log[${i}].status='${s}';renderF0();f0Changed();" style="padding:5px 12px;border-radius:var(--r-xs);border:1px solid ${r.status===s?sc:'var(--border)'};background:${r.status===s?sc+'22':'var(--s1)'};color:${r.status===s?sc:'var(--text3)'};font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${s}</button>`;}).join('')}
+      </div>
+      <input class="vsm-input" style="font-size:10.5px;padding:6px 8px;" placeholder="Evidencia / nota de campo..." value="${(r.evidence||'').replace(/"/g,'&quot;')}" oninput="getF0().risk_log[${i}].evidence=this.value;f0Changed()">
+    </div>`;
+  });
+  html+=`<div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 14px;background:rgba(0,173,181,0.05);border-radius:var(--r-sm);">
+    <div onclick="getF0().acta_firmada.signed=!getF0().acta_firmada.signed;renderF0();f0Changed();" style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${f.acta_firmada.signed?'var(--teal)':'var(--border2)'};background:${f.acta_firmada.signed?'rgba(0,173,181,0.15)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--teal);cursor:pointer;flex-shrink:0;">${f.acta_firmada.signed?'✓':''}</div>
+    <span style="font-size:12px;color:var(--text);">Acta de kick-off firmada</span>
+    <input type="date" value="${f.acta_firmada.date||''}" oninput="getF0().acta_firmada.date=this.value;f0Changed()" style="margin-left:auto;background:var(--s1);border:0.5px solid var(--border2);border-radius:var(--r-xs);padding:5px 8px;color:var(--text);font-size:11px;font-family:var(--font);">
+  </div></div>`;
 
   // PRE-KICKOFF NOTES
   html+=`<div class="vsm-section"><div class="vsm-section-title">📝 Notas pre-engagement</div><textarea class="vsm-input" style="min-height:80px;resize:vertical;" placeholder="Contexto de la oportunidad comercial, origen del contacto, urgencias detectadas..." oninput="getF0().pre_kickoff_notes=this.value;f0Changed()">${f.pre_kickoff_notes||''}</textarea></div>`;
@@ -4660,6 +4697,19 @@ const TTL_CATALOGUE_DEFAULT=[
   {layer:'L6',name:'IA para control de calidad visual',desc:'Visión artificial para detección automática de defectos.',cat:'A',ttm:'16–24 sem'},
 ];
 
+// ── TIPO DE INICIATIVA (Metodología v4.1 · M5.3) ──
+// Clasificación independiente de la zona RIM™. RIM = qué hacer si la readiness lo
+// permite; Tipo = horizonte y naturaleza de la iniciativa según la Metodología.
+const TIPO_INICIATIVA = {
+  quick_win:      { label: 'Quick Win',                  horizonte: '0–8 semanas',   color: '#1D9E75' },
+  fundacional:    { label: 'Iniciativa fundacional',      horizonte: '1–4 meses',     color: '#00ADB5' },
+  estrategica:    { label: 'Iniciativa estratégica',      horizonte: '3–12 meses',    color: '#7F77DD' },
+  transformacion: { label: 'Transformación largo plazo',  horizonte: '12–24 meses',   color: '#BA7517' },
+  investigacion:  { label: 'Investigación especializada', horizonte: 'Variable',      color: '#E24B4A' },
+};
+function tipoIniciativaLabel(k){ return TIPO_INICIATIVA[k]?.label || 'Sin clasificar'; }
+function tipoIniciativaColor(k){ return TIPO_INICIATIVA[k]?.color || 'var(--text4)'; }
+
 function defaultM6(){return{backlog:[],custom_catalogue:[]};}
 function getM6(){if(!currentClient)return defaultM6();if(!m6Data[currentClient.id])m6Data[currentClient.id]=defaultM6();return m6Data[currentClient.id];}
 
@@ -4831,6 +4881,7 @@ function renderM6(){
       <input id="custom-name" class="vsm-input" style="font-size:11px;" placeholder="Nombre de la iniciativa">
     </div>
     <input id="custom-desc" class="vsm-input" style="font-size:11px;margin-top:6px;" placeholder="Descripción breve">
+    <select id="custom-tipo" class="vsm-select" style="padding:5px 7px;font-size:11px;margin-top:6px;">${Object.entries(TIPO_INICIATIVA).map(([k,v])=>`<option value="${k}">${v.label} (${v.horizonte})</option>`).join('')}</select>
     <div style="display:flex;gap:6px;margin-top:8px;">
       <button onclick="addCustomInitiative()" style="padding:6px 16px;background:var(--teal);color:white;border:none;border-radius:var(--r-sm);font-size:11px;cursor:pointer;font-family:var(--font);">Añadir al catálogo + backlog</button>
       <button onclick="document.getElementById('custom-form').style.display='none'" style="padding:6px 16px;background:var(--s1);color:var(--text3);border:0.5px solid var(--border);border-radius:var(--r-sm);font-size:11px;cursor:pointer;font-family:var(--font);">Cancelar</button>
@@ -4856,6 +4907,12 @@ function renderM6(){
               ${blocked?'<span style="font-size:9px;color:var(--red);font-weight:600;">🔒 BLOQUEADA (requiere ${b.layer})</span>':''}
             </div>
             <div style="font-size:10px;color:var(--text3);">${b.desc||''}</div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+              <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Tipo (M5.3):</span>
+              <select onchange="getM6().backlog[${i}].tipo=this.value;renderM6();m6Changed();" style="background:var(--s1);border:1px solid ${tipoIniciativaColor(b.tipo)};border-radius:var(--r-xs);padding:4px 8px;color:${tipoIniciativaColor(b.tipo)};font-size:10px;font-weight:600;font-family:var(--font);">
+                ${Object.entries(TIPO_INICIATIVA).map(([k,v]) => `<option value="${k}" ${b.tipo===k?'selected':''}>${v.label} (${v.horizonte})</option>`).join('')}
+              </select>
+            </div>
           </div>
           <button onclick="removeFromBacklog(${i})" style="background:none;border:none;color:var(--text4);cursor:pointer;font-size:14px;">✕</button>
         </div>
@@ -4994,6 +5051,7 @@ function renderM6(){
             const rim=b.impact&&b.readiness?getRIMZone(b.impact,b.readiness):{zone:'—',col:'var(--text4)'};
             return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;margin-left:16px;border-bottom:0.5px solid var(--border);">
               <div style="flex:1;font-size:11px;color:var(--text);">${b.name}</div>
+              <span style="font-size:8px;padding:1px 6px;border-radius:8px;background:${tipoIniciativaColor(b.tipo)}22;color:${tipoIniciativaColor(b.tipo)};font-weight:600;">${tipoIniciativaLabel(b.tipo)}</span>
               <span style="font-size:9px;color:${rim.col};font-weight:600;">${rim.zone}</span>
               ${b.savings?`<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">${(b.savings/1000).toFixed(0)}k€/año</span>`:''}
               ${b.ttm?`<span style="font-size:9px;color:var(--text4);">${b.ttm}</span>`:''}
@@ -5042,7 +5100,7 @@ function addToBacklog(name){
   if(!item)return;
   const m=getM6();
   if(m.backlog.some(b=>b.name===name))return;
-  m.backlog.push({name:item.name,desc:item.desc,layer:item.layer,cat:item.cat,ttm:item.ttm,impact:0,readiness:0,investment:0,savings:0});
+  m.backlog.push({name:item.name,desc:item.desc,layer:item.layer,cat:item.cat,ttm:item.ttm,tipo:'quick_win',impact:0,readiness:0,investment:0,savings:0});
   renderM6();m6Changed();
 }
 
@@ -5056,12 +5114,13 @@ function addCustomInitiative(){
   const layer=document.getElementById('custom-layer').value;
   const name=document.getElementById('custom-name').value.trim();
   const desc=document.getElementById('custom-desc').value.trim();
+  const tipo=document.getElementById('custom-tipo')?.value||'quick_win';
   if(!name)return;
   const m=getM6();
   if(!m.custom_catalogue)m.custom_catalogue=[];
   const item={layer,name,desc,cat:'A',ttm:'TBD',custom:true};
   m.custom_catalogue.push(item);
-  m.backlog.push({...item,impact:0,readiness:0,investment:0,savings:0});
+  m.backlog.push({...item,tipo,impact:0,readiness:0,investment:0,savings:0});
   document.getElementById('custom-form').style.display='none';
   document.getElementById('custom-name').value='';
   document.getElementById('custom-desc').value='';
@@ -6374,7 +6433,7 @@ function getM6ReportContext() {
   ctx+=`\nIniciativas priorizadas:\n`;
   backlog.forEach((b,i)=>{
     const zone=b.impact&&b.readiness?getRIMZone(b.impact,b.readiness).zone:'Sin evaluar';
-    ctx+=`  ${i+1}. [${b.layer}] ${b.name} — Impacto: ${b.impact||'?'}/10, Readiness: ${b.readiness||'?'}/10, RIM: ${zone}`;
+    ctx+=`  ${i+1}. [${b.layer}] [${tipoIniciativaLabel(b.tipo)}] ${b.name} — Impacto: ${b.impact||'?'}/10, Readiness: ${b.readiness||'?'}/10, RIM: ${zone}`;
     if(b.investment)ctx+=` · Inv: ${b.investment}€`;
     if(b.savings_low||b.savings||b.savings_high)ctx+=` · Ahorro: ${b.savings_low||'?'}€(conserv) / ${b.savings||'?'}€(base) / ${b.savings_high||'?'}€(optim)/año`;
     if(b.confidence)ctx+=` · Confianza: ${b.confidence}/5`;
@@ -6438,6 +6497,17 @@ function getFieldIntelligenceReportContext(){
     fi.adopcion.forEach(a=>{ctx+=`  ${a.signal}\n`;});
   }
   ctx+=`\nINSTRUCCIÓN: Estas señales son hallazgos de campo de alto valor consultivo. Deben influir directamente en el resumen ejecutivo, los riesgos principales, y la priorización de quick wins. Las discrepancias entre perfiles deben mencionarse explícitamente en el análisis. Los Quick Wins reales (lo que cada perfil cambiaría mañana) tienen prioridad sobre los generados por la IA.\n`;
+  return ctx;
+}
+
+function getRiskLogReportContext() {
+  const f = f0Data[currentClient?.id];
+  if (!f || !f.risk_log) return '';
+  const open = f.risk_log.filter(r => r.status !== 'Mitigado');
+  if (!open.length) return '';
+  let ctx = '\n=== RISK LOG M0 — RIESGOS ABIERTOS/MATERIALIZADOS ===\n';
+  open.forEach(r => { ctx += `  [${r.status}] ${r.risk}${r.evidence ? ' — ' + r.evidence : ''}\n`; });
+  ctx += 'Estos riesgos deben reflejarse en la sección de limitaciones del diagnóstico del informe final.\n';
   return ctx;
 }
 
@@ -7691,6 +7761,94 @@ function calcM7OperationalImpact() {
 
   return { components, total, meta: { revenueNum, operatorHourCost, lineCostEur, productiveWeeks, scopeLabel } };
 }
+
+// ══════════════════════════════════════════════════════
+// ── CHECKLIST DE CALIDAD — PARTE V (Metodología v4.1) ──
+// Gate de verificación previa a la generación del informe final.
+// No bloquea: el consultor puede continuar bajo su criterio, pero
+// queda registrado qué puntos no se verificaron, para trazabilidad.
+// ══════════════════════════════════════════════════════
+
+const QUALITY_CHECKLIST_ITEMS = [
+  'El OFI™ está calculado con las 4 dimensiones y aparece en la primera página del resumen ejecutivo.',
+  'El arquetipo del cliente está confirmado y la narrativa usa su lenguaje específico.',
+  'Cada iniciativa del backlog tiene Tipo (M5.3), capa TTL™ y posición RIM™ asignados.',
+  'El roadmap respeta la secuencia TTL™: ninguna iniciativa Lx+2 activa sin Lx consolidado.',
+  'Cada hallazgo mayor tiene nivel de Confidence Layer™ asignado.',
+  'Cada ROI tiene categoría de beneficio (A/B/C/D) y las 4 reglas de integridad aplicadas.',
+  'Las lagunas de datos y limitaciones del diagnóstico están documentadas explícitamente.',
+  'Los Quick Wins cumplen los criterios: impacto ≥4, plazo ≤8 sem, inversión <20k€, sin dependencias.',
+  'El resumen ejecutivo sigue el Marco de Traducción: hecho → patrón → impacto → implicación estratégica.',
+  'El informe termina con próximos pasos concretos, fechas y responsables propuestos.',
+];
+
+let qualityChecklistData = {};
+function defaultQualityChecklist() { return { checked: new Array(QUALITY_CHECKLIST_ITEMS.length).fill(false) }; }
+function getQualityChecklist() {
+  if (!currentClient) return defaultQualityChecklist();
+  if (!qualityChecklistData[currentClient.id]) qualityChecklistData[currentClient.id] = defaultQualityChecklist();
+  return qualityChecklistData[currentClient.id];
+}
+async function saveQualityChecklist() {
+  if (!currentClient) return;
+  const j = JSON.stringify(getQualityChecklist());
+  allAnswers[`${currentClient.id}_quality_checklist`] = j;
+  try {
+    await sb.from('diop_answers').upsert({ client_id: currentClient.id, session:'quality', question_id:'checklist', answer:j, updated_at:new Date().toISOString() });
+  } catch(e) {}
+}
+async function loadQualityChecklist(cid) {
+  try {
+    const key = `${cid}_quality_checklist`;
+    if (allAnswers[key]) { qualityChecklistData[cid] = JSON.parse(allAnswers[key]); return; }
+    const { data } = await sb.from('diop_answers').select('answer').eq('client_id', cid).eq('session','quality').eq('question_id','checklist').single();
+    if (data?.answer) { qualityChecklistData[cid] = JSON.parse(data.answer); allAnswers[key] = data.answer; }
+  } catch(e) {}
+}
+
+async function openQualityChecklistGate() {
+  await loadQualityChecklist(currentClient.id);
+  renderQualityChecklistGate();
+}
+
+function renderQualityChecklistGate() {
+  const cl = getQualityChecklist();
+  const uncheckedCount = cl.checked.filter(c => !c).length;
+
+  document.getElementById('report-body').innerHTML = `
+  <div style="background:var(--s1);border:0.5px solid var(--border);border-radius:16px;padding:24px 28px;max-width:720px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+      <div style="width:36px;height:36px;border-radius:9px;background:rgba(0,173,181,0.1);color:var(--teal-l);display:flex;align-items:center;justify-content:center;font-size:16px;">✅</div>
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);">Checklist de calidad — Parte V</div>
+        <div style="font-size:11.5px;color:var(--text3);">Verificación previa a la presentación del diagnóstico (Metodología v4.1).</div>
+      </div>
+    </div>
+    <div style="margin:16px 0;">
+      ${QUALITY_CHECKLIST_ITEMS.map((item, i) => `
+        <div onclick="getQualityChecklist().checked[${i}]=!getQualityChecklist().checked[${i}];saveQualityChecklist();renderQualityChecklistGate();" style="display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:var(--r-sm);cursor:pointer;margin-bottom:2px;" onmouseenter="this.style.background='rgba(0,173,181,0.04)'" onmouseleave="this.style.background=''">
+          <div style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${cl.checked[i]?'var(--teal)':'var(--border2)'};background:${cl.checked[i]?'rgba(0,173,181,0.15)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--teal);flex-shrink:0;margin-top:1px;">${cl.checked[i]?'✓':''}</div>
+          <div style="font-size:12px;color:${cl.checked[i]?'var(--text2)':'var(--text)'};line-height:1.45;">${item}</div>
+        </div>`).join('')}
+    </div>
+    ${uncheckedCount > 0 ? `<div style="padding:10px 14px;background:rgba(186,117,23,0.08);border:0.5px solid var(--amber);border-radius:var(--r-sm);font-size:11.5px;color:var(--amber);margin-bottom:16px;">⚠ ${uncheckedCount} punto${uncheckedCount!==1?'s':''} sin verificar. Puedes continuar bajo tu criterio — quedará registrado.</div>` : `<div style="padding:10px 14px;background:rgba(29,158,117,0.08);border:0.5px solid var(--green);border-radius:var(--r-sm);font-size:11.5px;color:var(--green);margin-bottom:16px;">✓ Checklist completo.</div>`}
+    <div style="display:flex;gap:10px;">
+      <button onclick="openReport()" style="padding:9px 16px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Volver</button>
+      <button onclick="openM7ImpactReview()" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">Continuar a generación del informe →</button>
+    </div>
+  </div>`;
+}
+
+function getQualityChecklistReportContext() {
+  const cl = qualityChecklistData[currentClient?.id];
+  if (!cl) return '';
+  const uncheckedItems = QUALITY_CHECKLIST_ITEMS.filter((_, i) => !cl.checked[i]);
+  if (!uncheckedItems.length) return '\n=== CHECKLIST DE CALIDAD ===\nTodos los puntos verificados antes de generar el informe.\n';
+  let ctx = '\n=== CHECKLIST DE CALIDAD — PUNTOS NO VERIFICADOS ===\n';
+  uncheckedItems.forEach(i => { ctx += `  - ${i}\n`; });
+  return ctx;
+}
+
 // ══════════════════════════════════════════════════════
 // ── M7 · MINI-REVISIÓN DEL IMPACTO OPERATIVO ──
 // Se interpone entre el botón "Generar informe" y generateReport().
