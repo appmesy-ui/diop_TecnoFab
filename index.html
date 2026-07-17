@@ -4710,7 +4710,7 @@ const TIPO_INICIATIVA = {
 function tipoIniciativaLabel(k){ return TIPO_INICIATIVA[k]?.label || 'Sin clasificar'; }
 function tipoIniciativaColor(k){ return TIPO_INICIATIVA[k]?.color || 'var(--text4)'; }
 
-function defaultM6(){return{backlog:[],custom_catalogue:[]};}
+function defaultM6(){return{backlog:[],custom_catalogue:[],numPlants:1};}
 function getM6(){if(!currentClient)return defaultM6();if(!m6Data[currentClient.id])m6Data[currentClient.id]=defaultM6();return m6Data[currentClient.id];}
 
 async function loadM6Data(clientId){try{const key=`${clientId}_m6_m6_config`;if(allAnswers[key]){m6Data[clientId]=JSON.parse(allAnswers[key]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','m6').eq('question_id','m6_config').single();if(data?.answer){m6Data[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}}}catch(e){}}
@@ -4820,6 +4820,22 @@ function generateSuggestions(currentBacklog){
 }
 
 function confidenceBandFromScore(v){return v>=4?'Alta':v>=3?'Media':v>0?'Baja':'Pendiente';}
+
+// ── Umbral de Quick Win — dinámico según facturación del cliente ──
+// Antes: fijo en 20.000€ (pensado para PYME). Ahora: proporcional a la
+// facturación, con suelo (comportamiento actual en PYME, sin cambios)
+// y techo (evita un umbral disparatado en un grupo grande tipo AEB).
+function getQuickWinInvestmentThreshold(cid) {
+  cid = cid || currentClient?.id;
+  const revenueRaw = allAnswers[`${cid}_ceo_revenue`] || '';
+  const revenueMap = {'menos de 2M€':1500000,'2M€ - 5M€':3500000,'5M€ - 10M€':7500000,'10M€ - 25M€':17500000,'25M€ - 50M€':37500000,'más de 50M€':60000000};
+  const revenueNum = revenueMap[revenueRaw] || 3500000;
+  const RAW_THRESHOLD = revenueNum * 0.004; // 0.4% de la facturación anual
+  const FLOOR = 20000;
+  const CEILING = 150000;
+  return Math.round(Math.min(Math.max(RAW_THRESHOLD, FLOOR), CEILING));
+}
+
 function calcPortfolioEconomics(backlog){
   const list=(backlog||[]).filter(b=>b.investment>0&&(b.savings>0||b.savings_low>0||b.savings_high>0));
   const totalInv=list.reduce((a,b)=>a+(Number(b.investment)||0),0);
@@ -4830,6 +4846,46 @@ function calcPortfolioEconomics(backlog){
   const avgConf=confs.length?Math.round(confs.reduce((a,b)=>a+b,0)/confs.length*10)/10:0;
   const riskCount=(backlog||[]).filter(b=>b.cat==='D').length;
   return {list,totalInv,totalLow,totalBase,totalHigh,avgConf,confidenceBand:confidenceBandFromScore(avgConf),paybackLow:totalLow?Math.round(totalInv/totalLow*12):0,paybackBase:totalBase?Math.round(totalInv/totalBase*12):0,paybackHigh:totalHigh?Math.round(totalInv/totalHigh*12):0,riskCount};
+}
+
+// ── Escalado a grupo multi-planta (ej. AEB · 7 fábricas) ──
+// El portfolio base (calcPortfolioEconomics) representa SOLO la planta piloto
+// diagnosticada. Este escalado proyecta el resultado a las plantas adicionales
+// del grupo, de forma conservadora — no asume que el 100% del ahorro y coste
+// se repite igual en cada planta (procesos, equipos y madurez varían).
+// savingsFactor/investmentFactor son supuestos declarados del consultor,
+// editables, no un benchmark externo — cada planta adicional aporta menos
+// que la piloto porque no se ha diagnosticado directamente.
+const GROUP_REPLICATION_DEFAULTS = {
+  savingsFactor: 0.65,   // cada planta adicional aporta el 65% del ahorro de la piloto
+  investmentFactor: 0.80 // cada planta adicional cuesta el 80% de la inversión de la piloto (ya hay playbook)
+};
+
+function calcGroupPortfolioEconomics(backlog, numPlants, replicationOverrides) {
+  const base = calcPortfolioEconomics(backlog);
+  const n = Math.max(1, Math.round(Number(numPlants)) || 1);
+  const rep = { ...GROUP_REPLICATION_DEFAULTS, ...(replicationOverrides || {}) };
+
+  if (n <= 1 || base.totalInv <= 0) {
+    return { ...base, numPlants: n, isGroupEstimate: false };
+  }
+
+  const extraPlants = n - 1;
+  const groupInv = Math.round(base.totalInv * (1 + extraPlants * rep.investmentFactor));
+  const groupLow = Math.round(base.totalLow * (1 + extraPlants * rep.savingsFactor));
+  const groupBase = Math.round(base.totalBase * (1 + extraPlants * rep.savingsFactor));
+  const groupHigh = Math.round(base.totalHigh * (1 + extraPlants * rep.savingsFactor));
+
+  return {
+    ...base,
+    numPlants: n,
+    isGroupEstimate: true,
+    replication: rep,
+    groupInv, groupLow, groupBase, groupHigh,
+    groupPaybackLow: groupLow ? Math.round(groupInv / groupLow * 12) : 0,
+    groupPaybackBase: groupBase ? Math.round(groupInv / groupBase * 12) : 0,
+    groupPaybackHigh: groupHigh ? Math.round(groupInv / groupHigh * 12) : 0
+  };
 }
 
 function getTTLColor(layer){const c={'L1':'#E24B4A','L2':'#F59E0B','L3':'#3B82F6','L4':'#8B5CF6','L5':'#06B6D4','L6':'#10B981'};return c[layer]||'#6B7280';}
@@ -5017,6 +5073,45 @@ function renderM6(){
         <div class="vsm-result-card"><div class="vsm-result-val ${avgConf<3?'warn':''}">${avgConf>0?avgConf+'/5':'—'}</div><div class="vsm-result-label">Factor confianza medio</div></div>
       </div>
     </div>`;
+
+    // ── ESCALADO A GRUPO MULTI-PLANTA ──
+    const numPlants = m.numPlants || 1;
+    const grp = calcGroupPortfolioEconomics(backlog, numPlants);
+    html += `<div class="vsm-section"><div class="vsm-section-title">🏭 Escalado a grupo (multi-planta)</div>
+      <div class="vsm-section-sub">Proyecta el portfolio de esta planta piloto al resto del grupo. Estimación conservadora, sujeta a validación planta por planta — NO es sustituto de un diagnóstico real en cada fábrica.</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+        <label style="font-size:11px;color:var(--text3);">Nº de plantas del grupo (incluida la piloto):</label>
+        <input type="number" min="1" value="${numPlants}" onchange="getM6().numPlants=Math.max(1,parseInt(this.value)||1);m6Changed();" style="width:64px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--text);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
+      </div>`;
+
+    if (grp.isGroupEstimate) {
+      html += `
+      <div style="margin-top:14px;font-size:10px;color:var(--text3);font-family:var(--mono);">Supuesto de réplica: cada planta adicional aporta ${(grp.replication.savingsFactor*100).toFixed(0)}% del ahorro de la piloto y cuesta ${(grp.replication.investmentFactor*100).toFixed(0)}% de su inversión (playbook ya construido). Editable — decisión del consultor, no benchmark externo.</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
+        <div style="padding:14px;background:var(--s2);border:1px solid rgba(226,75,74,0.3);border-radius:var(--r);text-align:center;">
+          <div style="font-size:9px;color:var(--red);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Conservador · grupo</div>
+          <div style="font-size:20px;font-weight:700;color:var(--red);font-family:var(--mono);">${grp.groupLow>0?(grp.groupLow/1000).toFixed(0)+'k€':'—'}</div>
+          <div style="font-size:9px;color:var(--text3);">ahorro/año · ${numPlants} plantas</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${grp.groupPaybackLow?grp.groupPaybackLow+'m payback':'—'}</div>
+        </div>
+        <div style="padding:14px;background:var(--s2);border:1px solid var(--teal);border-radius:var(--r);text-align:center;">
+          <div style="font-size:9px;color:var(--teal);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Base · grupo</div>
+          <div style="font-size:20px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${(grp.groupBase/1000).toFixed(0)}k€</div>
+          <div style="font-size:9px;color:var(--text3);">ahorro/año · ${numPlants} plantas</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${grp.groupPaybackBase}m payback</div>
+        </div>
+        <div style="padding:14px;background:var(--s2);border:1px solid rgba(16,185,129,0.3);border-radius:var(--r);text-align:center;">
+          <div style="font-size:9px;color:var(--green);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Optimista · grupo</div>
+          <div style="font-size:20px;font-weight:700;color:var(--green);font-family:var(--mono);">${grp.groupHigh>0?(grp.groupHigh/1000).toFixed(0)+'k€':'—'}</div>
+          <div style="font-size:9px;color:var(--text3);">ahorro/año · ${numPlants} plantas</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${grp.groupPaybackHigh?grp.groupPaybackHigh+'m payback':'—'}</div>
+        </div>
+      </div>
+      <div class="vsm-result-card" style="margin-top:10px;"><div class="vsm-result-val">${(grp.groupInv/1000).toFixed(0)}k€</div><div class="vsm-result-label">Inversión total estimada del grupo</div></div>`;
+    } else {
+      html += `<div style="margin-top:10px;font-size:11px;color:var(--text3);">Con 1 planta, el escalado coincide con el portfolio de la piloto. Sube el número de plantas para ver la proyección de grupo.</div>`;
+    }
+    html += `</div>`;
   }
 
   // ── ROADMAP BY TTL LAYERS ──
@@ -6610,6 +6705,7 @@ function ftFingerprint(breakdown) {
   (breakdown?.dolor1?.components || []).forEach(c => parts.push(`${c.key}:${c.formula}:${c.value}`));
   if (breakdown?.dolor2?.rotation) parts.push(`rotation:${breakdown.dolor2.rotation.formula}:${breakdown.dolor2.rotation.value}`);
   if (breakdown?.dolor2?.absenceRisk) parts.push(`absence:${breakdown.dolor2.absenceRisk.formula}:${breakdown.dolor2.absenceRisk.value}`);
+  if (breakdown?.dolor2?.traceability) parts.push(`traceability:${breakdown.dolor2.traceability.formula || breakdown.dolor2.traceability.riskLevel}:${breakdown.dolor2.traceability.value}`);
   return parts.join('|');
 }
 let ftReportStale = false;
@@ -6758,6 +6854,7 @@ function renderFreeTrialReport(r) {
   const d1Val = fmtMoney(d1.valor);
   const d2 = r.dolor2 || {};
   const d3 = r.dolor3 || {};
+  const trz = r.traceability || null;
   const diag = r.diagnostico_narrativo || {};
   const benchKpis = r.benchmark_kpis || [];
   const qws = r.quick_wins || [];
@@ -6781,6 +6878,18 @@ function renderFreeTrialReport(r) {
     </div>
   </div>
 
+  ${(r.qualityWarnings && r.qualityWarnings.length) ? `<div style="background:#fff8e6;border:1px solid #d4a72c;border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:11.5px;color:#8a6d1a;">
+    ⚠ Solo visible para ti (no aparece en el PDF del cliente): la narrativa generada contiene lenguaje genérico detectado automáticamente — revisa antes de exportar: <strong>${r.qualityWarnings.map(esc).join(', ')}</strong>. Puedes regenerar el informe o editar el texto a mano.
+  </div>` : ''}
+
+  ${(r.resumenEjecutivo && r.resumenEjecutivo.length) ? `<div style="background:#0a2e2c;border-radius:16px;padding:22px 28px;margin-bottom:16px;">
+    <div style="font-size:10px;color:#5dcaa5;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:12px;">Resumen ejecutivo</div>
+    ${r.resumenEjecutivo.map((frase,i) => `<div style="display:flex;gap:10px;margin-bottom:${i<r.resumenEjecutivo.length-1?'8px':'0'};">
+      <span style="color:#5dcaa5;font-weight:700;font-size:13px;flex-shrink:0;">${i+1}.</span>
+      <span style="font-size:13.5px;color:#e1f5ee;line-height:1.55;">${esc(frase)}</span>
+    </div>`).join('')}
+  </div>` : ''}
+
   <!-- 01 · EL NÚMERO -->
   <div style="background:#f7fdfd;border-left:4px solid #00adb5;border-radius:0 16px 16px 0;padding:24px 28px;margin-bottom:16px;">
     <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#628f98;font-weight:700;margin-bottom:8px;">01 · El número que no sabían</div>
@@ -6799,6 +6908,18 @@ function renderFreeTrialReport(r) {
       ${d2.valorRiesgoAusencia ? `<div><div style="font-size:24px;font-weight:700;color:#a32d2d;font-family:'DM Mono',monospace;">${fmtMoney(d2.valorRiesgoAusencia)}</div><div style="font-size:10.5px;color:#999;">riesgo si falta 1 semana</div></div>` : ''}
     </div>
     <div style="font-size:13.5px;color:#2a2a2a;line-height:1.65;">${esc(d2.texto || '')}</div>
+  </div>` : ''}
+
+  ${trz ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:12px;">02B · Riesgo de trazabilidad y calidad</div>
+    ${trz.valor != null ? `<div style="margin-bottom:12px;">
+      <div style="font-size:24px;font-weight:700;color:#a32d2d;font-family:'DM Mono',monospace;">${fmtMoney(trz.valor)}</div>
+      <div style="font-size:10.5px;color:#999;">${trz.isHistorical ? 'coste histórico documentado (recall real declarado)' : 'exposición estimada'}</div>
+    </div>` : trz.riskLevel ? `<div style="margin-bottom:12px;">
+      <span style="font-size:11px;padding:4px 12px;border-radius:20px;font-weight:700;text-transform:uppercase;background:#fef0f0;color:#a32d2d;">Riesgo ${esc(trz.riskLevel)}</span>
+      <div style="font-size:10.5px;color:#999;margin-top:6px;">Sin recall real declarado — indicador cualitativo, no coste cuantificado.</div>
+    </div>` : ''}
+    <div style="font-size:13.5px;color:#2a2a2a;line-height:1.65;">${esc(trz.texto || '')}</div>
   </div>` : ''}
 
   ${d3.texto ? `<div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:22px 26px;margin-bottom:16px;">
@@ -6867,7 +6988,7 @@ async function exportFreeTrialPDF() {
   const esc = v => String(v ?? '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const fmtMoney = v => (v === null || v === undefined || v === '') ? '—' : Number(v).toLocaleString('es-ES') + ' €';
   const urgColor = r.urgencia === 'alta' ? '#E24B4A' : r.urgencia === 'media' ? '#BA7517' : '#1D9E75';
-  const d1 = r.dolor1 || {}; const d2 = r.dolor2 || {}; const d3 = r.dolor3 || {};
+  const d1 = r.dolor1 || {}; const d2 = r.dolor2 || {}; const d3 = r.dolor3 || {}; const trz = r.traceability || null;
   const diag = r.diagnostico_narrativo || {};
   const benchKpis = r.benchmark_kpis || [];
   const qws = r.quick_wins || [];
@@ -6917,6 +7038,11 @@ async function exportFreeTrialPDF() {
   ${r.arquetipo ? `<span class="badge" style="background:#0f6e56;color:#9fe1cb;">${esc(r.arquetipo)}</span>` : ''}
 </div>
 
+${(r.resumenEjecutivo && r.resumenEjecutivo.length) ? `<div class="cta no-break" style="margin-bottom:5mm;">
+  <div class="cta-label">Resumen ejecutivo</div>
+  ${r.resumenEjecutivo.map((frase,i) => `<div style="display:flex;gap:2.5mm;margin-bottom:${i<r.resumenEjecutivo.length-1?'1.5mm':'0'};"><span style="color:#5dcaa5;font-weight:bold;font-size:9pt;flex-shrink:0;">${i+1}.</span><span style="font-size:9.5pt;line-height:1.55;">${esc(frase)}</span></div>`).join('')}
+</div>` : ''}
+
 <div class="section no-break">
   <div class="section-label">01 · El número que no sabían</div>
   <div class="number-big">${fmtMoney(d1.valor)}</div>
@@ -6929,6 +7055,12 @@ ${(d2.valor || d2.texto) ? `<div class="section no-break">
   <div class="section-label">02 · Dependéis de personas que no podéis perder</div>
   ${d2.valor ? `<div class="number-big" style="font-size:20pt;">${fmtMoney(d2.valor)}</div>` : ''}
   <div class="narr">${esc(d2.texto||'')}</div>
+</div>` : ''}
+
+${trz ? `<div class="section no-break">
+  <div class="section-label">02B · Riesgo de trazabilidad y calidad</div>
+  ${trz.valor != null ? `<div class="number-big" style="font-size:18pt;color:#a32d2d;">${fmtMoney(trz.valor)}</div><div class="number-label">${trz.isHistorical ? 'coste histórico documentado (recall real)' : 'exposición estimada'}</div>` : trz.riskLevel ? `<span class="badge" style="background:#fef0f0;color:#a32d2d;">Riesgo ${esc(trz.riskLevel)}</span>` : ''}
+  <div class="narr">${esc(trz.texto||'')}</div>
 </div>` : ''}
 
 ${d3.texto ? `<div class="section no-break">
@@ -7272,6 +7404,53 @@ function calcFreeTrialBreakdown() {
     };
   }
 
+  // ── DOLOR 2C: Riesgo de trazabilidad/calidad ──
+  // Solo se calcula en € si hay un recall real declarado (dato del cliente, no inventado).
+  // Sin recall real, se muestra como riesgo cualitativo (nivel), sin cifra — ver conversación
+  // con Marti: no hay benchmark externo defendible para "coste de un evento" a nivel de una
+  // planta individual sin datos propios, así que no se fuerza un número.
+  const hasRecallRaw = a('ceo', 'has_recall');
+  const recallCostRaw = a('ceo', 'recall_cost');
+  const lotTrackingRaw = a('fab', 'lot_tracking');
+
+  const LOT_MATURITY_RISK = {
+    'Trazabilidad completa de lote a producto final': { level: 'bajo', note: 'Trazabilidad completa — riesgo residual bajo según práctica habitual del sector.' },
+    'Trazabilidad parcial (solo algunos puntos)': { level: 'medio', note: 'Trazabilidad parcial — riesgo medio; puntos ciegos en la cadena de lote pueden ampliar el alcance de una futura incidencia.' },
+    'Solo se registra el lote de entrada': { level: 'alto', note: 'Solo se registra el lote de entrada — sin trazabilidad de proceso, una incidencia obligaría a revisar producción de un rango de fechas más amplio del necesario.' },
+    'No se hace trazabilidad de lotes': { level: 'crítico', note: 'Sin trazabilidad de lotes — ante una incidencia, no hay forma de acotar el alcance real; el riesgo de retirada ampliada es máximo.' }
+  };
+  const RECALL_COST_MAP = {
+    'menos de 50.000€': 25000,
+    '50.000€ - 200.000€': 125000,
+    'más de 200.000€': 300000
+  };
+
+  let traceabilityComponent = null;
+  const recallReal = hasRecallRaw === 'Sí' ? RECALL_COST_MAP[recallCostRaw] : null;
+
+  if (recallReal) {
+    traceabilityComponent = {
+      key: 'traceability_risk', label: 'Coste histórico de incidencia de calidad/recall',
+      inputSummary: `recall real declarado · coste: "${recallCostRaw}"`,
+      formula: `dato real declarado por el cliente`,
+      value: recallReal,
+      isEstimate: false,
+      isHistorical: true,
+      benchmark: { withinBenchmark: null }
+    };
+  } else if (LOT_MATURITY_RISK[lotTrackingRaw]) {
+    traceabilityComponent = {
+      key: 'traceability_risk', label: 'Riesgo de trazabilidad (cualitativo)',
+      inputSummary: `madurez: "${lotTrackingRaw}"`,
+      riskLevel: LOT_MATURITY_RISK[lotTrackingRaw].level,
+      note: LOT_MATURITY_RISK[lotTrackingRaw].note,
+      value: null,
+      isEstimate: true,
+      isQualitative: true,
+      benchmark: { withinBenchmark: null }
+    };
+  }
+
   // ── DOLOR 3: contexto cualitativo (no se calcula en €, se usa como narrativa) ──
   const lostOrders = a('ceo', 'lost_orders');
   const growthCapacityRaw = a('fab', 'growth_capacity_pct');
@@ -7279,7 +7458,7 @@ function calcFreeTrialBreakdown() {
   return {
     sector,
     dolor1: { components, total: dolor1Total },
-    dolor2: { rotation: rotationComponent, absenceRisk: absenceComponent, keyPersonField: a('fab','key_person_field') },
+    dolor2: { rotation: rotationComponent, absenceRisk: absenceComponent, traceability: traceabilityComponent, keyPersonField: a('fab','key_person_field') },
     dolor3: { lostOrders, growthCapacityRaw },
     meta: { revenueNum, operatorHourCost, operatorHourCostIsReal, productiveWeeks, scopeLabel }
   };
@@ -7329,6 +7508,9 @@ async function startFreeTrialReview(isAutoResume) {
       }
       if (draft.dolor2?.absenceRisk && ftBreakdownEdited.dolor2?.absenceRisk && draft.dolor2.absenceRisk.formula === ftBreakdownEdited.dolor2.absenceRisk.formula) {
         ftBreakdownEdited.dolor2.absenceRisk.value = draft.dolor2.absenceRisk.value;
+      }
+      if (draft.dolor2?.traceability && ftBreakdownEdited.dolor2?.traceability && draft.dolor2.traceability.value != null && draft.dolor2.traceability.formula === ftBreakdownEdited.dolor2.traceability.formula) {
+        ftBreakdownEdited.dolor2.traceability.value = draft.dolor2.traceability.value;
       }
       if (isAutoResume) ftDraftRestored = true;
     }
@@ -7390,6 +7572,8 @@ function ftEditComponent(input) {
     ftBreakdownEdited.dolor2.rotation.value = newVal;
   } else if (group === 'absence') {
     ftBreakdownEdited.dolor2.absenceRisk.value = newVal;
+  } else if (group === 'traceability') {
+    ftBreakdownEdited.dolor2.traceability.value = newVal;
   }
   saveFtDraftReview();
   renderFreeTrialReview(true);
@@ -7426,6 +7610,13 @@ function renderFreeTrialReview(skipScroll) {
   ${d2.rotation ? `<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;">Dolor 2 — Dependencia de personas</div>
   ${ftReviewComponentRow(d2.rotation, null, 'rotation')}` : ''}
   ${d2.absenceRisk ? ftReviewComponentRow(d2.absenceRisk, null, 'absence') : `<div style="font-size:11px;color:var(--text3);margin-bottom:16px;padding:10px 14px;background:var(--s2);border-radius:var(--r-sm);">No se identificó riesgo de ausencia de persona clave en las respuestas de Fábrica.</div>`}
+
+  ${d2.traceability && d2.traceability.value != null ? ftReviewComponentRow(d2.traceability, null, 'traceability')
+    : d2.traceability ? `<div style="padding:10px 14px;background:var(--s2);border-radius:var(--r-sm);margin-bottom:16px;">
+        <div style="font-size:11.5px;color:var(--text);font-weight:600;margin-bottom:4px;">Riesgo de trazabilidad — nivel: <span style="text-transform:uppercase;color:var(--amber);">${d2.traceability.riskLevel}</span></div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.5;">${d2.traceability.note} — sin cifra en € porque no hay recall real declarado; se muestra como riesgo cualitativo, no como coste.</div>
+      </div>`
+    : `<div style="font-size:11px;color:var(--text3);margin-bottom:16px;padding:10px 14px;background:var(--s2);border-radius:var(--r-sm);">No hay datos suficientes de trazabilidad (Sesión Fábrica) para valorar este riesgo.</div>`}
 
   <div style="display:flex;gap:10px;margin-top:24px;">
     <button onclick="cancelFreeTrialReview()" style="padding:10px 18px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Cancelar</button>
@@ -7493,6 +7684,13 @@ ${d2.rotation ? `- Coste de rotación/onboarding: ${d2.rotation.value.toLocaleSt
 ${d2.absenceRisk ? `- Riesgo si falta 1 semana la persona clave: ${d2.absenceRisk.value.toLocaleString('es-ES')}€` : '- No se identificó persona clave de riesgo crítico'}
 - Persona clave identificada en campo: ${d2.keyPersonField || 'No especificada'}
 
+DOLOR 2C — Trazabilidad/calidad:
+${d2.traceability
+  ? (d2.traceability.value != null
+      ? `- Recall real declarado, coste histórico: ${d2.traceability.value.toLocaleString('es-ES')}€. Esto es un HECHO PASADO, no un coste anual recurrente — escribe el texto en ese tiempo, no como "pérdida anual".`
+      : `- Sin recall real declarado. Nivel de riesgo cualitativo por madurez de trazabilidad: ${d2.traceability.riskLevel.toUpperCase()}. Contexto: ${d2.traceability.note} NO INVENTES UNA CIFRA EN € — este dolor se presenta como riesgo, no como coste cuantificado.`)
+  : '- Sin datos suficientes de trazabilidad para valorar este riesgo.'}
+
 DOLOR 3 — Capacidad de crecer:
 - Pierde pedidos por capacidad: ${d3.lostOrders || 'No especificado'}
 - Volumen adicional posible sin límite operativo: ${d3.growthCapacityRaw || 'No especificado'}
@@ -7515,23 +7713,30 @@ ${ftQuickWins.map((qw,i) => `${i+1}. Componente: ${qw.componenteLabel} · Acció
 Tu trabajo con esto es SOLO redactar un título en lenguaje CEO y una descripción de 1-2 frases de cómo implementarlo, usando la acción sugerida y conectándola si puedes con la observación de campo. NO cambies el ahorro ni el componente — ya están decididos.
 
 INSTRUCCIONES:
+0. TEST DE PLANTILLA — antes de escribir cada frase de negocio (dolor1_contexto, dolor2_texto, traceability_texto, dolor3_texto, diagnostico_narrativo, la_pregunta), pregúntate: "¿esta frase serviría igual, palabra por palabra, para otro cliente del sector?" Si la respuesta es sí, reescríbela citando algo específico de ESTE cliente (la observación de campo exacta, la persona identificada, el número real). Una frase sin un dato o una observación concreta de ${currentClient.name} dentro no pasa el test.
+0b. PROHIBIDO usar relleno de consultora genérica. Nunca escribas: "sinergias", "de clase mundial"/"world-class", "estamos comprometidos con la excelencia", "revolucionar", "llevar al siguiente nivel", "cadena de valor" (sin concretar cuál), "optimizar procesos" a secas (di qué proceso y qué le pasa), "en un mercado cada vez más competitivo", o cualquier frase que abra un informe de LinkedIn. Cada frase debe decir algo que solo se puede decir tras haber estado en la fábrica de este cliente.
+0c. Nada de cobertura ("podría ser que", "posiblemente", "tal vez") salvo en hipótesis_pendientes, donde sí es apropiado por ser una predicción. En el resto de campos, afirma con la seguridad que dan los datos que tienes — son reales, no hace falta suavizarlos.
 1. NO inventes ni cambies ningún número — usa exactamente los de arriba si los mencionas.
 2. La narrativa debe nombrar un patrón operativo y conectarlo con la observación de campo más reveladora.
 3. dolor1_label: frase corta de negocio sobre qué representa el total del Dolor 1.
-4. dolor1_contexto: 1-2 frases conectando el número con la observación de campo más relevante — NO repitas el desglose numérico, eso ya se muestra aparte.
-5. dolor2_texto: 2-3 frases sobre la dependencia de personas, usando la persona identificada en campo.
-6. dolor3_texto: 2-3 frases sobre qué limita el crecimiento.
+4. dolor1_contexto: 1-2 frases (máx. 45 palabras) conectando el número con la observación de campo más relevante — NO repitas el desglose numérico, eso ya se muestra aparte.
+5. dolor2_texto: 2-3 frases (máx. 60 palabras) sobre la dependencia de personas, usando la persona identificada en campo.
+5b. traceability_texto: 2-3 frases (máx. 60 palabras) sobre el riesgo de trazabilidad/calidad. Si hay recall real, trátalo como hecho histórico documentado. Si es riesgo cualitativo (sin recall real), habla de exposición/riesgo, NUNCA como si fuera un coste anual garantizado, y NO menciones ninguna cifra en € que no te haya dado yo.
+6. dolor3_texto: 2-3 frases (máx. 60 palabras) sobre qué limita el crecimiento.
 7. la_pregunta: una pregunta estratégica de negocio, no técnica.
 8. quick_wins: para cada uno de los quick wins YA CALCULADOS arriba, escribe título + descripción. Mantén el mismo orden (ya vienen ordenados de mayor a menor ahorro).
 9. hipotesis_pendientes: para cada una de estas 4 áreas que el Free Trial NO cubre (IT/OT, Value Stream Map, OFI Score completo, Roadmap+ROI), escribe UNA frase corta (máx. 20 palabras) prediciendo qué es probable que encontremos ahí, anclada en una señal CONCRETA ya vista en este diagnóstico (una observación de campo, un componente del Dolor 1, la persona clave, etc.). Debe sonar a hipótesis fundada de consultor, no a texto de venta genérico. Si no hay ninguna señal real que la sustente, deja el campo vacío ("") en vez de inventar una genérica.
+10. resumen_ejecutivo: EXACTAMENTE 3 frases, cada una de máx. 25 palabras, para un director que solo va a leer esto antes de decidir si sigue. Frase 1: el hallazgo económico principal (usa la cifra del Dolor 1). Frase 2: el patrón de causa raíz en una línea. Frase 3: qué está en juego si no se actúa (conecta con crecimiento o riesgo de trazabilidad, lo que sea más fuerte en este caso). Cada frase pasa el TEST DE PLANTILLA del punto 0 — nada de "identificamos oportunidades de mejora".
 
 Devuelve SOLO este JSON, sin texto adicional:
 {
+  "resumen_ejecutivo": ["frase 1 — hallazgo económico", "frase 2 — patrón/causa raíz", "frase 3 — qué está en juego"],
   "arquetipo": "nombre del patrón observado",
   "urgencia": "alta|media|baja",
   "dolor1_label": "frase corta de negocio",
   "dolor1_contexto": "1-2 frases conectando con observación de campo",
   "dolor2_texto": "2-3 frases",
+  "traceability_texto": "2-3 frases sobre riesgo de trazabilidad, sin inventar cifras",
   "dolor3_texto": "2-3 frases",
   "diagnostico_narrativo": {
     "patron": "1 párrafo nombrando el patrón operativo observado",
@@ -7560,9 +7765,32 @@ Devuelve SOLO este JSON, sin texto adicional:
     let text = (data.content || '').replace(/```json|```/g, '').trim();
     const narrative = JSON.parse(text);
 
+    // ── Red de seguridad: detección de relleno genérico ──
+    // El prompt YA prohíbe estas frases (instrucción 0b), pero un LLM puede
+    // ignorarlo. Esta es una segunda capa determinista — nunca confiar solo
+    // en que el prompt se obedezca. Solo lo ve el consultor, nunca el cliente.
+    const GENERIC_FILLER_PHRASES = [
+      'sinergia', 'clase mundial', 'world-class', 'world class',
+      'comprometidos con la excelencia', 'revolucionar', 'siguiente nivel',
+      'mercado cada vez más competitivo', 'identificamos oportunidades de mejora',
+      'optimizar procesos', 'valor añadido', 'llevar al siguiente',
+      'de vanguardia', 'cutting-edge', 'cutting edge'
+    ];
+    function detectGenericFiller(nrv) {
+      const textFields = [
+        nrv.dolor1_contexto, nrv.dolor2_texto, nrv.traceability_texto, nrv.dolor3_texto,
+        nrv.diagnostico_narrativo?.patron, nrv.diagnostico_narrativo?.causa_raiz, nrv.diagnostico_narrativo?.posibilidad,
+        nrv.la_pregunta, ...(nrv.resumen_ejecutivo || [])
+      ].filter(Boolean).join(' \n ').toLowerCase();
+      return GENERIC_FILLER_PHRASES.filter(p => textFields.includes(p));
+    }
+    const genericHits = detectGenericFiller(narrative);
+
     // Ensamblamos el informe final: números validados (JS) + narrativa (IA), nunca mezclados
     ftReport = {
       generationSnapshot: ftFingerprint(ftBreakdownEdited),
+      qualityWarnings: genericHits, // visible solo al consultor en pantalla, nunca en el PDF cliente
+      resumenEjecutivo: narrative.resumen_ejecutivo || [],
       arquetipo: narrative.arquetipo,
       urgencia: narrative.urgencia,
       dolor1: {
@@ -7576,6 +7804,12 @@ Devuelve SOLO este JSON, sin texto adicional:
         valorRiesgoAusencia: d2.absenceRisk ? d2.absenceRisk.value : null,
         texto: narrative.dolor2_texto
       },
+      traceability: d2.traceability ? {
+        valor: d2.traceability.value, // null si es riesgo cualitativo — no forzar cifra
+        isHistorical: !!d2.traceability.isHistorical,
+        riskLevel: d2.traceability.riskLevel || null,
+        texto: narrative.traceability_texto
+      } : null,
       dolor3: { texto: narrative.dolor3_texto },
       diagnostico_narrativo: narrative.diagnostico_narrativo,
       la_pregunta: narrative.la_pregunta,
@@ -7769,21 +8003,28 @@ function calcM7OperationalImpact() {
 // queda registrado qué puntos no se verificaron, para trazabilidad.
 // ══════════════════════════════════════════════════════
 
-const QUALITY_CHECKLIST_ITEMS = [
-  'El OFI™ está calculado con las 4 dimensiones y aparece en la primera página del resumen ejecutivo.',
-  'El arquetipo del cliente está confirmado y la narrativa usa su lenguaje específico.',
-  'Cada iniciativa del backlog tiene Tipo (M5.3), capa TTL™ y posición RIM™ asignados.',
-  'El roadmap respeta la secuencia TTL™: ninguna iniciativa Lx+2 activa sin Lx consolidado.',
-  'Cada hallazgo mayor tiene nivel de Confidence Layer™ asignado.',
-  'Cada ROI tiene categoría de beneficio (A/B/C/D) y las 4 reglas de integridad aplicadas.',
-  'Las lagunas de datos y limitaciones del diagnóstico están documentadas explícitamente.',
-  'Los Quick Wins cumplen los criterios: impacto ≥4, plazo ≤8 sem, inversión <20k€, sin dependencias.',
-  'El resumen ejecutivo sigue el Marco de Traducción: hecho → patrón → impacto → implicación estratégica.',
-  'El informe termina con próximos pasos concretos, fechas y responsables propuestos.',
-];
+// Antes era un array const fijo. Ahora es una función porque el criterio
+// de inversión de Quick Win (ítem 8) depende de la facturación del cliente
+// — ver getQuickWinInvestmentThreshold(). El resto de ítems no cambia.
+function getQualityChecklistItems(cid) {
+  const threshold = getQuickWinInvestmentThreshold(cid);
+  const thresholdLabel = threshold.toLocaleString('es-ES') + '€';
+  return [
+    'El OFI™ está calculado con las 4 dimensiones y aparece en la primera página del resumen ejecutivo.',
+    'El arquetipo del cliente está confirmado y la narrativa usa su lenguaje específico.',
+    'Cada iniciativa del backlog tiene Tipo (M5.3), capa TTL™ y posición RIM™ asignados.',
+    'El roadmap respeta la secuencia TTL™: ninguna iniciativa Lx+2 activa sin Lx consolidado.',
+    'Cada hallazgo mayor tiene nivel de Confidence Layer™ asignado.',
+    'Cada ROI tiene categoría de beneficio (A/B/C/D) y las 4 reglas de integridad aplicadas.',
+    'Las lagunas de datos y limitaciones del diagnóstico están documentadas explícitamente.',
+    `Los Quick Wins cumplen los criterios: impacto ≥4, plazo ≤8 sem, inversión <${thresholdLabel} (según facturación del cliente), sin dependencias.`,
+    'El resumen ejecutivo sigue el Marco de Traducción: hecho → patrón → impacto → implicación estratégica.',
+    'El informe termina con próximos pasos concretos, fechas y responsables propuestos.',
+  ];
+}
 
 let qualityChecklistData = {};
-function defaultQualityChecklist() { return { checked: new Array(QUALITY_CHECKLIST_ITEMS.length).fill(false) }; }
+function defaultQualityChecklist() { return { checked: new Array(getQualityChecklistItems().length).fill(false) }; }
 function getQualityChecklist() {
   if (!currentClient) return defaultQualityChecklist();
   if (!qualityChecklistData[currentClient.id]) qualityChecklistData[currentClient.id] = defaultQualityChecklist();
@@ -7825,7 +8066,7 @@ function renderQualityChecklistGate() {
       </div>
     </div>
     <div style="margin:16px 0;">
-      ${QUALITY_CHECKLIST_ITEMS.map((item, i) => `
+      ${getQualityChecklistItems(currentClient?.id).map((item, i) => `
         <div onclick="getQualityChecklist().checked[${i}]=!getQualityChecklist().checked[${i}];saveQualityChecklist();renderQualityChecklistGate();" style="display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:var(--r-sm);cursor:pointer;margin-bottom:2px;" onmouseenter="this.style.background='rgba(0,173,181,0.04)'" onmouseleave="this.style.background=''">
           <div style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${cl.checked[i]?'var(--teal)':'var(--border2)'};background:${cl.checked[i]?'rgba(0,173,181,0.15)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--teal);flex-shrink:0;margin-top:1px;">${cl.checked[i]?'✓':''}</div>
           <div style="font-size:12px;color:${cl.checked[i]?'var(--text2)':'var(--text)'};line-height:1.45;">${item}</div>
@@ -7842,7 +8083,7 @@ function renderQualityChecklistGate() {
 function getQualityChecklistReportContext() {
   const cl = qualityChecklistData[currentClient?.id];
   if (!cl) return '';
-  const uncheckedItems = QUALITY_CHECKLIST_ITEMS.filter((_, i) => !cl.checked[i]);
+  const uncheckedItems = getQualityChecklistItems(currentClient?.id).filter((_, i) => !cl.checked[i]);
   if (!uncheckedItems.length) return '\n=== CHECKLIST DE CALIDAD ===\nTodos los puntos verificados antes de generar el informe.\n';
   let ctx = '\n=== CHECKLIST DE CALIDAD — PUNTOS NO VERIFICADOS ===\n';
   uncheckedItems.forEach(i => { ctx += `  - ${i}\n`; });
