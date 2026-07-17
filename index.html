@@ -764,7 +764,7 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
       <label class="fl">Tipo de diagnóstico *</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
         <div id="mode-pilot" onclick="selectClientMode('pilot')" style="padding:12px;border-radius:var(--r-sm);border:1.5px solid var(--teal);background:rgba(0,173,181,0.1);cursor:pointer;">
-          <div style="font-size:13px;font-weight:600;color:var(--teal-l);">🎯 Free Trial</div>
+          <div style="font-size:13px;font-weight:600;color:var(--teal-l);">🎯 Impact Assessment</div>
           <div style="font-size:10.5px;color:var(--text3);margin-top:3px;line-height:1.4;">Solo CEO + Fábrica. Ligero para validar y presentar.</div>
         </div>
         <div id="mode-full" onclick="selectClientMode('full')" style="padding:12px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--s2);cursor:pointer;">
@@ -873,23 +873,23 @@ const SESSIONS = {
         {id:'fab_notes', text:'Observaciones libres de la visita en fábrica', type:'txt', prio:'s'},
       ]},
       { id:'obs_campo', name:'Observaciones de campo', obj:'Lo que ves, no lo que te cuentan — convierte la visita en diagnóstico, no en encuesta', questions:[
-        {id:'physical_bottleneck', text:'Material acumulado / cuellos de botella físicos', type:'sel', prio:'c', roi:'Señal directa de dónde se rompe el flujo — alimenta el diagnóstico narrativo del Free Trial', opts:['No hay acumulación visible','Hay stock entre máquinas en algún punto','Hay acumulación clara delante de una máquina específica','Hay caos general — material por todas partes']},
+        {id:'physical_bottleneck', text:'Material acumulado / cuellos de botella físicos', type:'sel', prio:'c', roi:'Señal directa de dónde se rompe el flujo — alimenta el diagnóstico narrativo del Impact Assessment', opts:['No hay acumulación visible','Hay stock entre máquinas en algún punto','Hay acumulación clara delante de una máquina específica','Hay caos general — material por todas partes']},
         {id:'operator_behavior', text:'Estado de los operarios en planta', type:'sel', prio:'c', opts:['Todos ocupados, ritmo constante','Hay momentos de espera visibles','Hay operarios parados esperando máquina o material','Cada uno hace lo suyo sin coordinación visible']},
         {id:'visual_mgmt', text:'Gestión visual de la información', type:'sel', prio:'c', roi:'Indica madurez de comunicación operativa — clave para el diagnóstico de dependencia de personas', opts:['Pantallas o tableros con datos en tiempo real','Pizarras o papel con información del día','Nada visible — la información está en la cabeza de alguien','Hay información pero nadie la mira']},
         {id:'order_cleanliness', text:'Estado general de orden y limpieza', type:'sel', prio:'i', opts:['Limpio y organizado — cada cosa en su sitio','Aceptable pero con zonas problemáticas','Desorganizado — cuesta encontrar las cosas','Caótico — señal clara de falta de sistema']},
         {id:'improvisation_signals', text:'Señales de improvisación', type:'sel', prio:'c', opts:['Todo parece planificado y estable','Alguna solución provisional que lleva tiempo ahí','Varias reparaciones o soluciones caseras visibles','La improvisación es el sistema']},
         {id:'revealing_comment', text:'El comentario espontáneo más revelador', type:'sel', prio:'c', roi:'Esto es lo que diferencia un diagnóstico de un informe de números — capta la causa raíz emocional', opts:['"Esto siempre ha sido así"','"Cuando [persona] no está, esto es un caos"','"Sabemos que hay que arreglarlo pero no hay tiempo"','"Esto lo tenemos controlado" — pero no lo tienen','No hubo comentario revelador']},
         {id:'key_person_field', text:'La persona clave que identificaste en campo', type:'sel', prio:'c', roi:'Confirma o matiza la dependencia declarada en la pregunta key_person_dependency', opts:['El responsable de producción lo sabe todo','Un operario específico es el que realmente sabe','El propio CEO es el cuello de botella','No hay una persona clave — el conocimiento está distribuido']},
-        {id:'root_cause_hypothesis', text:'Tu hipótesis de causa raíz al salir', type:'sel', prio:'c', roi:'Tu intuición de consultor — la IA la usa como ancla narrativa para el diagnóstico del Free Trial', opts:['El problema es de procesos — no están definidos','El problema es de personas — dependencia crítica','El problema es de datos — no saben lo que pasa','El problema es de capacidad — la fábrica no da más','El problema es de gestión — saben qué pasa pero no actúan']},
+        {id:'root_cause_hypothesis', text:'Tu hipótesis de causa raíz al salir', type:'sel', prio:'c', roi:'Tu intuición de consultor — la IA la usa como ancla narrativa para el diagnóstico del Impact Assessment', opts:['El problema es de procesos — no están definidos','El problema es de personas — dependencia crítica','El problema es de datos — no saben lo que pasa','El problema es de capacidad — la fábrica no da más','El problema es de gestión — saben qué pasa pero no actúan']},
       ]},
-      { id:'kpis', name:'KPIs operativos estimados', obj:'Los números que el CEO no sabe que tiene — el corazón del diagnóstico. Donde sea posible, pide el número más aproximado real, no un rango — esto es la base del cálculo del Free Trial', questions:[
+      { id:'kpis', name:'KPIs operativos estimados', obj:'Los números que el CEO no sabe que tiene — el corazón del diagnóstico. Donde sea posible, pide el número más aproximado real, no un rango — esto es la base del cálculo del Impact Assessment', questions:[
         {id:'downtime_hours_week_num', text:'¿Cuántas horas de parada no planificada tuvisteis de media la semana pasada / el mes pasado? (número aproximado, no rango)', type:'num', prio:'c', roi:'Base directa del cálculo de impacto — un número real reduce mucho el margen de error frente a un rango'},
         {id:'downtime_hours_week', text:'Si no tienes el número exacto arriba, dame al menos un rango', type:'sel', prio:'i', roi:'Solo se usa si no hay número exacto. Se toma el punto medio del rango, lo cual infla menos precisión que un dato real', opts:['menos de 2h','2h - 5h','5h - 10h','10h - 20h','más de 20h','No lo saben']},
         {id:'downtime_scope', text:'Las paradas que me describes — ¿afectan a una línea crítica, varias líneas, o toda la fábrica?', type:'sel', prio:'c', roi:'Determina si el coste de paradas se calcula sobre 1 línea o sobre toda la capacidad — cambia el número radicalmente', opts:['Una línea crítica específica','Varias líneas a la vez','Toda la fábrica','No lo saben']},
         {id:'production_lines_total', text:'¿Cuántas líneas de producción tiene la fábrica en total?', type:'num', prio:'c', roi:'Base para prorratear el coste de paradas si solo afecta a una parte de la fábrica'},
         {id:'productive_weeks_year', text:'¿Cuántas semanas productivas tiene la fábrica al año? (descontando vacaciones, paradas programadas)', type:'num', prio:'i', roi:'Sustituye el supuesto fijo de 48 semanas — algunas fábricas tienen menos por convenio o estacionalidad'},
         {id:'operator_hour_cost', text:'¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)', type:'num', prio:'c', roi:'Se reutiliza en retrabajo, onboarding y dependencia de personas — evita inventar este coste por separado en cada cálculo'},
-        {id:'line_hour_cost_num', text:'¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)', type:'num', prio:'c', roi:'Es el multiplicador principal del número grande del Free Trial — mejor un número real que un rango amplio'},
+        {id:'line_hour_cost_num', text:'¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)', type:'num', prio:'c', roi:'Es el multiplicador principal del número grande del Impact Assessment — mejor un número real que un rango amplio'},
         {id:'line_hour_cost', text:'Si no tienes el número exacto arriba, dame al menos un rango', type:'sel', prio:'i', roi:'Solo se usa si no hay número exacto', opts:['menos de 200€','200€ - 400€','400€ - 800€','más de 800€','No lo sabemos']},
         {id:'scrap_pct', text:'¿Qué porcentaje de merma o desperdicio estiman sobre la producción total?', type:'sel', prio:'c', roi:'% merma × coste de producto = pérdida real en euros. Benchmarked contra sector', opts:['menos del 2%','2% - 5%','5% - 10%','10% - 20%','más del 20%','No lo saben']},
         {id:'cogs_pct_revenue', text:'¿Qué porcentaje de la facturación representa el coste de materia prima y producto (COGS)?', type:'sel', prio:'i', roi:'La merma se aplica sobre el coste de producto, no sobre toda la facturación — sin este dato se asume un 40% genérico del sector', opts:['menos del 25%','25% - 40%','40% - 55%','más del 55%','No lo saben']},
@@ -3703,7 +3703,7 @@ function renderSidebarRoadmap() {
         { id:'m5', label:'M5 · OFI™ Intelligence', icon: m5Done ? '✓' : (m5HasData ? '→' : '○'), state: m5Done ? 'rc-done' : (m5HasData ? 'rc-active' : 'rc-pending'), labelClass: m5Done ? 'rld' : (m5HasData ? 'rla' : ''), action: 'openM5()' },
         { id:'m6', label:'M6 · Portfolio + RIM™', icon: m6HasData ? '✓' : '○', state: m6HasData ? 'rc-done' : 'rc-pending', labelClass: m6HasData ? 'rld' : '', action: 'openM6()' },
         { id:'report', label:'M7 · Executive Report', icon: '📄', state: reportState, labelClass: '', action: 'openReport()' },
-        { id:'freetrial', label:'Free Trial · Entregable cliente', icon: ftHasData ? '✓' : '○', state: ftHasData ? 'rc-done' : 'rc-pending', labelClass: ftHasData ? 'rld' : '', action: 'openFreeTrial()' },
+        { id:'freetrial', label:'Impact Assessment · Entregable cliente', icon: ftHasData ? '✓' : '○', state: ftHasData ? 'rc-done' : 'rc-pending', labelClass: ftHasData ? 'rld' : '', action: 'openFreeTrial()' },
       ]
     }
   ];
@@ -3711,16 +3711,16 @@ function renderSidebarRoadmap() {
   const isPilot = currentClient && (currentClient.client_mode || 'full') === 'pilot';
   const renderGroups = isPilot ? [
     {
-      icon:'📥', title:'Evidence', sub:'Las 2 sesiones del Free Trial',
+      icon:'📥', title:'Evidence', sub:'Las 2 sesiones del Impact Assessment',
       items:[
         { id:'ceo', label:'CEO / Dirección', icon:ic(ss('ceo')), state:cc(ss('ceo')), labelClass:lc(ss('ceo')), action:"openSession('ceo')", sub:true },
         { id:'fab', label:'Procesos + KPIs', icon:ic(ss('fab')), state:cc(ss('fab')), labelClass:lc(ss('fab')), action:"openSession('fab')", sub:true },
       ]
     },
     {
-      icon:'🎯', title:'Free Trial', sub:'Entregable para el cliente',
+      icon:'🎯', title:'Impact Assessment', sub:'Entregable para el cliente',
       items:[
-        { id:'freetrial', label:'Free Trial · Entregable cliente', icon: ftHasData ? '✓' : '○', state: ftHasData ? 'rc-done' : 'rc-pending', labelClass: ftHasData ? 'rld' : '', action: 'openFreeTrial()' },
+        { id:'freetrial', label:'Impact Assessment · Entregable cliente', icon: ftHasData ? '✓' : '○', state: ftHasData ? 'rc-done' : 'rc-pending', labelClass: ftHasData ? 'rld' : '', action: 'openFreeTrial()' },
       ]
     }
   ] : groups;
@@ -6607,7 +6607,7 @@ function getRiskLogReportContext() {
 }
 
 // ══════════════════════════════════════════════════════
-// ── VISUAL KIT™ · Funciones SVG reutilizables (Free Trial + M7) ──
+// ── VISUAL KIT™ · Funciones SVG reutilizables (Impact Assessment + M7) ──
 // Solo para entregables. El workbench (sesiones de captura) no usa gráficos.
 // ══════════════════════════════════════════════════════
 
@@ -6710,9 +6710,9 @@ function ftFingerprint(breakdown) {
 }
 let ftReportStale = false;
 
-// Estado simple: ¿este cliente tiene una revisión de Free Trial en curso?
+// Estado simple: ¿este cliente tiene una revisión de Impact Assessment en curso?
 // Se enciende al pulsar "Calcular y revisar", se apaga al confirmar o cancelar.
-// Mientras esté encendido, abrir la pestaña Free Trial siempre recalcula y muestra
+// Mientras esté encendido, abrir la pestaña Impact Assessment siempre recalcula y muestra
 // la revisión — independientemente de si se editó algo a mano o no.
 async function setFtReviewActive(cid, active) {
   allAnswers[`${cid}_freetrial_review_active`] = active ? 'true' : '';
@@ -6786,7 +6786,7 @@ function renderFreeTrialScreen(ceoReady, fabReady) {
   <div class="session-hero">
     <div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🎯</div>
     <div class="sh-info">
-      <div class="sh-title">Free Trial · Entregable cliente</div>
+      <div class="sh-title">Impact Assessment · Entregable cliente</div>
       <div class="sh-sub">Informe de impacto para presentar en visita 2 · Genera el PDF para dejar con el cliente</div>
     </div>
   </div>`;
@@ -6808,7 +6808,7 @@ function renderFreeTrialScreen(ceoReady, fabReady) {
     html += `<div style="padding:40px;text-align:center;background:var(--s1);border:0.5px solid var(--border);border-radius:16px;">
       <div style="font-size:32px;margin-bottom:12px;">⏳</div>
       <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Completa las sesiones CEO y Fábrica</div>
-      <div style="font-size:12px;color:var(--text3);">Son las únicas dos necesarias para generar el Free Trial. Recuerda rellenar también el bloque de Observaciones de campo en Fábrica.</div>
+      <div style="font-size:12px;color:var(--text3);">Son las únicas dos necesarias para generar el Impact Assessment. Recuerda rellenar también el bloque de Observaciones de campo en Fábrica.</div>
     </div>`;
     el.innerHTML = html;
     return;
@@ -6868,7 +6868,7 @@ function renderFreeTrialReport(r) {
       <div>
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#1d9e75;font-weight:700;margin-bottom:6px;">Tecno-Fab · Diagnóstico de impacto operativo</div>
         <div style="font-size:28px;font-weight:700;color:#0a0a0a;letter-spacing:-.02em;">${esc(currentClient.name)}</div>
-        <div style="font-size:13px;color:#888;margin-top:3px;">${esc(currentClient.sector || '')} · Free Trial</div>
+        <div style="font-size:13px;color:#888;margin-top:3px;">${esc(currentClient.sector || '')} · Impact Assessment</div>
         <div style="display:flex;gap:8px;margin-top:12px;">
           <span style="font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600;background:${urgColor}18;color:${urgColor};">Urgencia ${esc(r.urgencia || '—')}</span>
           ${r.arquetipo ? `<span style="font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600;background:#e0f7f8;color:#007c82;">${esc(r.arquetipo)}</span>` : ''}
@@ -6964,7 +6964,7 @@ function renderFreeTrialReport(r) {
 
   <div style="background:#0a2e2c;border-radius:16px;padding:24px 28px;margin-bottom:16px;">
     <div style="font-size:10px;color:#5dcaa5;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">Esto ha sido solo el inicio</div>
-    <div style="font-size:13px;color:#c8e6dc;line-height:1.6;margin-bottom:16px;">Este Free Trial cubre una parte del análisis. Con lo que ya sabemos de ${esc(currentClient.name)}, esto es lo que el diagnóstico completo confirmaría:</div>
+    <div style="font-size:13px;color:#c8e6dc;line-height:1.6;margin-bottom:16px;">Este Impact Assessment cubre una parte del análisis. Con lo que ya sabemos de ${esc(currentClient.name)}, esto es lo que el diagnóstico completo confirmaría:</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
       <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>Diagnóstico sistemas IT/OT:</strong> ${esc(hip.it_ot || 'flujo de datos real entre sistemas y exposición de ciberseguridad.')}</div></div>
       <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>Value Stream Map completo:</strong> ${esc(hip.vsm || 'lead time real y la localización exacta de los cuellos de botella.')}</div></div>
@@ -6975,7 +6975,7 @@ function renderFreeTrialReport(r) {
   </div>
 
   <div style="text-align:center;padding:16px 0 4px;">
-    <div style="font-size:10px;color:#aaa;">Tecno-Fab · Free Trial · Documento confidencial</div>
+    <div style="font-size:10px;color:#aaa;">Tecno-Fab · Impact Assessment · Documento confidencial</div>
   </div>
 
 </div>`;
@@ -6996,7 +6996,7 @@ async function exportFreeTrialPDF() {
 
   const html = `<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
-<title>Free Trial DIOP — ${currentClient.name}</title>
+<title>Impact Assessment DIOP — ${currentClient.name}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:Arial,Helvetica,sans-serif;color:#0f1a2e;background:#fff;font-size:10pt;line-height:1.5;}
@@ -7031,7 +7031,7 @@ async function exportFreeTrialPDF() {
 </head><body>
 
 <div class="cover">
-  <div class="cover-kicker">Tecno-Fab · Diagnóstico de Impacto Operativo · Free Trial</div>
+  <div class="cover-kicker">Tecno-Fab · Diagnóstico de Impacto Operativo · Impact Assessment</div>
   <div class="cover-name">${esc(currentClient.name)}</div>
   <div class="cover-meta">${esc(currentClient.sector||'')} · ${today}</div>
   <span class="badge" style="background:${urgColor}22;color:${urgColor};">Urgencia ${esc(r.urgencia||'—')}</span>
@@ -7093,7 +7093,7 @@ ${qws.length ? `<div class="section no-break">
 
 <div class="cta no-break">
   <div class="cta-label">Esto ha sido solo el inicio</div>
-  <div style="font-size:9.5pt;line-height:1.6;margin-bottom:3mm;">Este Free Trial cubre una parte del análisis. Con lo que ya sabemos de ${esc(currentClient.name)}, esto es lo que el diagnóstico completo confirmaría:</div>
+  <div style="font-size:9.5pt;line-height:1.6;margin-bottom:3mm;">Este Impact Assessment cubre una parte del análisis. Con lo que ya sabemos de ${esc(currentClient.name)}, esto es lo que el diagnóstico completo confirmaría:</div>
   <div style="display:flex;flex-direction:column;gap:2mm;margin-bottom:4mm;">
     <div style="font-size:9pt;line-height:1.5;">→ <strong>Diagnóstico sistemas IT/OT:</strong> ${esc(hip.it_ot || 'flujo de datos real entre sistemas y exposición de ciberseguridad.')}</div>
     <div style="font-size:9pt;line-height:1.5;">→ <strong>Value Stream Map completo:</strong> ${esc(hip.vsm || 'lead time real y la localización exacta de los cuellos de botella.')}</div>
@@ -7103,7 +7103,7 @@ ${qws.length ? `<div class="section no-break">
   <div style="font-size:8.5pt;line-height:1.6;padding-top:2.5mm;border-top:0.5pt solid rgba(255,255,255,0.15);">El diagnóstico completo incluye las sesiones que faltan (Dirección de Operaciones, IT/OT, Operario) más el informe ejecutivo completo. El alcance final y la inversión se ajustan al tamaño y complejidad de ${esc(currentClient.name)} — lo definimos juntos en la próxima reunión.</div>
 </div>
 
-<div class="footer">Tecno-Fab · Free Trial · ${today} · Documento confidencial — uso exclusivo del cliente</div>
+<div class="footer">Tecno-Fab · Impact Assessment · ${today} · Documento confidencial — uso exclusivo del cliente</div>
 
 <script>window.onload=()=>{window.print();}<\/script>
 </body></html>`;
@@ -7671,7 +7671,7 @@ async function confirmFreeTrialReview() {
   const d1Breakdown = d1.components.map(c => `  - ${c.label}: ${c.value.toLocaleString('es-ES')}€ (${c.formula})`).join('\n');
   const ftQuickWins = calcDeterministicQuickWins(d1.components, 2);
 
-  const prompt = `Eres un consultor senior de Tecno-Fab. Acabas de completar las sesiones CEO + Fábrica de un Free Trial DIOP con ${currentClient.name}, sector ${sector}.
+  const prompt = `Eres un consultor senior de Tecno-Fab. Acabas de completar las sesiones CEO + Fábrica de un Impact Assessment DIOP con ${currentClient.name}, sector ${sector}.
 
 LOS NÚMEROS YA ESTÁN CALCULADOS Y VALIDADOS POR EL CONSULTOR — NO LOS RECALCULES, NO LOS CAMBIES, NO LOS REDONDEES DE FORMA DISTINTA. Tu único trabajo es escribir la narrativa que los rodea.
 
@@ -7725,7 +7725,7 @@ INSTRUCCIONES:
 6. dolor3_texto: 2-3 frases (máx. 60 palabras) sobre qué limita el crecimiento.
 7. la_pregunta: una pregunta estratégica de negocio, no técnica.
 8. quick_wins: para cada uno de los quick wins YA CALCULADOS arriba, escribe título + descripción. Mantén el mismo orden (ya vienen ordenados de mayor a menor ahorro).
-9. hipotesis_pendientes: para cada una de estas 4 áreas que el Free Trial NO cubre (IT/OT, Value Stream Map, OFI Score completo, Roadmap+ROI), escribe UNA frase corta (máx. 20 palabras) prediciendo qué es probable que encontremos ahí, anclada en una señal CONCRETA ya vista en este diagnóstico (una observación de campo, un componente del Dolor 1, la persona clave, etc.). Debe sonar a hipótesis fundada de consultor, no a texto de venta genérico. Si no hay ninguna señal real que la sustente, deja el campo vacío ("") en vez de inventar una genérica.
+9. hipotesis_pendientes: para cada una de estas 4 áreas que el Impact Assessment NO cubre (IT/OT, Value Stream Map, OFI Score completo, Roadmap+ROI), escribe UNA frase corta (máx. 20 palabras) prediciendo qué es probable que encontremos ahí, anclada en una señal CONCRETA ya vista en este diagnóstico (una observación de campo, un componente del Dolor 1, la persona clave, etc.). Debe sonar a hipótesis fundada de consultor, no a texto de venta genérico. Si no hay ninguna señal real que la sustente, deja el campo vacío ("") en vez de inventar una genérica.
 10. resumen_ejecutivo: EXACTAMENTE 3 frases, cada una de máx. 25 palabras, para un director que solo va a leer esto antes de decidir si sigue. Frase 1: el hallazgo económico principal (usa la cifra del Dolor 1). Frase 2: el patrón de causa raíz en una línea. Frase 3: qué está en juego si no se actúa (conecta con crecimiento o riesgo de trazabilidad, lo que sea más fuerte en este caso). Cada frase pasa el TEST DE PLANTILLA del punto 0 — nada de "identificamos oportunidades de mejora".
 
 Devuelve SOLO este JSON, sin texto adicional:
@@ -7841,7 +7841,7 @@ Devuelve SOLO este JSON, sin texto adicional:
     renderFreeTrialScreen(true, true);
 
   } catch(err) {
-    console.error('Free Trial generation error:', err);
+    console.error('Impact Assessment generation error:', err);
     ftGenerating = false;
     if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar números y generar informe →'; }
     showToast('Error al generar la narrativa. Inténtalo de nuevo.');
@@ -7850,7 +7850,7 @@ Devuelve SOLO este JSON, sin texto adicional:
 
 // ══════════════════════════════════════════════════════
 // ── M7 · IMPACTO OPERATIVO DETERMINISTA ──
-// Mismo principio que el Free Trial: el cálculo vive en JS,
+// Mismo principio que el Impact Assessment: el cálculo vive en JS,
 // auditable y editable. La IA nunca inventa estas cifras —
 // solo recibe los números ya calculados y los narra.
 // ══════════════════════════════════════════════════════
