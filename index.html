@@ -2574,13 +2574,13 @@ function renderReport(r, reportsHistoryHtml = '') {
     ['execution','skills','Skills'],
     ['execution','change_openness','Apertura cambio']
   ];
-  const levelColor = (v) => v === 'Alto' ? 'var(--green)' : v === 'Medio' ? 'var(--amber)' : v === 'Bajo' ? 'var(--red)' : 'var(--text3)';
+  const levelColor = (v) => v === 'Alto' ? 'var(--green)' : v === 'Medio' ? 'var(--amber)' : v === 'Bajo' ? 'var(--red)' : '#5a6b70';
   const renderSignalList = (keys) => `<div class="diop-signal-list">${keys.map(([section,k,l]) => {
     const v = m4?.[section]?.[k] || '—';
     return `<div class="diop-signal"><span>${l}</span>${chip(v, levelColor(v))}</div>`;
   }).join('')}</div>`;
 
-  const impactLabel = (() => { try { return m8ImpactLevel(); } catch(e) { return {txt:'—', col:'var(--text3)', score:0}; } })();
+  const impactLabel = (() => { try { return m8ImpactLevel(); } catch(e) { return {txt:'—', col:'#5a6b70', score:0}; } })();
   const evidenceCards = [
     {title:'Operación', body:vsm.lead_time ? `Lead time ${esc(vsm.lead_time)}, ratio VA ${esc(vsm.va_ratio || '—')} y constraint ${esc((vsm.cuellos_botella||[]).join(', ') || '—')}.` : `OEE ${esc(kpis.oee_estimado || '—')}, merma ${esc(kpis.merma_pct || '—')} e impacto estimado ${esc(kpis.impacto_total_estimado || '—')}.`, tag:'M2'},
     {title:'Digital', body:`Madurez digital ${esc(mad.puntuacion || '—')}/10 (${esc(mad.nivel || '—')}). ${esc(mad.descripcion || '')}`, tag:'M3'},
@@ -2602,53 +2602,53 @@ function renderReport(r, reportsHistoryHtml = '') {
 
   const reportHtml = `
   <style>
-    .diop-report-v2{max-width:980px;margin:0 auto 32px;color:var(--text);} 
-    .diop-report-card{background:var(--s1);border:0.5px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,0.20);margin-bottom:18px;}
-    .diop-cover-v2{background:radial-gradient(circle at 20% 0%,rgba(0,173,181,0.20),transparent 32%),linear-gradient(135deg,#07111f,#0f2535);padding:30px;border-bottom:1px solid rgba(0,173,181,0.20);}
+    .diop-report-v2{max-width:980px;margin:0 auto 32px;color:#16232a;} 
+    .diop-report-card{background:#ffffff;border:0.5px solid #dde3e1;border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,0.20);margin-bottom:18px;}
+    .diop-cover-v2{background:radial-gradient(circle at 20% 0%,rgba(0,173,181,0.10),transparent 32%),linear-gradient(135deg,#f4f6f5,#eef1f0);padding:30px;border-bottom:1px solid rgba(0,173,181,0.18);}
     .diop-cover-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:30px;}
     .diop-kicker{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--teal);font-family:var(--mono);margin-bottom:8px;}
-    .diop-title{font-size:30px;line-height:1.05;font-weight:750;color:var(--text);letter-spacing:-.03em;margin-bottom:8px;}
-    .diop-subtitle{font-size:13px;color:var(--text2);}
+    .diop-title{font-size:30px;line-height:1.05;font-weight:750;color:#16232a;letter-spacing:-.03em;margin-bottom:8px;}
+    .diop-subtitle{font-size:13px;color:#5a6b70;}
     .diop-cover-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;}
     .diop-report-body{padding:24px 30px 30px;}
     .diop-section{margin-bottom:24px;page-break-inside:avoid;}
     .diop-section:last-child{margin-bottom:0;}
     .diop-section-title{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-    .diop-section-title h3{font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:var(--text3);font-family:var(--mono);font-weight:700;}
-    .diop-section-title::after{content:'';height:1px;background:var(--border);flex:1;}
-    .diop-exec{background:rgba(0,173,181,0.055);border-left:3px solid var(--teal);padding:18px;border-radius:0 12px 12px 0;font-size:15px;line-height:1.65;color:var(--text);font-weight:500;}
+    .diop-section-title h3{font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:#5a6b70;font-family:var(--mono);font-weight:700;}
+    .diop-section-title::after{content:'';height:1px;background:#dde3e1;flex:1;}
+    .diop-exec{background:rgba(0,173,181,0.055);border-left:3px solid var(--teal);padding:18px;border-radius:0 12px 12px 0;font-size:15px;line-height:1.65;color:#16232a;font-weight:500;}
     .diop-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
     .diop-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
     .diop-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
-    .diop-metric{background:var(--s2);border:0.5px solid var(--border);border-radius:12px;padding:14px;min-height:82px;}
-    .diop-metric-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-family:var(--mono);margin-bottom:7px;}
-    .diop-metric-value{font-size:22px;font-weight:750;line-height:1.1;color:var(--text);}
-    .diop-metric-note{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.35;}
-    .diop-text{font-size:13px;color:var(--text2);line-height:1.7;}
-    .diop-muted{font-size:11px;color:var(--text3);line-height:1.5;}
-    .diop-evidence-card{background:var(--s2);border:0.5px solid var(--border);border-radius:12px;padding:14px;}
-    .diop-evidence-card strong{display:block;font-size:13px;color:var(--text);margin-bottom:7px;}
-    .diop-evidence-card p{font-size:12px;color:var(--text2);line-height:1.55;}
+    .diop-metric{background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:12px;padding:14px;min-height:82px;}
+    .diop-metric-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#5a6b70;font-family:var(--mono);margin-bottom:7px;}
+    .diop-metric-value{font-size:22px;font-weight:750;line-height:1.1;color:#16232a;}
+    .diop-metric-note{font-size:11px;color:#5a6b70;margin-top:6px;line-height:1.35;}
+    .diop-text{font-size:13px;color:#5a6b70;line-height:1.7;}
+    .diop-muted{font-size:11px;color:#5a6b70;line-height:1.5;}
+    .diop-evidence-card{background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:12px;padding:14px;}
+    .diop-evidence-card strong{display:block;font-size:13px;color:#16232a;margin-bottom:7px;}
+    .diop-evidence-card p{font-size:12px;color:#5a6b70;line-height:1.55;}
     .diop-tagline{font-size:10px;color:var(--teal);font-family:var(--mono);margin-bottom:8px;}
     .diop-signal-list{display:flex;flex-direction:column;gap:8px;}
-    .diop-signal{display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,255,255,0.018);border:0.5px solid var(--border);border-radius:9px;padding:9px 10px;}
-    .diop-signal span{font-size:11px;color:var(--text2);}
+    .diop-signal{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:9px;padding:9px 10px;}
+    .diop-signal span{font-size:11px;color:#5a6b70;}
     .diop-mini-bars{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-    .diop-mini-bars div{background:var(--s2);border:0.5px solid var(--border);border-radius:10px;padding:10px;}
-    .diop-mini-bars span{display:block;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;}
-    .diop-mini-bars strong{font-size:18px;color:var(--teal-l);}
+    .diop-mini-bars div{background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:10px;padding:10px;}
+    .diop-mini-bars span{display:block;font-size:9px;color:#5a6b70;text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;}
+    .diop-mini-bars strong{font-size:18px;color:#0f6e56;}
     .diop-opp-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
     .diop-opp-pill{border:0.5px solid;border-radius:12px;padding:11px 10px;display:flex;align-items:baseline;gap:8px;min-height:56px;}
     .diop-opp-pill strong{font-size:22px;line-height:1;}
     .diop-opp-pill span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
-    .diop-opp-pill small{margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono);}
+    .diop-opp-pill small{margin-left:auto;font-size:10px;color:#5a6b70;font-family:var(--mono);}
     .diop-list{display:flex;flex-direction:column;gap:8px;}
-    .diop-list-item{background:var(--s2);border:0.5px solid var(--border);border-radius:12px;padding:13px 14px;}
+    .diop-list-item{background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:12px;padding:13px 14px;}
     .diop-list-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:5px;}
-    .diop-list-title{font-size:13px;font-weight:700;color:var(--text);line-height:1.35;}
-    .diop-list-desc{font-size:12px;color:var(--text2);line-height:1.55;}
+    .diop-list-title{font-size:13px;font-weight:700;color:#16232a;line-height:1.35;}
+    .diop-list-desc{font-size:12px;color:#5a6b70;line-height:1.55;}
     .diop-risk{border-left:3px solid var(--amber);}
-    .diop-method{background:rgba(0,173,181,0.035);border:0.5px dashed var(--border2);border-radius:12px;padding:15px;font-size:12px;color:var(--text2);line-height:1.65;}
+    .diop-method{background:rgba(0,173,181,0.035);border:0.5px dashed #ccd4d1;border-radius:12px;padding:15px;font-size:12px;color:#5a6b70;line-height:1.65;}
     @media(max-width:900px){.diop-grid-4,.diop-grid-3,.diop-grid-2,.diop-opp-row{grid-template-columns:1fr}.diop-title{font-size:24px}.diop-report-body,.diop-cover-v2{padding:20px}}
   </style>
 
@@ -2674,10 +2674,10 @@ function renderReport(r, reportsHistoryHtml = '') {
               <div style="font-size:18px;font-weight:800;color:${ofi.score>=50?'var(--green)':ofi.score>=25?'var(--amber)':'var(--red)'};">${esc(ofi.score || '—')}</div>
             </div>
             <div class="diop-metric-label">OFI™</div>
-            <div class="diop-metric-value" style="color:var(--teal-l);font-size:14px;margin-top:4px;">${esc(ofi.zona || '—')}</div>
-            <div class="diop-metric-note">Capa TTL: <strong style="color:var(--teal-l);">${esc(ofi.ttl_capa || '—')}</strong></div>
+            <div class="diop-metric-value" style="color:#0f6e56;font-size:14px;margin-top:4px;">${esc(ofi.zona || '—')}</div>
+            <div class="diop-metric-note">Capa TTL: <strong style="color:#0f6e56;">${esc(ofi.ttl_capa || '—')}</strong></div>
           </div>
-          <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:var(--text3);font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:#5a6b70;font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
           <div class="diop-metric"><div class="diop-metric-label">Impacto estimado</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark</div></div>
           <div class="diop-metric"><div class="diop-metric-label">Portfolio base</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">${econ.paybackBase?'Payback '+econ.paybackBase+'m':'BNA anual'} · Conf. ${esc(econ.confidenceBand||'—')}</div></div>
         </div>
@@ -2694,7 +2694,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric"><div class="diop-metric-label">OEE estimado</div><div class="diop-metric-value" style="color:var(--red);">${esc(kpis.oee_estimado || '—')}</div></div>
             <div class="diop-metric"><div class="diop-metric-label">Lead Time</div><div class="diop-metric-value" style="color:var(--amber);">${esc(vsm.lead_time || '—')}</div><div class="diop-metric-note">Ratio VA: ${esc(vsm.va_ratio || '—')}</div></div>
-            <div class="diop-metric"><div class="diop-metric-label">Constraint</div><div class="diop-metric-value" style="font-size:16px;color:var(--teal-l);">${esc((vsm.cuellos_botella||[]).join(', ') || '—')}</div></div>
+            <div class="diop-metric"><div class="diop-metric-label">Constraint</div><div class="diop-metric-value" style="font-size:16px;color:#0f6e56;">${esc((vsm.cuellos_botella||[]).join(', ') || '—')}</div></div>
           </div>
           ${(() => {
             const vd = currentClient ? vsmData[currentClient.id] : null;
@@ -2723,9 +2723,9 @@ function renderReport(r, reportsHistoryHtml = '') {
             const maxRatio = Math.max(...procData.map(p => p.ratio), 100);
             
             // Build C/T vs Takt bar chart
-            let chartHtml = `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
-              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;">C/T efectivo vs Takt Time</div>
-              <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">Takt: ${takt.toFixed(1)} seg/ud — Cualquier barra que supere la línea roja es cuello de botella</div>
+            let chartHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
+              <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:4px;">C/T efectivo vs Takt Time</div>
+              <div style="font-size:10px;color:#5a6b70;margin-bottom:12px;">Takt: ${takt.toFixed(1)} seg/ud — Cualquier barra que supere la línea roja es cuello de botella</div>
               <div style="position:relative;">`;
             
             // Takt reference line
@@ -2735,8 +2735,8 @@ function renderReport(r, reportsHistoryHtml = '') {
               const barPct = Math.min(100, (p.ratio / maxRatio) * 100);
               const barCol = p.isBottleneck ? '#E24B4A' : p.ratio > 80 ? '#F59E0B' : '#1D9E75';
               chartHtml += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                <div style="width:90px;font-size:10px;color:${p.isBottleneck ? 'var(--red)' : 'var(--text2)'};font-weight:${p.isBottleneck ? '700' : '500'};text-align:right;flex-shrink:0;">${esc(p.name)}</div>
-                <div style="flex:1;height:22px;background:var(--s1);border-radius:6px;position:relative;overflow:hidden;">
+                <div style="width:90px;font-size:10px;color:${p.isBottleneck ? 'var(--red)' : '#5a6b70'};font-weight:${p.isBottleneck ? '700' : '500'};text-align:right;flex-shrink:0;">${esc(p.name)}</div>
+                <div style="flex:1;height:22px;background:#ffffff;border-radius:6px;position:relative;overflow:hidden;">
                   <div style="height:100%;width:${barPct}%;background:${barCol};border-radius:6px;transition:width .3s;"></div>
                   <div style="position:absolute;left:${Math.min(95, 100/maxRatio*100)}%;top:0;bottom:0;width:2px;background:var(--red);opacity:0.6;"></div>
                 </div>
@@ -2744,52 +2744,52 @@ function renderReport(r, reportsHistoryHtml = '') {
                 ${p.isBottleneck ? '<span style="font-size:8px;color:var(--red);font-weight:700;">⚠ BN</span>' : ''}
               </div>`;
             });
-            chartHtml += `<div style="display:flex;align-items:center;gap:10px;margin-top:4px;"><div style="width:90px;"></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:2px;background:var(--red);opacity:0.6;"></div><span style="font-size:9px;color:var(--text4);">Takt ${takt.toFixed(1)}s</span></div></div>`;
+            chartHtml += `<div style="display:flex;align-items:center;gap:10px;margin-top:4px;"><div style="width:90px;"></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:2px;background:var(--red);opacity:0.6;"></div><span style="font-size:9px;color:#8a9793;">Takt ${takt.toFixed(1)}s</span></div></div>`;
             chartHtml += `</div></div>`;
             
             // Process metrics table
-            let tableHtml = `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
-              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:10px;">Detalle por proceso</div>
+            let tableHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
+              <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:10px;">Detalle por proceso</div>
               <div style="display:grid;grid-template-columns:1fr repeat(5,auto);gap:0;font-size:10px;">
-                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);">Proceso</div>
-                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">C/T</div>
-                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">C/T eff</div>
-                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">C/O</div>
-                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">Uptime</div>
-                <div style="padding:6px 8px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-align:center;">Op</div>`;
+                <div style="padding:6px 8px;font-weight:700;color:#5a6b70;border-bottom:1px solid #dde3e1;">Proceso</div>
+                <div style="padding:6px 8px;font-weight:700;color:#5a6b70;border-bottom:1px solid #dde3e1;text-align:center;">C/T</div>
+                <div style="padding:6px 8px;font-weight:700;color:#5a6b70;border-bottom:1px solid #dde3e1;text-align:center;">C/T eff</div>
+                <div style="padding:6px 8px;font-weight:700;color:#5a6b70;border-bottom:1px solid #dde3e1;text-align:center;">C/O</div>
+                <div style="padding:6px 8px;font-weight:700;color:#5a6b70;border-bottom:1px solid #dde3e1;text-align:center;">Uptime</div>
+                <div style="padding:6px 8px;font-weight:700;color:#5a6b70;border-bottom:1px solid #dde3e1;text-align:center;">Op</div>`;
             procData.forEach(p => {
               const rowBg = p.isBottleneck ? 'rgba(226,75,74,0.06)' : 'transparent';
               tableHtml += `
-                <div style="padding:6px 8px;color:${p.isBottleneck?'var(--red)':'var(--text)'};font-weight:${p.isBottleneck?'700':'500'};background:${rowBg};">${esc(p.name)}${p.isBottleneck?' ⚠':''}</div>
-                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:var(--text2);background:${rowBg};">${p.ct.toFixed(1)}s</div>
-                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.isBottleneck?'var(--red)':'var(--teal-l)'};font-weight:700;background:${rowBg};">${p.effCT.toFixed(1)}s</div>
-                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.co>20?'var(--amber)':'var(--text2)'};background:${rowBg};">${p.co}min</div>
-                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.uptime<85?'var(--red)':p.uptime<92?'var(--amber)':'var(--text2)'};background:${rowBg};">${p.uptime}%</div>
-                <div style="padding:6px 8px;text-align:center;color:var(--text2);background:${rowBg};">${p.operators}</div>`;
+                <div style="padding:6px 8px;color:${p.isBottleneck?'var(--red)':'#16232a'};font-weight:${p.isBottleneck?'700':'500'};background:${rowBg};">${esc(p.name)}${p.isBottleneck?' ⚠':''}</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:#5a6b70;background:${rowBg};">${p.ct.toFixed(1)}s</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.isBottleneck?'var(--red)':'#0f6e56'};font-weight:700;background:${rowBg};">${p.effCT.toFixed(1)}s</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.co>20?'var(--amber)':'#5a6b70'};background:${rowBg};">${p.co}min</div>
+                <div style="padding:6px 8px;text-align:center;font-family:var(--mono);color:${p.uptime<85?'var(--red)':p.uptime<92?'var(--amber)':'#5a6b70'};background:${rowBg};">${p.uptime}%</div>
+                <div style="padding:6px 8px;text-align:center;color:#5a6b70;background:${rowBg};">${p.operators}</div>`;
             });
             tableHtml += `</div></div>`;
             
             // Process flow mini-diagram
-            let flowHtml = `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow-x:auto;">
-              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:10px;">Flujo de valor — ${esc(vd.supplier?.name||'Proveedor')} → ${esc(vd.client_info?.name||'Cliente')}</div>
+            let flowHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow-x:auto;">
+              <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:10px;">Flujo de valor — ${esc(vd.supplier?.name||'Proveedor')} → ${esc(vd.client_info?.name||'Cliente')}</div>
               <div style="display:flex;align-items:center;gap:4px;min-width:max-content;">
-                <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.supplier?.name||'MP')}<br><span style="font-size:8px;color:var(--text4);">${esc(vd.inventories?.mp||'?')}d</span></div>`;
+                <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.supplier?.name||'MP')}<br><span style="font-size:8px;color:#8a9793;">${esc(vd.inventories?.mp||'?')}d</span></div>`;
             procs.forEach((p, i) => {
               const pd = procData[i];
-              flowHtml += `<div style="font-size:10px;color:var(--text4);">→</div>`;
+              flowHtml += `<div style="font-size:10px;color:#8a9793;">→</div>`;
               if (i > 0 && vd.inventories?.between?.[`${i-1}_${i}`]) {
                 const inv = vd.inventories.between[`${i-1}_${i}`];
                 flowHtml += `<div style="font-size:8px;color:var(--amber);font-family:var(--mono);text-align:center;min-width:30px;">▽<br>${inv}</div>
-                <div style="font-size:10px;color:var(--text4);">→</div>`;
+                <div style="font-size:10px;color:#8a9793;">→</div>`;
               }
-              flowHtml += `<div style="padding:8px 10px;background:${pd.isBottleneck?'rgba(226,75,74,0.1)':'var(--s1)'};border:1px solid ${pd.isBottleneck?'var(--red)':'var(--border)'};border-radius:10px;text-align:center;min-width:80px;">
-                <div style="font-size:10px;font-weight:700;color:${pd.isBottleneck?'var(--red)':'var(--text)'};">${esc(p.name)}</div>
-                <div style="font-size:8px;color:var(--text3);font-family:var(--mono);margin-top:3px;">C/T ${pd.ct.toFixed(1)}s · Up ${pd.uptime}%</div>
+              flowHtml += `<div style="padding:8px 10px;background:${pd.isBottleneck?'rgba(226,75,74,0.1)':'#ffffff'};border:1px solid ${pd.isBottleneck?'var(--red)':'#dde3e1'};border-radius:10px;text-align:center;min-width:80px;">
+                <div style="font-size:10px;font-weight:700;color:${pd.isBottleneck?'var(--red)':'#16232a'};">${esc(p.name)}</div>
+                <div style="font-size:8px;color:#5a6b70;font-family:var(--mono);margin-top:3px;">C/T ${pd.ct.toFixed(1)}s · Up ${pd.uptime}%</div>
                 ${pd.isBottleneck?'<div style="font-size:7px;color:var(--red);font-weight:700;margin-top:2px;">BOTTLENECK</div>':''}
               </div>`;
             });
-            flowHtml += `<div style="font-size:10px;color:var(--text4);">→</div>
-              <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.client_info?.name||'Cliente')}<br><span style="font-size:8px;color:var(--text4);">${demandDay} ud/día</span></div>
+            flowHtml += `<div style="font-size:10px;color:#8a9793;">→</div>
+              <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.client_info?.name||'Cliente')}<br><span style="font-size:8px;color:#8a9793;">${demandDay} ud/día</span></div>
             </div></div>`;
             
             // Planning info
@@ -2798,11 +2798,11 @@ function renderReport(r, reportsHistoryHtml = '') {
               planHtml = `<div style="display:flex;gap:12px;margin-bottom:14px;">
                 <div style="flex:1;padding:10px 14px;background:rgba(245,158,11,0.06);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;">
                   <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);font-family:var(--mono);font-weight:700;margin-bottom:3px;">Sistema de planificación</div>
-                  <div style="font-size:12px;color:var(--text);">${esc(vd.planning.type || '—')} — Programa ${esc(vd.planning.frequency || '—')}</div>
+                  <div style="font-size:12px;color:#16232a;">${esc(vd.planning.type || '—')} — Programa ${esc(vd.planning.frequency || '—')}</div>
                 </div>
                 <div style="flex:1;padding:10px 14px;background:rgba(0,173,181,0.06);border-left:3px solid var(--teal);border-radius:0 10px 10px 0;">
                   <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);font-family:var(--mono);font-weight:700;margin-bottom:3px;">Takt Time</div>
-                  <div style="font-size:12px;color:var(--text);">${takt.toFixed(2)} seg/ud — Demanda ${demandDay} ud/día</div>
+                  <div style="font-size:12px;color:#16232a;">${takt.toFixed(2)} seg/ud — Demanda ${demandDay} ud/día</div>
                 </div>
               </div>`;
             }
@@ -2811,7 +2811,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           })()}
           ${ofi.vector_friccion ? `<div style="background:rgba(226,75,74,0.06);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 12px 12px 0;margin-bottom:12px;">
             <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--red);font-family:var(--mono);font-weight:700;margin-bottom:4px;">Vector de fricción principal</div>
-            <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(ofi.vector_friccion)}</div>
+            <div style="font-size:13px;color:#16232a;line-height:1.5;">${esc(ofi.vector_friccion)}</div>
           </div>` : ''}
           <div class="diop-text">${textBlock(vsm.impacto_lead_time || r.analisis_detallado || 'Sin análisis operativo detallado generado.')}</div>
         </div>
@@ -2821,7 +2821,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="diop-grid-2">
             <div class="diop-evidence-card">
               <strong>Digital Maturity</strong>
-              <div class="madurez-row"><div class="madurez-score" style="color:${scoreColor};font-size:26px;font-weight:750;">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:var(--text3);font-weight:500;">/10</span></div><div style="color:${scoreColor};font-size:13px;font-weight:700;">${esc(mad.nivel || '—')}</div></div>
+              <div class="madurez-row"><div class="madurez-score" style="color:${scoreColor};font-size:26px;font-weight:750;">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:#5a6b70;font-weight:500;">/10</span></div><div style="color:${scoreColor};font-size:13px;font-weight:700;">${esc(mad.nivel || '—')}</div></div>
               <div class="madurez-track"><div class="madurez-fill" style="width:${scorePct}%;background:${scoreColor};"></div></div>
               <p>${esc(mad.descripcion || '')}</p>
               <div class="diop-muted" style="margin-top:8px;">Siguiente nivel: ${esc(mad.siguiente_nivel || '—')}</div>
@@ -2831,9 +2831,9 @@ function renderReport(r, reportsHistoryHtml = '') {
               ${(r.benchmark_items && r.benchmark_items.length) ? `<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
                 ${r.benchmark_items.map(it => {
                   const col = it.esBueno ? 'var(--green)' : 'var(--red)';
-                  return `<div style="padding:8px 10px;background:var(--s2);border-radius:8px;border-left:3px solid ${col};">
-                    <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:12px;font-weight:600;color:var(--text);">${esc(it.nombre)}</span><span style="font-size:10px;color:${col};font-weight:600;">${esc(it.gap_label)}</span></div>
-                    <div style="font-size:11px;color:var(--text3);margin-top:2px;">Vosotros: ${esc(it.valor_cliente)} · Sector: ${esc(it.valor_sector)}</div>
+                  return `<div style="padding:8px 10px;background:#f4f6f5;border-radius:8px;border-left:3px solid ${col};">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:12px;font-weight:600;color:#16232a;">${esc(it.nombre)}</span><span style="font-size:10px;color:${col};font-weight:600;">${esc(it.gap_label)}</span></div>
+                    <div style="font-size:11px;color:#5a6b70;margin-top:2px;">Vosotros: ${esc(it.valor_cliente)} · Sector: ${esc(it.valor_sector)}</div>
                   </div>`;
                 }).join('')}
               </div>` : `<p class="diop-muted" style="margin-top:8px;">Sin datos suficientes en las sesiones para comparar contra el sector todavía.</p>`}
@@ -2847,18 +2847,18 @@ function renderReport(r, reportsHistoryHtml = '') {
             const allKeys = [...humanKeys, ...osKeys, ...exKeys];
             const hasM4Data = allKeys.some(([s,k]) => m4?.[s]?.[k]);
             if (!hasM4Data) {
-              return `<div style="padding:18px 20px;background:var(--s2);border:1px dashed var(--border2);border-radius:12px;text-align:center;">
-                <div style="font-size:12.5px;color:var(--text2);margin-bottom:4px;">Sin datos de M4 · Diagnóstico organizacional todavía</div>
-                <div style="font-size:11px;color:var(--text3);">Completa la pantalla "Readiness organizacional" en el sidebar para que esta sección se rellene en el próximo informe.</div>
+              return `<div style="padding:18px 20px;background:#f4f6f5;border:1px dashed #ccd4d1;border-radius:12px;text-align:center;">
+                <div style="font-size:12.5px;color:#5a6b70;margin-bottom:4px;">Sin datos de M4 · Diagnóstico organizacional todavía</div>
+                <div style="font-size:11px;color:#5a6b70;">Completa la pantalla "Readiness organizacional" en el sidebar para que esta sección se rellene en el próximo informe.</div>
               </div>`;
             }
             const scoreBlock = (section, label, icon, keys) => {
               const vals = keys.map(([s,k]) => m4?.[s]?.[k]).filter(v=>v);
               const scores = vals.map(v => v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0).filter(v=>v>0);
               const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
-              const col = avg>=2.4?'var(--green)':avg>=1.7?'var(--amber)':avg>0?'var(--red)':'var(--text3)';
+              const col = avg>=2.4?'var(--green)':avg>=1.7?'var(--amber)':avg>0?'var(--red)':'#5a6b70';
               const pct = Math.round((avg/3)*100);
-              return `<div style="text-align:center;padding:8px 0;"><div style="font-size:20px;margin-bottom:4px;">${icon}</div><div style="font-size:24px;font-weight:800;color:${col};font-family:var(--mono);">${avg?avg.toFixed(1):'—'}</div><div style="font-size:8px;color:var(--text4);">/3</div><div style="height:3px;background:var(--s2);border-radius:4px;margin:6px auto;width:80%;"><div style="height:100%;width:${pct}%;background:${col};border-radius:4px;"></div></div><div style="font-size:10px;color:var(--text3);font-weight:600;">${label}</div></div>`;
+              return `<div style="text-align:center;padding:8px 0;"><div style="font-size:20px;margin-bottom:4px;">${icon}</div><div style="font-size:24px;font-weight:800;color:${col};font-family:var(--mono);">${avg?avg.toFixed(1):'—'}</div><div style="font-size:8px;color:#8a9793;">/3</div><div style="height:3px;background:#f4f6f5;border-radius:4px;margin:6px auto;width:80%;"><div style="height:100%;width:${pct}%;background:${col};border-radius:4px;"></div></div><div style="font-size:10px;color:#5a6b70;font-weight:600;">${label}</div></div>`;
             };
             return `<div class="diop-grid-3" style="margin-bottom:14px;">
               <div class="diop-metric">${scoreBlock('human','Human Capability™','🧠',humanKeys)}</div>
@@ -2875,7 +2875,7 @@ function renderReport(r, reportsHistoryHtml = '') {
 
         ${fiTotal > 0 ? `<div class="diop-section">
           <div class="diop-section-title"><h3>05 · Field Intelligence™ — Señales críticas de campo</h3></div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.55;">Inteligencia extraída del cruce de entrevistas, observación directa y datos de campo. Estas señales no aparecen en ningún KPI — solo emergen cuando se comparan las perspectivas de CEO, operaciones y planta.</div>
+          <div style="font-size:12px;color:#5a6b70;margin-bottom:14px;line-height:1.55;">Inteligencia extraída del cruce de entrevistas, observación directa y datos de campo. Estas señales no aparecen en ningún KPI — solo emergen cuando se comparan las perspectivas de CEO, operaciones y planta.</div>
           <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">
             ${[
               {icon:'⚡',label:'Discrepancias',count:fi.discrepancias.length,col:'var(--red)'},
@@ -2883,42 +2883,42 @@ function renderReport(r, reportsHistoryHtml = '') {
               {icon:'📊',label:'Datos no confiables',count:fi.dataTrust.length,col:'var(--purple)'},
               {icon:'👤',label:'Dependencias humanas',count:fi.dependencias.length,col:'var(--red)'},
               {icon:'🔄',label:'Adopción/resistencia',count:fi.adopcion.length,col:'var(--teal)'}
-            ].map(c=>`<div style="text-align:center;padding:10px 6px;background:${c.count?c.col+'0d':'var(--s2)'};border:0.5px solid ${c.count?c.col+'44':'var(--border)'};border-radius:12px;">
+            ].map(c=>`<div style="text-align:center;padding:10px 6px;background:${c.count?c.col+'0d':'#f4f6f5'};border:0.5px solid ${c.count?c.col+'44':'#dde3e1'};border-radius:12px;">
               <div style="font-size:18px;">${c.icon}</div>
-              <div style="font-size:20px;font-weight:800;color:${c.count?c.col:'var(--text4)'};font-family:var(--mono);">${c.count}</div>
-              <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;">${c.label}</div>
+              <div style="font-size:20px;font-weight:800;color:${c.count?c.col:'#8a9793'};font-family:var(--mono);">${c.count}</div>
+              <div style="font-size:8px;color:#5a6b70;text-transform:uppercase;letter-spacing:.06em;margin-top:2px;">${c.label}</div>
             </div>`).join('')}
           </div>
           ${fi.discrepancias.length ? `<div style="margin-bottom:14px;">
             <div style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--mono);margin-bottom:8px;">⚡ DISCREPANCIAS ENTRE PERFILES</div>
             ${fi.discrepancias.map(d=>`<div style="padding:10px 14px;background:rgba(226,75,74,0.04);border-left:3px solid ${d.severity==='alta'?'var(--red)':d.severity==='insight'?'var(--teal)':'var(--amber)'};border-radius:0 10px 10px 0;margin-bottom:6px;">
-              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(d.signal)}</div>
-              <div style="font-size:9px;color:var(--text4);margin-top:4px;">${esc(d.profiles)} ${d.severity!=='insight'?'· Severidad: '+d.severity:''}</div>
+              <div style="font-size:12px;color:#16232a;line-height:1.5;">${esc(d.signal)}</div>
+              <div style="font-size:9px;color:#8a9793;margin-top:4px;">${esc(d.profiles)} ${d.severity!=='insight'?'· Severidad: '+d.severity:''}</div>
             </div>`).join('')}
           </div>` : ''}
           ${fi.fricciones.length ? `<div style="margin-bottom:14px;">
             <div style="font-size:11px;font-weight:700;color:var(--amber);font-family:var(--mono);margin-bottom:8px;">👻 FRICCIONES INVISIBLES</div>
             ${fi.fricciones.map(f=>`<div style="padding:10px 14px;background:rgba(186,117,23,0.04);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;margin-bottom:6px;">
-              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(f.signal)}</div>
+              <div style="font-size:12px;color:#16232a;line-height:1.5;">${esc(f.signal)}</div>
             </div>`).join('')}
           </div>` : ''}
           ${fi.dataTrust.length ? `<div style="margin-bottom:14px;">
             <div style="font-size:11px;font-weight:700;color:var(--purple);font-family:var(--mono);margin-bottom:8px;">📊 DATA TRUST PROFILE</div>
             ${fi.dataTrust.map(d=>`<div style="padding:10px 14px;background:rgba(127,119,221,0.04);border-left:3px solid var(--purple);border-radius:0 10px 10px 0;margin-bottom:6px;">
-              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(d.signal)}</div>
+              <div style="font-size:12px;color:#16232a;line-height:1.5;">${esc(d.signal)}</div>
             </div>`).join('')}
           </div>` : ''}
           ${fi.dependencias.length ? `<div style="margin-bottom:14px;">
             <div style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--mono);margin-bottom:8px;">👤 DEPENDENCIAS HUMANAS</div>
             ${fi.dependencias.map(d=>`<div style="padding:10px 14px;background:rgba(226,75,74,0.04);border-left:3px solid ${d.severity==='alta'?'var(--red)':'var(--amber)'};border-radius:0 10px 10px 0;margin-bottom:6px;">
-              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(d.signal)}</div>
-              <div style="font-size:9px;color:var(--text4);margin-top:4px;">Fuente: ${esc(d.source)}</div>
+              <div style="font-size:12px;color:#16232a;line-height:1.5;">${esc(d.signal)}</div>
+              <div style="font-size:9px;color:#8a9793;margin-top:4px;">Fuente: ${esc(d.source)}</div>
             </div>`).join('')}
           </div>` : ''}
           ${fi.adopcion.length ? `<div style="margin-bottom:14px;">
             <div style="font-size:11px;font-weight:700;color:var(--teal);font-family:var(--mono);margin-bottom:8px;">🔄 SEÑALES DE ADOPCIÓN / RESISTENCIA</div>
             ${fi.adopcion.map(a=>`<div style="padding:10px 14px;background:rgba(0,173,181,0.04);border-left:3px solid var(--teal);border-radius:0 10px 10px 0;margin-bottom:6px;">
-              <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(a.signal)}</div>
+              <div style="font-size:12px;color:#16232a;line-height:1.5;">${esc(a.signal)}</div>
             </div>`).join('')}
           </div>` : ''}
         </div>` : ''}
@@ -2946,7 +2946,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             </div>
             <div class="diop-metric" style="border-left:3px solid var(--teal);border-radius:0 12px 12px 0;background:rgba(0,173,181,0.04);">
               <div class="diop-metric-label" style="color:var(--teal);">Base</div>
-              <div class="diop-metric-value" style="font-size:18px;color:var(--teal-l);">${money(econ.totalBase)}</div>
+              <div class="diop-metric-value" style="font-size:18px;color:#0f6e56;">${money(econ.totalBase)}</div>
               <div class="diop-metric-note">BNA/año · Payback ${econ.paybackBase?econ.paybackBase+'m':'—'}</div>
             </div>
             <div class="diop-metric" style="border-left:3px solid var(--green);border-radius:0 12px 12px 0;">
@@ -2955,16 +2955,16 @@ function renderReport(r, reportsHistoryHtml = '') {
               <div class="diop-metric-note">BNA/año · Payback ${econ.paybackHigh?econ.paybackHigh+'m':'—'}</div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--s2);border:0.5px solid var(--border);border-radius:12px;margin-bottom:14px;">
-            <div style="font-size:11px;color:var(--text3);">Inversión total:</div>
-            <div style="font-size:16px;font-weight:700;color:var(--text);font-family:var(--mono);">${money(econ.totalInv)}</div>
-            <div style="width:1px;height:20px;background:var(--border);"></div>
-            <div style="font-size:11px;color:var(--text3);">Confianza portfolio:</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:12px;margin-bottom:14px;">
+            <div style="font-size:11px;color:#5a6b70;">Inversión total:</div>
+            <div style="font-size:16px;font-weight:700;color:#16232a;font-family:var(--mono);">${money(econ.totalInv)}</div>
+            <div style="width:1px;height:20px;background:#dde3e1;"></div>
+            <div style="font-size:11px;color:#5a6b70;">Confianza portfolio:</div>
             <div>${chip(esc(econ.confidenceBand||'Pendiente'), econ.avgConf>=4?'var(--green)':econ.avgConf>=3?'var(--teal)':'var(--amber)')}</div>
-            ${econ.riskCount?`<div style="width:1px;height:20px;background:var(--border);"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
+            ${econ.riskCount?`<div style="width:1px;height:20px;background:#dde3e1;"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
           </div>
           <div class="diop-list">
-            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div><div style="display:flex;gap:6px;">${chip(`💰 ${esc(qw.impacto_euros || '—')}`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div></div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:var(--text4);margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
+            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div><div style="display:flex;gap:6px;">${chip(`💰 ${esc(qw.impacto_euros || '—')}`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div></div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:#8a9793;margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
           </div>
         </div>
 
@@ -2983,14 +2983,14 @@ function renderReport(r, reportsHistoryHtml = '') {
               </div>
               <p style="margin-bottom:6px;">${esc(t.para_que || '')}</p>
               <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:11px;color:var(--teal-l);font-weight:600;">${esc(t.precio_aproximado || '')}</span>
+                <span style="font-size:11px;color:#0f6e56;font-weight:600;">${esc(t.precio_aproximado || '')}</span>
                 ${t.url ? `<a href="${esc(t.url)}" target="_blank" style="font-size:10px;color:var(--teal);text-decoration:none;">Web →</a>` : ''}
               </div>
             </div>`).join('')}
           </div>` : ''}
           <div class="diop-grid-2">
             <div class="diop-method">
-              <strong style="color:var(--text);">DIOP Methodology</strong><br>
+              <strong style="color:#16232a;">DIOP Methodology</strong><br>
               El diagnóstico utiliza los frameworks propietarios TECNOFAB: <strong>OFI™</strong> para fricción operacional, <strong>TTL™</strong> para secuencia de madurez, <strong>Archetypes™</strong> para narrativa ejecutiva, <strong>RIM™</strong> para priorización impacto/readiness, <strong>Confidence Layer™</strong> para nivel de evidencia y <strong>Economic Bridge™</strong> para trazabilidad financiera.
             </div>
             <div class="next-q-box" style="margin:0;"><div class="nqb-lbl">Siguiente pregunta al CEO</div><div class="nqb-text">"${esc(r.siguiente_pregunta_ceo || '—')}"</div></div>
@@ -3279,19 +3279,19 @@ function exportPDF() {
     .no-break{page-break-inside:avoid;}
     .page-break{page-break-after:always;}
   }
-  .cover{background:#060b12;color:#e8f4f5;padding:20mm 15mm;min-height:260mm;display:flex;flex-direction:column;}
+  .cover{background:#f4f6f5;color:#16232a;padding:20mm 15mm;min-height:260mm;display:flex;flex-direction:column;border-bottom:3px solid #00adb5;}
   .cover-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:40mm;}
-  .brand{font-size:14pt;font-weight:bold;color:#e8f4f5;letter-spacing:1px;}
+  .brand{font-size:14pt;font-weight:bold;color:#16232a;letter-spacing:1px;}
   .diop-tag{font-size:8pt;color:#00adb5;border:1px solid #00adb5;padding:3px 10px;border-radius:4px;}
   .cover-line{width:30mm;height:2px;background:#00adb5;margin-bottom:6mm;}
-  .cover-pre{font-size:8pt;color:#3a7a82;text-transform:uppercase;letter-spacing:2px;margin-bottom:3mm;}
-  .cover-name{font-size:24pt;font-weight:bold;color:#e8f4f5;margin-bottom:3mm;line-height:1.2;}
-  .cover-sector{font-size:11pt;color:#7ab0b8;margin-bottom:15mm;}
+  .cover-pre{font-size:8pt;color:#5a6b70;text-transform:uppercase;letter-spacing:2px;margin-bottom:3mm;}
+  .cover-name{font-size:24pt;font-weight:bold;color:#16232a;margin-bottom:3mm;line-height:1.2;}
+  .cover-sector{font-size:11pt;color:#5a6b70;margin-bottom:15mm;}
   .meta-grid{display:flex;gap:12mm;flex-wrap:wrap;margin-bottom:auto;}
-  .meta-item strong{display:block;font-size:7pt;color:#3a7a82;text-transform:uppercase;letter-spacing:1px;margin-bottom:1mm;}
-  .meta-item span{font-size:9pt;color:#00dee8;}
-  .cover-footer{border-top:1px solid rgba(0,173,181,0.2);padding-top:5mm;display:flex;justify-content:space-between;align-items:center;margin-top:10mm;}
-  .cover-footer-left{font-size:8pt;color:#3a7a82;}
+  .meta-item strong{display:block;font-size:7pt;color:#5a6b70;text-transform:uppercase;letter-spacing:1px;margin-bottom:1mm;}
+  .meta-item span{font-size:9pt;color:#0f6e56;}
+  .cover-footer{border-top:1px solid rgba(0,173,181,0.25);padding-top:5mm;display:flex;justify-content:space-between;align-items:center;margin-top:10mm;}
+  .cover-footer-left{font-size:8pt;color:#5a6b70;}
   .urgency{font-size:9pt;padding:3px 10px;border-radius:4px;border:1px solid ${urgColor};color:${urgColor};}
 
   h2{font-size:7pt;text-transform:uppercase;letter-spacing:2px;color:#7ab0b8;margin-bottom:4mm;padding-bottom:2mm;border-bottom:1px solid #e0eef0;}
@@ -3357,19 +3357,19 @@ function exportPDF() {
   .mini-list{margin-left:4mm;font-size:8pt;color:#4a7080;line-height:1.45;}
   .mini-list li{margin-bottom:1.5mm;}
   .vsm-table{width:100%;border-collapse:collapse;margin-top:4mm;font-size:8pt;}
-  .vsm-table th{background:#0f1a2e;color:#e8f4f5;text-align:left;padding:2mm;border:1px solid #daedef;}
+  .vsm-table th{background:#eef1f0;color:#16232a;text-align:left;padding:2mm;border:1px solid #daedef;font-weight:bold;}
   .vsm-table td{padding:2mm;border:1px solid #daedef;color:#0f1a2e;}
-  .footer{background:#060b12;padding:3mm 5mm;display:flex;justify-content:space-between;align-items:center;margin-top:5mm;}
-  .footer-left{font-size:7.5pt;color:#3a7a82;}
-  .footer-right{font-size:7pt;color:#1e4a52;font-style:italic;}
+  .footer{background:#f4f6f5;border-top:1px solid #dde3e1;padding:3mm 5mm;display:flex;justify-content:space-between;align-items:center;margin-top:5mm;}
+  .footer-left{font-size:7.5pt;color:#5a6b70;}
+  .footer-right{font-size:7pt;color:#8a9793;font-style:italic;}
 
   .disclaimer{background:#f0f9fa;border:1px solid #daedef;border-radius:5px;padding:4mm;margin-top:4mm;}
   .disclaimer p{font-size:8pt;color:#4a7080;line-height:1.5;}
 
   .page-num{font-size:7pt;color:#7ab0b8;text-align:right;margin-bottom:4mm;}
-  .header-bar{background:#060b12;padding:4mm 5mm;display:flex;justify-content:space-between;align-items:center;margin-bottom:6mm;}
-  .hb-brand{font-size:9pt;font-weight:bold;color:#e8f4f5;}
-  .hb-client{font-size:8pt;color:#3a7a82;}
+  .header-bar{background:#f4f6f5;border-bottom:2px solid #00adb5;padding:4mm 5mm;display:flex;justify-content:space-between;align-items:center;margin-bottom:6mm;}
+  .hb-brand{font-size:9pt;font-weight:bold;color:#16232a;}
+  .hb-client{font-size:8pt;color:#5a6b70;}
   .hb-page{font-size:7.5pt;color:#3a7a82;}
 
 </style>
@@ -7048,11 +7048,11 @@ function renderFreeTrialReport(r) {
     ⚠ Solo visible para ti (no aparece en el PDF del cliente): la narrativa generada contiene lenguaje genérico detectado automáticamente — revisa antes de exportar: <strong>${r.qualityWarnings.map(esc).join(', ')}</strong>. Puedes regenerar el informe o editar el texto a mano.
   </div>` : ''}
 
-  ${(r.resumenEjecutivo && r.resumenEjecutivo.length) ? `<div style="background:#0a2e2c;border-radius:16px;padding:22px 28px;margin-bottom:16px;">
-    <div style="font-size:10px;color:#5dcaa5;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:12px;">Resumen ejecutivo</div>
+  ${(r.resumenEjecutivo && r.resumenEjecutivo.length) ? `<div style="background:#f4f6f5;border:1px solid #dde3e1;border-left:4px solid #00adb5;border-radius:0 16px 16px 0;padding:22px 28px;margin-bottom:16px;">
+    <div style="font-size:10px;color:#0f6e56;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:12px;">Resumen ejecutivo</div>
     ${r.resumenEjecutivo.map((frase,i) => `<div style="display:flex;gap:10px;margin-bottom:${i<r.resumenEjecutivo.length-1?'8px':'0'};">
-      <span style="color:#5dcaa5;font-weight:700;font-size:13px;flex-shrink:0;">${i+1}.</span>
-      <span style="font-size:13.5px;color:#e1f5ee;line-height:1.55;">${esc(frase)}</span>
+      <span style="color:#0f6e56;font-weight:700;font-size:13px;flex-shrink:0;">${i+1}.</span>
+      <span style="font-size:13.5px;color:#16232a;line-height:1.55;">${esc(frase)}</span>
     </div>`).join('')}
   </div>` : ''}
 
@@ -7128,16 +7128,16 @@ function renderFreeTrialReport(r) {
     </div>`).join('')}
   </div>` : ''}
 
-  <div style="background:#0a2e2c;border-radius:16px;padding:24px 28px;margin-bottom:16px;">
-    <div style="font-size:10px;color:#5dcaa5;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">Esto ha sido solo el inicio</div>
-    <div style="font-size:13px;color:#c8e6dc;line-height:1.6;margin-bottom:16px;">Este Impact Assessment cubre una parte del análisis. Con lo que ya sabemos de ${esc(currentClient.name)}, esto es lo que el diagnóstico completo confirmaría:</div>
+  <div style="background:#eef1f0;border:1px solid #dde3e1;border-radius:16px;padding:24px 28px;margin-bottom:16px;">
+    <div style="font-size:10px;color:#0f6e56;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">Esto ha sido solo el inicio</div>
+    <div style="font-size:13px;color:#5a6b70;line-height:1.6;margin-bottom:16px;">Este Impact Assessment cubre una parte del análisis. Con lo que ya sabemos de ${esc(currentClient.name)}, esto es lo que el diagnóstico completo confirmaría:</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
-      <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>Diagnóstico sistemas IT/OT:</strong> ${esc(hip.it_ot || 'flujo de datos real entre sistemas y exposición de ciberseguridad.')}</div></div>
-      <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>Value Stream Map completo:</strong> ${esc(hip.vsm || 'lead time real y la localización exacta de los cuellos de botella.')}</div></div>
-      <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>OFI™ Score completo:</strong> ${esc(hip.ofi || 'las 4 dimensiones evaluadas y el arquetipo operativo confirmado.')}</div></div>
-      <div style="display:flex;gap:10px;"><span style="color:#5dcaa5;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#e1f5ee;line-height:1.5;"><strong>Roadmap + ROI cuantificado:</strong> ${esc(hip.roadmap || '3 escenarios de retorno y un plan de implementación a 90 días.')}</div></div>
+      <div style="display:flex;gap:10px;"><span style="color:#0f6e56;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#16232a;line-height:1.5;"><strong>Diagnóstico sistemas IT/OT:</strong> ${esc(hip.it_ot || 'flujo de datos real entre sistemas y exposición de ciberseguridad.')}</div></div>
+      <div style="display:flex;gap:10px;"><span style="color:#0f6e56;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#16232a;line-height:1.5;"><strong>Value Stream Map completo:</strong> ${esc(hip.vsm || 'lead time real y la localización exacta de los cuellos de botella.')}</div></div>
+      <div style="display:flex;gap:10px;"><span style="color:#0f6e56;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#16232a;line-height:1.5;"><strong>OFI™ Score completo:</strong> ${esc(hip.ofi || 'las 4 dimensiones evaluadas y el arquetipo operativo confirmado.')}</div></div>
+      <div style="display:flex;gap:10px;"><span style="color:#0f6e56;flex-shrink:0;">→</span><div style="font-size:12.5px;color:#16232a;line-height:1.5;"><strong>Roadmap + ROI cuantificado:</strong> ${esc(hip.roadmap || '3 escenarios de retorno y un plan de implementación a 90 días.')}</div></div>
     </div>
-    <div style="font-size:12px;color:#9fc9bd;line-height:1.6;padding-top:14px;border-top:1px solid rgba(93,202,165,0.15);">El diagnóstico completo incluye las sesiones que faltan (Dirección de Operaciones, IT/OT, Operario) más el informe ejecutivo completo. El alcance final y la inversión se ajustan al tamaño y complejidad de ${esc(currentClient.name)} — lo definimos juntos en la próxima reunión.</div>
+    <div style="font-size:12px;color:#5a6b70;line-height:1.6;padding-top:14px;border-top:1px solid #dde3e1;">El diagnóstico completo incluye las sesiones que faltan (Dirección de Operaciones, IT/OT, Operario) más el informe ejecutivo completo. El alcance final y la inversión se ajustan al tamaño y complejidad de ${esc(currentClient.name)} — lo definimos juntos en la próxima reunión.</div>
   </div>
 
   <div style="text-align:center;padding:16px 0 4px;">
@@ -7168,10 +7168,10 @@ async function exportFreeTrialPDF() {
   body{font-family:Arial,Helvetica,sans-serif;color:#0f1a2e;background:#fff;font-size:10pt;line-height:1.5;}
   @page{margin:14mm 14mm;size:A4;}
   @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact;}.no-break{page-break-inside:avoid;}}
-  .cover{background:#0a2e2c;color:#e1f5ee;padding:16mm 14mm;border-radius:6px;margin-bottom:8mm;}
-  .cover-kicker{font-size:8pt;text-transform:uppercase;letter-spacing:2px;color:#5dcaa5;margin-bottom:4mm;font-weight:bold;}
+  .cover{background:#f4f6f5;color:#16232a;padding:16mm 14mm;border-radius:6px;margin-bottom:8mm;border-bottom:3px solid #00adb5;}
+  .cover-kicker{font-size:8pt;text-transform:uppercase;letter-spacing:2px;color:#0f6e56;margin-bottom:4mm;font-weight:bold;}
   .cover-name{font-size:22pt;font-weight:bold;margin-bottom:2mm;}
-  .cover-meta{font-size:10pt;color:#9fe1cb;margin-bottom:5mm;}
+  .cover-meta{font-size:10pt;color:#5a6b70;margin-bottom:5mm;}
   .badge{font-size:8pt;padding:2px 10px;border-radius:20px;font-weight:bold;display:inline-block;margin-right:4mm;}
   .section{margin-bottom:7mm;padding:6mm 7mm;border:1px solid #e0eef0;border-radius:6px;}
   .section-label{font-size:7.5pt;text-transform:uppercase;letter-spacing:1.5px;color:#7ab0b8;font-weight:bold;margin-bottom:4mm;}
@@ -7186,8 +7186,8 @@ async function exportFreeTrialPDF() {
   .question-box{background:#f0f9fa;border-left:3px solid #00adb5;padding:5mm 6mm;border-radius:0 5px 5px 0;}
   .qw-item{display:flex;gap:3mm;padding:3mm 4mm;border-radius:5px;margin-bottom:3mm;background:#f7fafa;border:1px solid #daedef;}
   .qw-num{width:20px;height:20px;border-radius:50%;background:#00706e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:bold;flex-shrink:0;}
-  .cta{background:#0a2e2c;color:#e1f5ee;padding:7mm 8mm;border-radius:6px;}
-  .cta-label{font-size:8pt;color:#5dcaa5;text-transform:uppercase;letter-spacing:1px;font-weight:bold;margin-bottom:2mm;}
+  .cta{background:#eef1f0;border:1px solid #dde3e1;color:#16232a;padding:7mm 8mm;border-radius:6px;}
+  .cta-label{font-size:8pt;color:#0f6e56;text-transform:uppercase;letter-spacing:1px;font-weight:bold;margin-bottom:2mm;}
   .locked-grid{display:grid;grid-template-columns:1fr 1fr;gap:4mm;}
   .locked-card{background:#f7fafa;border:1px solid #e0eef0;border-radius:5px;padding:4mm;}
   .locked-title{font-size:9pt;font-weight:bold;color:#7ab0b8;}
@@ -7702,24 +7702,24 @@ function ftReviewComponentRow(c, idx, group) {
   const benchIcon = c.benchmark && c.benchmark.withinBenchmark === true ? '✓'
     : c.benchmark && c.benchmark.withinBenchmark === false ? '⚠' : '';
   const benchColor = c.benchmark && c.benchmark.withinBenchmark === true ? 'var(--green)'
-    : c.benchmark && c.benchmark.withinBenchmark === false ? 'var(--amber)' : 'var(--text3)';
+    : c.benchmark && c.benchmark.withinBenchmark === false ? 'var(--amber)' : '#5a6b70';
   const benchText = c.benchmark && c.benchmark.rangeLabel
     ? `Sector: ${c.benchmark.rangeLabel} de la base · Tu cálculo: ${(c.benchmark.pctOfBase*100).toFixed(1)}%`
     : '';
 
-  return `<div style="padding:14px 16px;background:var(--s2);border:0.5px solid ${c.anomaly ? 'rgba(226,75,74,0.5)' : c.isEstimate ? 'rgba(186,117,23,0.3)' : 'var(--border)'};border-radius:var(--r-sm);margin-bottom:8px;">
+  return `<div style="padding:14px 16px;background:#ffffff;border:0.5px solid ${c.anomaly ? 'rgba(226,75,74,0.5)' : c.isEstimate ? 'rgba(186,117,23,0.3)' : '#dde3e1'};border-radius:var(--r-sm);margin-bottom:8px;">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;">
-      <div style="font-size:13px;font-weight:600;color:var(--text);">${c.label}</div>
+      <div style="font-size:13px;font-weight:600;color:#16232a;">${c.label}</div>
       ${c.isEstimate ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(186,117,23,0.12);color:var(--amber);font-weight:600;flex-shrink:0;">CON SUPUESTOS</span>` : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(29,158,117,0.12);color:var(--green);font-weight:600;flex-shrink:0;">DATO REAL</span>`}
     </div>
     ${c.anomalyNote ? `<div style="font-size:11px;color:var(--red);background:rgba(226,75,74,0.08);border-radius:var(--r-xs);padding:6px 9px;margin-bottom:8px;line-height:1.5;">${c.anomalyNote}</div>` : ''}
-    <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:4px;">${c.inputSummary}</div>
-    <div style="font-size:10px;color:var(--text4);font-family:var(--mono);margin-bottom:8px;">${c.formula}</div>
+    <div style="font-size:11px;color:#5a6b70;line-height:1.5;margin-bottom:4px;">${c.inputSummary}</div>
+    <div style="font-size:10px;color:#8a9793;font-family:var(--mono);margin-bottom:8px;">${c.formula}</div>
     ${benchText ? `<div style="font-size:10.5px;color:${benchColor};margin-bottom:8px;">${benchIcon} ${benchText}</div>` : ''}
     <div style="display:flex;align-items:center;gap:8px;">
-      <span style="font-size:11px;color:var(--text3);">Resultado:</span>
-      <input type="number" value="${c.value}" data-group="${group}" data-key="${c.key}" data-idx="${idx===undefined?'':idx}" onchange="ftEditComponent(this)" style="width:140px;background:var(--s1);border:1px solid var(--border2);border-radius:var(--r-xs);padding:6px 10px;color:var(--text);font-size:14px;font-family:var(--mono);font-weight:600;outline:none;">
-      <span style="font-size:11px;color:var(--text3);">€</span>
+      <span style="font-size:11px;color:#5a6b70;">Resultado:</span>
+      <input type="number" value="${c.value}" data-group="${group}" data-key="${c.key}" data-idx="${idx===undefined?'':idx}" onchange="ftEditComponent(this)" style="width:140px;background:#f4f6f5;border:1px solid #ccd4d1;border-radius:var(--r-xs);padding:6px 10px;color:#16232a;font-size:14px;font-family:var(--mono);font-weight:600;outline:none;">
+      <span style="font-size:11px;color:#5a6b70;">€</span>
     </div>
   </div>`;
 }
@@ -7759,34 +7759,36 @@ function renderFreeTrialReview(skipScroll) {
       <div class="sh-sub">Cada número viene de un dato o un supuesto declarado. Edítalo si tienes mejor información de campo.</div>
     </div>
   </div>
+  <div class="m1v2-sessionwrap">
 
-  <div style="padding:12px 16px;background:rgba(0,173,181,0.05);border:0.5px solid rgba(0,173,181,0.15);border-radius:var(--r-sm);margin-bottom:18px;font-size:11.5px;color:var(--text2);line-height:1.5;">
+  <div style="padding:12px 16px;background:rgba(0,173,181,0.05);border:0.5px solid rgba(0,173,181,0.15);border-radius:var(--r-sm);margin-bottom:18px;font-size:11.5px;color:#5a6b70;line-height:1.5;">
     Las tarjetas marcadas <strong style="color:var(--amber);">CON SUPUESTOS</strong> usan un benchmark porque no había dato exacto. Las marcadas <strong style="color:var(--green);">DATO REAL</strong> vienen directamente de lo que respondió el cliente. Ajusta cualquier valor antes de confirmar — el informe final usará exactamente lo que dejes aquí.
   </div>
 
   ${ftDraftRestored ? `<div style="padding:10px 16px;background:rgba(29,158,117,0.08);border:0.5px solid var(--green);border-radius:var(--r-sm);margin-bottom:18px;font-size:11.5px;color:var(--green-l);line-height:1.5;">↺ Recuperamos tu revisión anterior (las respuestas se recalcularon con los datos actuales; tus ediciones manuales se mantienen donde el dato de origen no cambió).</div>` : ''}
 
-  <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;">Dolor 1 — No llego al mes</div>
+  <div style="font-size:12px;font-weight:600;color:#16232a;margin-bottom:10px;">Dolor 1 — No llego al mes</div>
   ${d1.components.map((c,i) => ftReviewComponentRow(c, i, 'dolor1')).join('')}
   <div style="padding:14px 16px;background:rgba(0,173,181,0.06);border:1px solid var(--teal);border-radius:var(--r-sm);margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
-    <span style="font-size:12px;color:var(--text2);font-weight:600;">Total Dolor 1</span>
-    <span style="font-size:20px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${d1.total.toLocaleString('es-ES')}€</span>
+    <span style="font-size:12px;color:#5a6b70;font-weight:600;">Total Dolor 1</span>
+    <span style="font-size:20px;font-weight:700;color:#0f6e56;font-family:var(--mono);">${d1.total.toLocaleString('es-ES')}€</span>
   </div>
 
-  ${d2.rotation ? `<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;">Dolor 2 — Dependencia de personas</div>
+  ${d2.rotation ? `<div style="font-size:12px;font-weight:600;color:#16232a;margin-bottom:10px;">Dolor 2 — Dependencia de personas</div>
   ${ftReviewComponentRow(d2.rotation, null, 'rotation')}` : ''}
-  ${d2.absenceRisk ? ftReviewComponentRow(d2.absenceRisk, null, 'absence') : `<div style="font-size:11px;color:var(--text3);margin-bottom:16px;padding:10px 14px;background:var(--s2);border-radius:var(--r-sm);">No se identificó riesgo de ausencia de persona clave en las respuestas de Fábrica.</div>`}
+  ${d2.absenceRisk ? ftReviewComponentRow(d2.absenceRisk, null, 'absence') : `<div style="font-size:11px;color:#5a6b70;margin-bottom:16px;padding:10px 14px;background:#ffffff;border-radius:var(--r-sm);">No se identificó riesgo de ausencia de persona clave en las respuestas de Fábrica.</div>`}
 
   ${d2.traceability && d2.traceability.value != null ? ftReviewComponentRow(d2.traceability, null, 'traceability')
-    : d2.traceability ? `<div style="padding:10px 14px;background:var(--s2);border-radius:var(--r-sm);margin-bottom:16px;">
-        <div style="font-size:11.5px;color:var(--text);font-weight:600;margin-bottom:4px;">Riesgo de trazabilidad — nivel: <span style="text-transform:uppercase;color:var(--amber);">${d2.traceability.riskLevel}</span></div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.5;">${d2.traceability.note} — sin cifra en € porque no hay recall real declarado; se muestra como riesgo cualitativo, no como coste.</div>
+    : d2.traceability ? `<div style="padding:10px 14px;background:#ffffff;border-radius:var(--r-sm);margin-bottom:16px;">
+        <div style="font-size:11.5px;color:#16232a;font-weight:600;margin-bottom:4px;">Riesgo de trazabilidad — nivel: <span style="text-transform:uppercase;color:var(--amber);">${d2.traceability.riskLevel}</span></div>
+        <div style="font-size:11px;color:#5a6b70;line-height:1.5;">${d2.traceability.note} — sin cifra en € porque no hay recall real declarado; se muestra como riesgo cualitativo, no como coste.</div>
       </div>`
-    : `<div style="font-size:11px;color:var(--text3);margin-bottom:16px;padding:10px 14px;background:var(--s2);border-radius:var(--r-sm);">No hay datos suficientes de trazabilidad (Sesión Fábrica) para valorar este riesgo.</div>`}
+    : `<div style="font-size:11px;color:#5a6b70;margin-bottom:16px;padding:10px 14px;background:#ffffff;border-radius:var(--r-sm);">No hay datos suficientes de trazabilidad (Sesión Fábrica) para valorar este riesgo.</div>`}
 
   <div style="display:flex;gap:10px;margin-top:24px;">
-    <button onclick="cancelFreeTrialReview()" style="padding:10px 18px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Cancelar</button>
-    <button onclick="confirmFreeTrialReview()" id="ft-confirm-btn" style="flex:1;padding:10px 18px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">✓ Confirmar números y generar informe →</button>
+    <button onclick="cancelFreeTrialReview()" style="padding:10px 18px;background:transparent;border:0.5px solid #ccd4d1;border-radius:var(--r-sm);color:#5a6b70;font-size:12px;cursor:pointer;font-family:var(--font);">Cancelar</button>
+    <button onclick="confirmFreeTrialReview()" id="ft-confirm-btn" style="flex:1;padding:10px 18px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:#ffffff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">✓ Confirmar números y generar informe →</button>
+  </div>
   </div>`;
 
   el.innerHTML = html;
