@@ -616,6 +616,34 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
   display:none!important;
 }
 
+/* ── M1 · Economic Baseline v2 (fase 2 rediseño, solo este módulo) ── */
+.m1v2-shell{display:flex;gap:0;align-items:flex-start;border-radius:16px;overflow:hidden;border:0.5px solid var(--border2);}
+.m1v2-main{flex:1;min-width:0;background:#f4f6f5;color:#16232a;padding:22px 24px;}
+.m1v2-panel{width:230px;flex-shrink:0;background:#eef1f0;border-left:0.5px solid #d7ddda;padding:20px 18px;}
+.m1v2-title{font-size:15px;font-weight:700;color:#16232a;margin-bottom:2px;}
+.m1v2-sub{font-size:12px;color:#5a6b70;margin-bottom:16px;}
+.m1v2-qcard{background:#ffffff;border:0.5px solid #dde3e1;border-radius:12px;padding:15px 16px;margin-bottom:10px;}
+.m1v2-qcard.m1v2-crit{border-color:#e0a3a2;}
+.m1v2-qtop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.m1v2-qtext{font-size:13px;font-weight:600;color:#16232a;line-height:1.4;}
+.m1v2-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;}
+.m1v2-badge-ok{background:rgba(29,158,117,0.12);color:#0f6e56;}
+.m1v2-badge-warn{background:rgba(186,117,23,0.14);color:#854f0b;}
+.m1v2-badge-crit{background:rgba(226,75,74,0.13);color:#a32d2d;}
+.m1v2-numrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.m1v2-numrow input{width:120px;background:#f4f6f5;border:0.5px solid #ccd4d1;border-radius:8px;padding:8px 10px;font-size:14px;color:#16232a;font-family:var(--mono);}
+.m1v2-numrow span{font-size:12px;color:#5a6b70;}
+.m1v2-fallback{font-size:11px;color:#5a6b70;margin-bottom:6px;}
+.m1v2-rangebtns{display:flex;gap:5px;flex-wrap:wrap;}
+.m1v2-rangebtns button{padding:5px 9px;border-radius:6px;border:1px solid #ccd4d1;background:#f4f6f5;color:#5a6b70;font-size:10.5px;font-weight:600;cursor:pointer;font-family:var(--font);}
+.m1v2-rangebtns button.m1v2-sel{border-color:#00adb5;background:rgba(0,173,181,0.12);color:#0f6e56;}
+.m1v2-panel-label{font-size:12px;font-weight:600;color:#16232a;margin-bottom:14px;}
+.m1v2-panel-sublabel{font-size:11px;color:#5a6b70;margin-bottom:2px;}
+.m1v2-panel-value{font-size:21px;font-weight:800;color:#0f6e56;margin-bottom:3px;font-family:var(--mono);}
+.m1v2-panel-note{font-size:10px;color:#8a9793;margin-bottom:18px;}
+.m1v2-panel-foot{font-size:10.5px;color:#7c8985;line-height:1.5;}
+@media(max-width:900px){.m1v2-shell{flex-direction:column;}.m1v2-panel{width:auto;border-left:none;border-top:0.5px solid #d7ddda;}}
+
 </style>
 </head>
 <body onload="init()">
@@ -4611,29 +4639,81 @@ function m8ImpactLevel(){
 async function openM8(){currentSession='m8';document.getElementById('main-content').scrollTop=0;showScreen('m8');await loadM8Data(currentClient.id);renderM8();renderSidebarRoadmap();}
 function renderM8Choice(key,label,sub,opts){
   const m=getM8(); const val=m[key]||'';
-  return `<div style="padding:14px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;">${label}</div>
-    <div style="font-size:10px;color:var(--text3);margin-bottom:10px;line-height:1.35;">${sub}</div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap;">${opts.map(opt=>{const sel=val===opt;return `<button onclick="m8Set('${key}','${opt}')" style="padding:7px 10px;border-radius:var(--r-xs);border:1px solid ${sel?'var(--teal)':'var(--border)'};background:${sel?'rgba(0,173,181,0.14)':'var(--s1)'};color:${sel?'var(--teal-l)':'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);">${opt}</button>`;}).join('')}</div>
+  const answered=!!val;
+  return `<div class="m1v2-qcard">
+    <div class="m1v2-qtop"><div class="m1v2-qtext">${label}</div><span class="m1v2-badge ${answered?'m1v2-badge-ok':'m1v2-badge-warn'}">${answered?'Respondida':'Pendiente'}</span></div>
+    <div class="m1v2-fallback">${sub}</div>
+    <div class="m1v2-rangebtns">${opts.map(opt=>{const sel=val===opt;return `<button class="${sel?'m1v2-sel':''}" onclick="m8Set('${key}','${opt}')">${opt}</button>`;}).join('')}</div>
   </div>`;
 }
+function m1v2Val(key){
+  if(!currentClient) return '';
+  return allAnswers[`${currentClient.id}_fab_${key}`]||'';
+}
+function m1v2SetNum(key,val){
+  if(!currentClient) return;
+  const tkey='m1v2_'+key;
+  clearTimeout(saveTimers[tkey]);
+  saveTimers[tkey]=setTimeout(()=>{persistAnswer('fab',key,val);},500);
+  m1v2UpdatePanel();
+}
+function m1v2Exposure(){
+  const lineCostRangeMap={'<250€':200,'250–500€':350,'500–1.000€':700,'>1.000€':1200,'Desconocido':300};
+  const downtimeRangeMap={'<5h':3,'5–10h':7.5,'10–20h':15,'>20h':25};
+  const m=getM8();
+  const costNum=parseFloat(m1v2Val('line_hour_cost_num'));
+  const costIsReal=costNum>0;
+  const cost=costIsReal?costNum:(lineCostRangeMap[m.line_hour_cost]||0);
+  const hoursNum=parseFloat(m1v2Val('downtime_hours_week_num'));
+  const hoursIsReal=hoursNum>0;
+  const hours=hoursIsReal?hoursNum:(downtimeRangeMap[m.downtime_week]||0);
+  return {cost,hours,annual:cost*hours*52,costIsReal,hoursIsReal};
+}
+function m1v2UpdatePanel(){
+  const exp=m1v2Exposure();
+  const elV=document.getElementById('m1v2-expo-val');
+  const elN=document.getElementById('m1v2-expo-note');
+  if(elV)elV.textContent=exp.annual?'≈ '+Math.round(exp.annual).toLocaleString('es-ES')+' €/año':'—';
+  if(elN)elN.textContent=(exp.costIsReal||exp.hoursIsReal)?'Cálculo con dato(s) real(es) introducido(s).':'Estimación con rangos, no auditoría.';
+}
+function renderM8NumField(numKey,rangeKey,label,unit,critical,rangeOpts){
+  const realVal=m1v2Val(numKey);
+  const rangeVal=getM8()[rangeKey]||'';
+  const answered=!!(realVal||rangeVal);
+  const badgeClass=answered?'m1v2-badge-ok':(critical?'m1v2-badge-crit':'m1v2-badge-warn');
+  const badgeText=answered?'Respondida':(critical?'Pendiente crítica':'Pendiente');
+  return `<div class="m1v2-qcard ${(!answered&&critical)?'m1v2-crit':''}">
+    <div class="m1v2-qtop"><div class="m1v2-qtext">${label}</div><span class="m1v2-badge ${badgeClass}">${badgeText}</span></div>
+    <div class="m1v2-numrow"><input type="number" min="0" value="${realVal}" placeholder="Número real" oninput="m1v2SetNum('${numKey}',this.value)"><span>${unit}</span></div>
+    <div class="m1v2-fallback">Si no tienes el número exacto, marca al menos un rango:</div>
+    <div class="m1v2-rangebtns">${rangeOpts.map(opt=>{const sel=rangeVal===opt;return `<button class="${sel?'m1v2-sel':''}" onclick="m1v2SetRange('${rangeKey}','${opt}')">${opt}</button>`;}).join('')}</div>
+  </div>`;
+}
+function m1v2SetRange(key,val){getM8()[key]=val;m8Changed();renderM8();}
 function renderM8(){
   const mainContent=document.getElementById('main-content');
   const scrollPos=mainContent?mainContent.scrollTop:0;
   const m=getM8(); const impact=m8ImpactLevel();
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(186,117,23,0.1);border:0.5px solid rgba(186,117,23,0.25);">💶</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M1 · Economic Baseline™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Baseline económico ligero · Paros · Scrap · Coste línea · Presión operativa</div></div></div>`;
-  html+=`<div class="vsm-section" style="text-align:center;"><div style="font-size:32px;font-weight:700;color:${impact.col};font-family:var(--mono);">${impact.txt}</div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;">Nivel de impacto económico estimado</div>${impact.score?`<div style="font-size:10px;color:var(--text4);margin-top:4px;">Score interno ${impact.score.toFixed(1)}/4</div>`:''}</div>`;
-  html+=`<div class="vsm-section"><div class="vsm-section-title">📉 Impacto operativo</div><div class="vsm-section-sub">Datos rápidos para convertir dolor operativo en baseline económico defendible.</div><div style="display:grid;grid-template-columns:1fr;gap:10px;">`;
-  html+=renderM8Choice('downtime_week','Horas de paro no planificado / semana','Rango estimado de indisponibilidad no planificada.',['<5h','5–10h','10–20h','>20h']);
+  html+=`<div class="m1v2-shell"><div class="m1v2-main">`;
+  html+=`<div class="m1v2-title">Impacto operativo y económico</div><div class="m1v2-sub">Nivel estimado: <strong style="color:${impact.col}">${impact.txt}</strong>${impact.score?` · score interno ${impact.score.toFixed(1)}/4`:''}</div>`;
+  html+=renderM8NumField('downtime_hours_week_num','downtime_week','Horas de parada no planificada (media semanal)','h/semana',false,['<5h','5–10h','10–20h','>20h']);
+  html+=renderM8NumField('line_hour_cost_num','line_hour_cost','¿Cuánto cuesta aproximadamente una hora de línea parada?','€/h',true,['<250€','250–500€','500–1.000€','>1.000€','Desconocido']);
   html+=renderM8Choice('scrap_rework','Scrap / retrabajo','Nivel estimado de pérdida de material, producto o reproceso.',['Bajo (<2%)','Medio (2–5%)','Alto (>5%)','No disponible']);
   html+=renderM8Choice('urgency_overtime','Urgencias / overtime / cambios de plan','Presión operativa generada por urgencias, cambios o horas extra.',['Bajo','Medio','Alto']);
-  html+=`</div></div>`;
-  html+=`<div class="vsm-section"><div class="vsm-section-title">💰 Baseline económico ligero</div><div class="vsm-section-sub">No es contabilidad: son rangos para mejorar la trazabilidad del ROI.</div><div style="display:grid;grid-template-columns:1fr;gap:10px;">`;
-  html+=renderM8Choice('line_hour_cost','Coste aproximado de 1h de línea parada','Rango estimado. Si no se conoce, seleccionar desconocido y DIOP usará benchmark.',['<250€','250–500€','500–1.000€','>1.000€','Desconocido']);
   html+=renderM8Choice('shifts','Turnos de operación','Nivel de utilización de la planta.',['1 turno','2 turnos','3 turnos','Continuo']);
   html+=renderM8Choice('perceived_impact','Impacto económico percibido','Si estos problemas continúan 12 meses, ¿cómo impactan el negocio?',['Bajo','Medio','Alto','Crítico']);
-  html+=`</div></div>`;
-  html+=`<div class="vsm-section"><div class="vsm-section-title">📝 Observación económica del consultor</div><textarea class="vsm-input" style="min-height:70px;resize:vertical;" placeholder="Ej: coste real no disponible; producción estima que el horno parado impacta en toda la línea; overtime recurrente en cierre de semana..." oninput="getM8().notes=this.value;m8Changed();">${m.notes||''}</textarea></div>`;
+  html+=`<div class="m1v2-qcard"><div class="m1v2-qtext" style="margin-bottom:8px;">Observación económica del consultor</div><textarea class="vsm-input" style="min-height:70px;resize:vertical;width:100%;" placeholder="Ej: coste real no disponible; producción estima que el horno parado impacta en toda la línea; overtime recurrente en cierre de semana..." oninput="getM8().notes=this.value;m8Changed();">${m.notes||''}</textarea></div>`;
+  html+=`</div>`;
+  const exp=m1v2Exposure();
+  html+=`<div class="m1v2-panel">
+    <div class="m1v2-panel-label">Contexto económico</div>
+    <div class="m1v2-panel-sublabel">Exposición anual orientativa</div>
+    <div class="m1v2-panel-value" id="m1v2-expo-val">${exp.annual?'≈ '+Math.round(exp.annual).toLocaleString('es-ES')+' €/año':'—'}</div>
+    <div class="m1v2-panel-note" id="m1v2-expo-note">${(exp.costIsReal||exp.hoursIsReal)?'Cálculo con dato(s) real(es) introducido(s).':'Estimación con rangos, no auditoría.'}</div>
+    <div class="m1v2-panel-foot">Cálculo automático a partir de las respuestas. Los resultados finales se revisan en el informe DIOP.</div>
+  </div>`;
+  html+=`</div>`;
   document.getElementById('m8-content').innerHTML=html;
   if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
 }
