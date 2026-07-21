@@ -556,7 +556,7 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
    El contexto sigue existiendo a nivel de datos, pero no se muestra en el menú lateral. */
 #sidebar-notes{display:none!important;}
 .sidebar{height:calc(100vh - 60px)!important;overflow-y:auto!important;overflow-x:hidden!important;}
-#sidebar-client-content{display:block!important;position:relative!important;z-index:1!important;}
+#sidebar-client-content{position:relative!important;z-index:1!important;}
 #sidebar-roadmap{display:block!important;overflow:visible!important;}
 .rm-phase{position:relative!important;z-index:1!important;}
 .sidebar-footer{position:relative!important;z-index:1!important;margin:16px!important;border-top:1px solid rgba(87,208,217,.12)!important;}
@@ -631,8 +631,10 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
 .m1v2-badge-warn{background:rgba(186,117,23,0.14);color:#854f0b;}
 .m1v2-badge-crit{background:rgba(226,75,74,0.13);color:#a32d2d;}
 .m1v2-numrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.m1v2-numrow input{width:120px;background:#f4f6f5;border:0.5px solid #ccd4d1;border-radius:8px;padding:8px 10px;font-size:14px;color:#16232a;font-family:var(--mono);}
+.m1v2-numrow input{width:150px;background:#f4f6f5;border:0.5px solid #ccd4d1;border-radius:8px;padding:8px 10px;font-size:13px;color:#16232a;font-family:var(--mono);}
 .m1v2-numrow span{font-size:12px;color:#5a6b70;}
+.m1v2-textarea{min-height:70px;resize:vertical;width:100%;background:#f4f6f5;border:0.5px solid #ccd4d1;border-radius:8px;padding:10px 12px;font-size:13px;color:#16232a;font-family:var(--font);}
+.m1v2-textarea::placeholder{color:#8a9793;}
 .m1v2-fallback{font-size:11px;color:#5a6b70;margin-bottom:6px;}
 .m1v2-rangebtns{display:flex;gap:5px;flex-wrap:wrap;}
 .m1v2-rangebtns button{padding:5px 9px;border-radius:6px;border:1px solid #ccd4d1;background:#f4f6f5;color:#5a6b70;font-size:10.5px;font-weight:600;cursor:pointer;font-family:var(--font);}
@@ -643,6 +645,54 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
 .m1v2-panel-note{font-size:10px;color:#8a9793;margin-bottom:18px;}
 .m1v2-panel-foot{font-size:10.5px;color:#7c8985;line-height:1.5;}
 @media(max-width:900px){.m1v2-shell{flex-direction:column;}.m1v2-panel{width:auto;border-left:none;border-top:0.5px solid #d7ddda;}}
+
+/* ── Sesiones genéricas (CEO/Ops/IT-OT/Operario/Fábrica/Sistemas) v2 ── */
+.m1v2-sessionwrap{background:#f4f6f5;border-radius:16px;padding:18px 20px;}
+.m1v2-sessionwrap .q-block{max-width:none;}
+.m1v2-sessionwrap .qb-header{background:#ffffff;border:0.5px solid #dde3e1;border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+.m1v2-sessionwrap .qbh-name{color:#16232a;font-size:13px;font-weight:700;}
+.m1v2-sessionwrap .qbh-obj{color:#5a6b70;font-size:11px;}
+.m1v2-sessionwrap .qbh-count{color:#5a6b70;font-size:11px;}
+.m1v2-sessionwrap .q-card{background:#ffffff;border:0.5px solid #dde3e1;border-radius:12px;}
+.m1v2-sessionwrap .q-card.q-answered{border-color:#9fd6c2;background:#ffffff;}
+.m1v2-sessionwrap .q-card.q-answered .q-text{color:#16232a;}
+.m1v2-sessionwrap .q-card.q-answered::after{content:none;}
+.m1v2-sessionwrap .q-num{color:#8a9793;}
+.m1v2-sessionwrap .q-text{color:#16232a;}
+.m1v2-sessionwrap .qp-c{background:rgba(226,75,74,0.1);color:#a32d2d;}
+.m1v2-sessionwrap .qp-i{background:rgba(186,117,23,0.12);color:#854f0b;}
+.m1v2-sessionwrap .qp-s{background:#eef1f0;color:#5a6b70;}
+.m1v2-sessionwrap .qp-qw{background:rgba(29,158,117,0.12);color:#0f6e56;}
+.m1v2-sessionwrap .yn-btn,.m1v2-sessionwrap .opt-btn{background:#f4f6f5;border:1px solid #ccd4d1;color:#5a6b70;}
+.m1v2-sessionwrap .yn-btn.yn-sel-y,.m1v2-sessionwrap .yn-btn.yn-sel-n,.m1v2-sessionwrap .opt-btn.opt-sel,.m1v2-sessionwrap .opt-btn.opt-multi-sel{background:rgba(0,173,181,0.12);border-color:#00adb5;color:#0f6e56;}
+.m1v2-sessionwrap .num-input,.m1v2-sessionwrap .txt-input,.m1v2-sessionwrap .otro-input{background:#f4f6f5;border:0.5px solid #ccd4d1;color:#16232a;}
+.m1v2-sessionwrap .otro-input::placeholder,.m1v2-sessionwrap .txt-input::placeholder{color:#8a9793;}
+.m1v2-sessionwrap .q-roi-hint{background:#eef1f0;color:#5a6b70;}
+.m1v2-sessionwrap .q-meta{position:relative;padding-right:90px;}
+.m1v2-sessionwrap .q-meta::after{position:absolute;right:0;top:-2px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.m1v2-sessionwrap .q-card:not(.q-answered) .q-meta:has(.qp-c)::after{content:'Pendiente crítica';background:rgba(226,75,74,0.13);color:#a32d2d;}
+.m1v2-sessionwrap .q-card:not(.q-answered) .q-meta:not(:has(.qp-c))::after{content:'Pendiente';background:rgba(186,117,23,0.14);color:#854f0b;}
+.m1v2-sessionwrap .q-card.q-answered .q-meta::after{content:'Respondida';background:rgba(29,158,117,0.12);color:#0f6e56;}
+.m1v2-sessionwrap .missing-banner{background:rgba(226,75,74,0.08);border:0.5px solid rgba(226,75,74,0.3);color:#a32d2d;}
+.m1v2-sessionwrap .block-prog{margin-bottom:14px;}
+.m1v2-sessionwrap .vsm-section{background:#ffffff;border:0.5px solid #dde3e1;box-shadow:none;}
+.m1v2-sessionwrap .vsm-section-title{color:#16232a;}
+.m1v2-sessionwrap .vsm-section-sub{color:#5a6b70;}
+.m1v2-sessionwrap .vsm-label{color:#5a6b70;}
+.m1v2-sessionwrap .vsm-input,.m1v2-sessionwrap .vsm-select{background:#f4f6f5;border:0.5px solid #ccd4d1;color:#16232a;}
+.m1v2-sessionwrap .vsm-input::placeholder{color:#8a9793;}
+.m1v2-sessionwrap .vsm-add-btn{background:rgba(0,173,181,0.06);border:1px dashed #ccd4d1;color:#0f6e56;}
+.m1v2-sessionwrap .vsm-takt-box{background:rgba(0,173,181,0.06);border:0.5px solid #ccd4d1;}
+.m1v2-sessionwrap .vsm-takt-val{color:#0f6e56;}
+.m1v2-sessionwrap .vsm-takt-label{color:#5a6b70;}
+.m1v2-sessionwrap .vsm-proc-card{background:#ffffff;border:0.5px solid #dde3e1;}
+.m1v2-sessionwrap .vsm-proc-card:hover{border-color:#ccd4d1;}
+.m1v2-sessionwrap .vsm-diagram-wrap{background:#ffffff;border:0.5px solid #dde3e1;}
+.m1v2-sessionwrap .vsm-result-card{background:#ffffff;border:0.5px solid #dde3e1;}
+.m1v2-sessionwrap .vsm-result-val{color:#0f6e56;}
+.m1v2-sessionwrap .vsm-result-val.warn{color:#854f0b;}
+.m1v2-sessionwrap .vsm-result-val.bad{color:#a32d2d;}
+.m1v2-sessionwrap .vsm-result-label{color:#5a6b70;}
 
 </style>
 </head>
@@ -1157,6 +1207,7 @@ function openSession(sessionId) {
     </div>
     <div class="sh-time">${sess.time}</div>
   </div>
+  <div class="m1v2-sessionwrap">
   <div class="block-prog">
     ${blocks.map((b,i)=>{
       const bAnswers = b.questions.filter(q=>allAnswers[`${currentClient.id}_${sessionId}_${q.id}`]?.trim()).length;
@@ -1227,6 +1278,7 @@ function openSession(sessionId) {
   // Check if all answered
   const allSessAnswered = sess.blocks.every(b=>b.questions.every(q=>allAnswers[`${currentClient.id}_${sessionId}_${q.id}`]?.trim()));
 
+  html += `</div>`;
   html += `<div class="save-bar">
     <div class="sb-info" id="sb-progress">Calculando progreso...</div>
     <div class="sb-actions">
@@ -3963,16 +4015,17 @@ function renderF0() {
   const bench=SECTOR_BENCHMARKS[sector]||SECTOR_BENCHMARKS['default'];
   
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🎯</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">F0 · Pre-engagement</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Preparación antes del kick-off · Hipótesis de arquetipo · Benchmarks</div></div></div>`;
+  html+=`<div class="m1v2-sessionwrap">`;
 
   // ARCHETYPE HYPOTHESIS
   html+=`<div class="vsm-section"><div class="vsm-section-title">🔮 Hipótesis de arquetipo</div><div class="vsm-section-sub">Con la información disponible antes del kick-off, ¿qué perfil describe mejor a este cliente?</div>`;
   html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">`;
   Object.entries(ARCHETYPES).forEach(([k,a])=>{
     const sel=f.archetype_hypothesis===k;
-    html+=`<div onclick="getF0().archetype_hypothesis='${k}';renderF0();f0Changed();" style="padding:12px;background:${sel?'rgba(0,173,181,0.1)':'var(--s2)'};border:1px solid ${sel?'var(--teal)':'var(--border)'};border-radius:var(--r);cursor:pointer;transition:all .15s;">
+    html+=`<div onclick="getF0().archetype_hypothesis='${k}';renderF0();f0Changed();" style="padding:12px;background:${sel?'rgba(0,173,181,0.1)':'#ffffff'};border:1px solid ${sel?'var(--teal)':'#dde3e1'};border-radius:var(--r);cursor:pointer;transition:all .15s;">
       <div style="font-size:18px;margin-bottom:4px;">${a.emoji}</div>
-      <div style="font-size:12px;font-weight:600;color:${sel?'var(--teal-l)':'var(--text)'};">${a.name}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4;">${a.desc}</div>
+      <div style="font-size:12px;font-weight:600;color:${sel?'#0f6e56':'#16232a'};">${a.name}</div>
+      <div style="font-size:10px;color:#5a6b70;margin-top:4px;line-height:1.4;">${a.desc}</div>
     </div>`;
   });
   html+=`</div>`;
@@ -3981,7 +4034,7 @@ function renderF0() {
     const a=ARCHETYPES[f.archetype_hypothesis];
     html+=`<div style="padding:12px;background:rgba(0,173,181,0.05);border-left:3px solid var(--teal);border-radius:0 var(--r-sm) var(--r-sm) 0;margin-bottom:12px;">
       <div style="font-size:11px;font-weight:600;color:var(--teal);margin-bottom:6px;">Señales a validar en M1:</div>
-      ${a.signals.map(s=>`<div style="font-size:11px;color:var(--text2);margin-top:3px;">• ${s}</div>`).join('')}
+      ${a.signals.map(s=>`<div style="font-size:11px;color:#5a6b70;margin-top:3px;">• ${s}</div>`).join('')}
     </div>`;
   }
   
@@ -3994,9 +4047,9 @@ function renderF0() {
   html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">`;
   const benchItems=[{l:'OEE global',v:bench.oee},{l:'Tasa rechazo',v:bench.rechazo},{l:'MTBF equipos',v:bench.mtbf},{l:'MTTR equipos',v:bench.mttr},{l:'% Mant. reactivo',v:bench.maint_react},{l:'Tiempo cambio',v:bench.changeover},{l:'Nivel servicio',v:bench.servicio},{l:'Rotación inv.',v:bench.inv_rotation},{l:'Días stock',v:bench.stock_days}];
   benchItems.forEach(b=>{
-    html+=`<div style="padding:10px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);text-align:center;">
-      <div style="font-size:14px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${b.v}</div>
-      <div style="font-size:9px;color:var(--text3);margin-top:3px;text-transform:uppercase;">${b.l}</div>
+    html+=`<div style="padding:10px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-sm);text-align:center;">
+      <div style="font-size:14px;font-weight:700;color:#0f6e56;font-family:var(--mono);">${b.v}</div>
+      <div style="font-size:9px;color:#5a6b70;margin-top:3px;text-transform:uppercase;">${b.l}</div>
     </div>`;
   });
   html+=`</div></div>`;
@@ -4006,9 +4059,9 @@ function renderF0() {
   const checks=[{k:'oee',l:'OEE por línea (últimos 6 meses)'},{k:'scrap',l:'Datos de scrap/rechazo por producto'},{k:'mtbf',l:'MTBF y MTTR de equipos críticos'},{k:'it_systems',l:'Lista sistemas IT (ERP, MES, QMS, WMS, BI)'},{k:'ot_systems',l:'Lista sistemas OT (SCADA, HMIs, PLCs)'},{k:'orgchart',l:'Organigrama + proyectos mejora en curso'}];
   checks.forEach(c=>{
     const checked=f.data_requested[c.k];
-    html+=`<div onclick="getF0().data_requested['${c.k}']=!getF0().data_requested['${c.k}'];renderF0();f0Changed();" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border-radius:var(--r-sm);cursor:pointer;margin-bottom:4px;border:0.5px solid ${checked?'var(--teal)':'var(--border)'};">
-      <div style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${checked?'var(--teal)':'var(--border2)'};background:${checked?'rgba(0,173,181,0.15)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--teal);">${checked?'✓':''}</div>
-      <div style="font-size:12px;color:var(--text);">${c.l}</div>
+    html+=`<div onclick="getF0().data_requested['${c.k}']=!getF0().data_requested['${c.k}'];renderF0();f0Changed();" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#ffffff;border-radius:var(--r-sm);cursor:pointer;margin-bottom:4px;border:0.5px solid ${checked?'var(--teal)':'#dde3e1'};">
+      <div style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${checked?'var(--teal)':'#ccd4d1'};background:${checked?'rgba(0,173,181,0.15)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--teal);">${checked?'✓':''}</div>
+      <div style="font-size:12px;color:#16232a;">${c.l}</div>
     </div>`;
   });
   html+=`</div>`;
@@ -4017,11 +4070,11 @@ function renderF0() {
   html+=`<div class="vsm-section"><div class="vsm-section-title">👥 Stakeholder mapping</div><div class="vsm-section-sub">Identificar las personas clave para cada perfil de entrevista</div>`;
   const stk=f.stakeholders||[];
   html+=`<div style="display:grid;grid-template-columns:1fr 1fr 100px 100px 1fr;gap:6px;margin-bottom:4px;padding:4px 0;">
-    <div style="font-size:9px;color:var(--text4);font-weight:600;">NOMBRE</div>
-    <div style="font-size:9px;color:var(--text4);font-weight:600;">CARGO</div>
-    <div style="font-size:9px;color:var(--text4);font-weight:600;">PERFIL</div>
-    <div style="font-size:9px;color:var(--text4);font-weight:600;">DISPONIBILIDAD</div>
-    <div style="font-size:9px;color:var(--text4);font-weight:600;">NOTAS</div>
+    <div style="font-size:9px;color:#8a9793;font-weight:600;">NOMBRE</div>
+    <div style="font-size:9px;color:#8a9793;font-weight:600;">CARGO</div>
+    <div style="font-size:9px;color:#8a9793;font-weight:600;">PERFIL</div>
+    <div style="font-size:9px;color:#8a9793;font-weight:600;">DISPONIBILIDAD</div>
+    <div style="font-size:9px;color:#8a9793;font-weight:600;">NOTAS</div>
   </div>`;
   stk.forEach((s,i)=>{
     html+=`<div style="display:grid;grid-template-columns:1fr 1fr 100px 100px 1fr;gap:6px;align-items:center;margin-bottom:4px;">
@@ -4054,26 +4107,27 @@ function renderF0() {
   html+=`<div class="vsm-section"><div class="vsm-section-title">⚠️ Risk Log — M0 Kick-off</div><div class="vsm-section-sub">5 riesgos estándar de la Metodología. Actualizar estado a medida que avanza el diagnóstico.</div>`;
   f.risk_log.forEach((r,i)=>{
     const statusColor = r.status==='Mitigado'?'var(--green)':r.status==='Materializado'?'var(--red)':'var(--amber)';
-    html+=`<div style="padding:12px 14px;background:var(--s2);border:0.5px solid ${statusColor}55;border-radius:var(--r-sm);margin-bottom:8px;">
+    html+=`<div style="padding:12px 14px;background:#ffffff;border:0.5px solid ${statusColor}55;border-radius:var(--r-sm);margin-bottom:8px;">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text);flex:1;">${r.risk}</div>
+        <div style="font-size:12px;font-weight:600;color:#16232a;flex:1;">${r.risk}</div>
         <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(226,75,74,0.1);color:var(--red);font-weight:600;flex-shrink:0;">Impacto ${r.impact}</span>
       </div>
-      <div style="font-size:10.5px;color:var(--text3);line-height:1.45;margin-bottom:8px;">${r.mitigation}</div>
+      <div style="font-size:10.5px;color:#5a6b70;line-height:1.45;margin-bottom:8px;">${r.mitigation}</div>
       <div style="display:flex;gap:6px;margin-bottom:6px;">
-        ${['Abierto','Mitigado','Materializado'].map(s=>{const sc=s==='Mitigado'?'var(--green)':s==='Materializado'?'var(--red)':'var(--amber)';return `<button onclick="getF0().risk_log[${i}].status='${s}';renderF0();f0Changed();" style="padding:5px 12px;border-radius:var(--r-xs);border:1px solid ${r.status===s?sc:'var(--border)'};background:${r.status===s?sc+'22':'var(--s1)'};color:${r.status===s?sc:'var(--text3)'};font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${s}</button>`;}).join('')}
+        ${['Abierto','Mitigado','Materializado'].map(s=>{const sc=s==='Mitigado'?'var(--green)':s==='Materializado'?'var(--red)':'var(--amber)';return `<button onclick="getF0().risk_log[${i}].status='${s}';renderF0();f0Changed();" style="padding:5px 12px;border-radius:var(--r-xs);border:1px solid ${r.status===s?sc:'#dde3e1'};background:${r.status===s?sc+'22':'#f4f6f5'};color:${r.status===s?sc:'#5a6b70'};font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${s}</button>`;}).join('')}
       </div>
       <input class="vsm-input" style="font-size:10.5px;padding:6px 8px;" placeholder="Evidencia / nota de campo..." value="${(r.evidence||'').replace(/"/g,'&quot;')}" oninput="getF0().risk_log[${i}].evidence=this.value;f0Changed()">
     </div>`;
   });
   html+=`<div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 14px;background:rgba(0,173,181,0.05);border-radius:var(--r-sm);">
-    <div onclick="getF0().acta_firmada.signed=!getF0().acta_firmada.signed;renderF0();f0Changed();" style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${f.acta_firmada.signed?'var(--teal)':'var(--border2)'};background:${f.acta_firmada.signed?'rgba(0,173,181,0.15)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--teal);cursor:pointer;flex-shrink:0;">${f.acta_firmada.signed?'✓':''}</div>
-    <span style="font-size:12px;color:var(--text);">Acta de kick-off firmada</span>
-    <input type="date" value="${f.acta_firmada.date||''}" oninput="getF0().acta_firmada.date=this.value;f0Changed()" style="margin-left:auto;background:var(--s1);border:0.5px solid var(--border2);border-radius:var(--r-xs);padding:5px 8px;color:var(--text);font-size:11px;font-family:var(--font);">
+    <div onclick="getF0().acta_firmada.signed=!getF0().acta_firmada.signed;renderF0();f0Changed();" style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${f.acta_firmada.signed?'var(--teal)':'#ccd4d1'};background:${f.acta_firmada.signed?'rgba(0,173,181,0.15)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--teal);cursor:pointer;flex-shrink:0;">${f.acta_firmada.signed?'✓':''}</div>
+    <span style="font-size:12px;color:#16232a;">Acta de kick-off firmada</span>
+    <input type="date" value="${f.acta_firmada.date||''}" oninput="getF0().acta_firmada.date=this.value;f0Changed()" style="margin-left:auto;background:#f4f6f5;border:0.5px solid #ccd4d1;border-radius:var(--r-xs);padding:5px 8px;color:#16232a;font-size:11px;font-family:var(--font);">
   </div></div>`;
 
   // PRE-KICKOFF NOTES
   html+=`<div class="vsm-section"><div class="vsm-section-title">📝 Notas pre-engagement</div><textarea class="vsm-input" style="min-height:80px;resize:vertical;" placeholder="Contexto de la oportunidad comercial, origen del contacto, urgencias detectadas..." oninput="getF0().pre_kickoff_notes=this.value;f0Changed()">${f.pre_kickoff_notes||''}</textarea></div>`;
+  html+=`</div>`;
 
   document.getElementById('f0-content').innerHTML=html;
   if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
@@ -4132,16 +4186,16 @@ function renderM4QuickBlock(title,sub,section,items){
   const vals=items.map(i=>m4LevelScore(m[section]?.[i.k])).filter(v=>v>0);
   const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
   const avgText=avg?`${avg.toFixed(1)}/3`:'Pendiente';
-  const avgCol=avg>=2.4?'var(--green)':avg>=1.7?'var(--amber)':avg>0?'var(--red)':'var(--text3)';
+  const avgCol=avg>=2.4?'var(--green)':avg>=1.7?'var(--amber)':avg>0?'var(--red)':'#5a6b70';
   let html=`<div class="vsm-section"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px;"><div><div class="vsm-section-title">${title}</div><div class="vsm-section-sub">${sub}</div></div><div style="font-size:20px;font-weight:700;color:${avgCol};font-family:var(--mono);white-space:nowrap;">${avgText}</div></div>`;
   html+=`<div style="display:flex;flex-direction:column;gap:8px;">`;
   items.forEach(it=>{
     const val=m[section]?.[it.k]||'';
-    html+=`<div style="padding:12px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);">
+    html+=`<div style="padding:12px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-sm);">
       <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;">
-        <div style="min-width:0;"><div style="font-size:12px;font-weight:600;color:var(--text);">${it.l}</div><div style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.35;">${it.h}</div></div>
+        <div style="min-width:0;"><div style="font-size:12px;font-weight:600;color:#16232a;">${it.l}</div><div style="font-size:10px;color:#5a6b70;margin-top:2px;line-height:1.35;">${it.h}</div></div>
         <div style="display:flex;gap:5px;flex-shrink:0;">
-          ${['Bajo','Medio','Alto'].map(opt=>{const sel=val===opt;const col=m4LevelColor(opt);return `<button onclick="m4SetLevel('${section}','${it.k}','${opt}')" style="padding:6px 9px;border-radius:var(--r-xs);border:1px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${opt}</button>`;}).join('')}
+          ${['Bajo','Medio','Alto'].map(opt=>{const sel=val===opt;const col=m4LevelColor(opt);return `<button onclick="m4SetLevel('${section}','${it.k}','${opt}')" style="padding:6px 9px;border-radius:var(--r-xs);border:1px solid ${sel?col:'#dde3e1'};background:${sel?col+'22':'#f4f6f5'};color:${sel?col:'#5a6b70'};font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${opt}</button>`;}).join('')}
         </div>
       </div>
     </div>`;
@@ -4157,10 +4211,11 @@ function renderM4(){
   const avg=M4_DIMENSIONS.reduce((a,d)=>a+(parseInt(m.dimensions[d.k])||0),0)/M4_DIMENSIONS.length;
   
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🏢</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M4 · Diagnóstico organizacional</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Readiness organizacional · 7 dimensiones · Alimenta OFI D4</div></div></div>`;
+  html+=`<div class="m1v2-sessionwrap">`;
   
   if(avg>0){
     const col=avg<2?'var(--red)':avg<3?'var(--amber)':avg<4?'var(--teal)':'var(--green)';
-    html+=`<div class="vsm-section" style="text-align:center;"><div style="font-size:36px;font-weight:700;color:${col};font-family:var(--mono);">${avg.toFixed(1)}<span style="font-size:16px;color:var(--text3);">/5</span></div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;">Score readiness organizacional</div></div>`;
+    html+=`<div class="vsm-section" style="text-align:center;"><div style="font-size:36px;font-weight:700;color:${col};font-family:var(--mono);">${avg.toFixed(1)}<span style="font-size:16px;color:#5a6b70;">/5</span></div><div style="font-size:11px;color:#5a6b70;text-transform:uppercase;">Score readiness organizacional</div></div>`;
   }
   
   html+=`<div class="vsm-section"><div class="vsm-section-title">📋 Evaluación por dimensión</div><div class="vsm-section-sub">Puntuación 1-5 basada en evidencia observada. Diseñado para usar caminando por planta.</div>`;
@@ -4168,17 +4223,17 @@ function renderM4(){
   M4_DIMENSIONS.forEach(dim=>{
     const val=parseInt(m.dimensions[dim.k])||0;
     const ev=m.evidence[dim.k]||'';
-    html+=`<div style="padding:16px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:10px;">
-      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">${dim.name}</div>
-      <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">${dim.signal}</div>
+    html+=`<div style="padding:16px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r);margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:600;color:#16232a;margin-bottom:4px;">${dim.name}</div>
+      <div style="font-size:10px;color:#5a6b70;margin-bottom:10px;">${dim.signal}</div>
       <div style="display:flex;gap:6px;margin-bottom:8px;">
         ${[1,2,3,4,5].map(n=>{
           const sel=val===n;
           const col=n<=2?'var(--red)':n===3?'var(--amber)':'var(--green)';
-          return `<div onclick="getM4().dimensions['${dim.k}']=${n};renderM4();m4Changed();" style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);cursor:pointer;font-size:16px;font-weight:700;border:1.5px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};transition:all .15s;">${n}</div>`;
+          return `<div onclick="getM4().dimensions['${dim.k}']=${n};renderM4();m4Changed();" style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);cursor:pointer;font-size:16px;font-weight:700;border:1.5px solid ${sel?col:'#dde3e1'};background:${sel?col+'22':'#f4f6f5'};color:${sel?col:'#5a6b70'};transition:all .15s;">${n}</div>`;
         }).join('')}
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text4);margin-bottom:8px;"><span>${dim.low}</span><span>${dim.high}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:#8a9793;margin-bottom:8px;"><span>${dim.low}</span><span>${dim.high}</span></div>
       <textarea class="vsm-input" style="min-height:36px;resize:vertical;font-size:11px;" placeholder="Evidencia observada..." oninput="if(!getM4().evidence)getM4().evidence={};getM4().evidence['${dim.k}']=this.value;m4Changed();">${ev}</textarea>
     </div>`;
   });
@@ -4187,11 +4242,11 @@ function renderM4(){
   // Archetype signals from M4
   html+=`<div class="vsm-section"><div class="vsm-section-title">🏛️ Mapa de gobernanza operativa</div><div class="vsm-section-sub">¿Quién posee qué KPI? Si "Nada" domina → iniciativas L4 Govern tienen readiness alta.</div>`;
   const govKPIs=[{k:'oee',l:'OEE global'},{k:'rechazo',l:'Tasa rechazo / calidad'},{k:'mtbf',l:'MTBF / averías'},{k:'servicio',l:'Nivel de servicio'},{k:'plan_real',l:'Plan vs. real producción'},{k:'stock',l:'Stock / WIP'}];
-  html+=`<div style="display:grid;grid-template-columns:140px 1fr 120px 1fr;gap:6px;margin-bottom:4px;padding:4px 0;"><div style="font-size:9px;color:var(--text4);font-weight:600;">KPI</div><div style="font-size:9px;color:var(--text4);font-weight:600;">Propietario</div><div style="font-size:9px;color:var(--text4);font-weight:600;">Revisión</div><div style="font-size:9px;color:var(--text4);font-weight:600;">Qué pasa con desviación</div></div>`;
+  html+=`<div style="display:grid;grid-template-columns:140px 1fr 120px 1fr;gap:6px;margin-bottom:4px;padding:4px 0;"><div style="font-size:9px;color:#8a9793;font-weight:600;">KPI</div><div style="font-size:9px;color:#8a9793;font-weight:600;">Propietario</div><div style="font-size:9px;color:#8a9793;font-weight:600;">Revisión</div><div style="font-size:9px;color:#8a9793;font-weight:600;">Qué pasa con desviación</div></div>`;
   govKPIs.forEach(g=>{
     const gov=m.governance?.[g.k]||{owner:'',review:'',deviation:''};
     html+=`<div style="display:grid;grid-template-columns:140px 1fr 120px 1fr;gap:6px;align-items:center;margin-bottom:4px;">
-      <div style="font-size:11px;color:var(--text);font-weight:500;">${g.l}</div>
+      <div style="font-size:11px;color:#16232a;font-weight:500;">${g.l}</div>
       <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Nombre/rol" value="${gov.owner||''}" oninput="if(!getM4().governance)getM4().governance={};if(!getM4().governance['${g.k}'])getM4().governance['${g.k}']={};getM4().governance['${g.k}'].owner=this.value;m4Changed()">
       <select class="vsm-select" style="font-size:10px;padding:4px;" onchange="if(!getM4().governance)getM4().governance={};if(!getM4().governance['${g.k}'])getM4().governance['${g.k}']={};getM4().governance['${g.k}'].review=this.value;m4Changed()"><option value="">—</option><option ${gov.review==='Diaria'?'selected':''}>Diaria</option><option ${gov.review==='Semanal'?'selected':''}>Semanal</option><option ${gov.review==='Nada'?'selected':''}>Nada</option></select>
       <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Acción ante desviación" value="${gov.deviation||''}" oninput="if(!getM4().governance)getM4().governance={};if(!getM4().governance['${g.k}'])getM4().governance['${g.k}']={};getM4().governance['${g.k}'].deviation=this.value;m4Changed()">
@@ -4224,6 +4279,7 @@ function renderM4(){
   ]);
 
   html+=`<div class="vsm-section"><div class="vsm-section-title">🔮 Señales de arquetipo observadas en M4</div><textarea class="vsm-input" style="min-height:60px;resize:vertical;" placeholder="¿Qué arquetipo confirman las observaciones organizacionales?" oninput="getM4().archetype_signals=this.value;m4Changed();">${m.archetype_signals||''}</textarea></div>`;
+  html+=`</div>`;
   
   document.getElementById('m4-content').innerHTML=html;
   if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
@@ -4446,13 +4502,13 @@ function renderM5(){
   const arch=archKey?ARCHETYPES[archKey]:null;
   
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">📊</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M5 · OFI™ Dashboard</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Operational Friction Index · Síntesis del diagnóstico</div></div></div>`;
-  
+  html+=`<div class="m1v2-sessionwrap">`;
   // OFI MAIN SCORE
   html+=`<div class="vsm-section" style="text-align:center;padding:30px;">
     <div style="font-size:64px;font-weight:800;color:${zone.col};font-family:var(--mono);line-height:1;">${ofi}</div>
-    <div style="font-size:12px;color:var(--text3);margin-top:4px;">OFI™ / 100</div>
+    <div style="font-size:12px;color:#5a6b70;margin-top:4px;">OFI™ / 100</div>
     <div style="display:inline-block;margin-top:10px;padding:6px 16px;background:${zone.col}22;border:1px solid ${zone.col};border-radius:20px;font-size:12px;font-weight:600;color:${zone.col};">${zone.name}</div>
-    <div style="font-size:11px;color:var(--text3);margin-top:6px;">${zone.desc}</div>
+    <div style="font-size:11px;color:#5a6b70;margin-top:6px;">${zone.desc}</div>
   </div>`;
   
   // 4 DIMENSIONS
@@ -4460,12 +4516,12 @@ function renderM5(){
   [{name:'D1 Rendimiento',score:d1,weight:'30%',icon:'⚙️'},{name:'D2 Datos',score:d2,weight:'25%',icon:'📊'},{name:'D3 Digital',score:d3,weight:'25%',icon:'💻'},{name:'D4 Organización',score:d4,weight:'20%',icon:'🏢'}].forEach(d=>{
     const pct=d.score;const col=pct<8?'var(--red)':pct<15?'var(--amber)':pct<20?'var(--teal)':'var(--green)';
     const isFriction=d.name===frictionVector.name;
-    html+=`<div style="padding:14px;background:var(--s2);border:1px solid ${isFriction?'var(--red)':'var(--border)'};border-radius:var(--r);text-align:center;">
+    html+=`<div style="padding:14px;background:#ffffff;border:1px solid ${isFriction?'var(--red)':'#dde3e1'};border-radius:var(--r);text-align:center;">
       <div style="font-size:20px;margin-bottom:4px;">${d.icon}</div>
       <div style="font-size:24px;font-weight:700;color:${col};font-family:var(--mono);">${d.score}</div>
-      <div style="font-size:8px;color:var(--text4);">/ 25</div>
-      <div style="font-size:10px;color:var(--text2);margin-top:4px;">${d.name}</div>
-      <div style="font-size:9px;color:var(--text4);">Peso: ${d.weight}</div>
+      <div style="font-size:8px;color:#8a9793;">/ 25</div>
+      <div style="font-size:10px;color:#5a6b70;margin-top:4px;">${d.name}</div>
+      <div style="font-size:9px;color:#8a9793;">Peso: ${d.weight}</div>
       ${isFriction?'<div style="font-size:8px;color:var(--red);margin-top:4px;font-weight:600;">⚠ VECTOR DE FRICCIÓN</div>':''}
     </div>`;
   });
@@ -4476,15 +4532,15 @@ function renderM5(){
   ['L1 Stabilize','L2 Measure','L3 Connect','L4 Govern','L5 Optimize','L6 Intelligence'].forEach((l,i)=>{
     const current=l.startsWith(ttl.layer);
     const past=i<parseInt(ttl.layer.replace('L',''))-1;
-    html+=`<div style="flex:1;padding:10px 4px;text-align:center;border-radius:var(--r-sm);background:${current?'rgba(0,173,181,0.15)':past?'rgba(0,173,181,0.05)':'var(--s2)'};border:1px solid ${current?'var(--teal)':'var(--border)'};"><div style="font-size:10px;font-weight:700;color:${current?'var(--teal-l)':past?'var(--teal)':'var(--text4)'};">${l.split(' ')[0]}</div><div style="font-size:8px;color:${current?'var(--teal)':'var(--text4)'};">${l.split(' ')[1]}</div></div>`;
+    html+=`<div style="flex:1;padding:10px 4px;text-align:center;border-radius:var(--r-sm);background:${current?'rgba(0,173,181,0.15)':past?'rgba(0,173,181,0.05)':'#ffffff'};border:1px solid ${current?'var(--teal)':'#dde3e1'};"><div style="font-size:10px;font-weight:700;color:${current?'#0f6e56':past?'var(--teal)':'#8a9793'};">${l.split(' ')[0]}</div><div style="font-size:8px;color:${current?'var(--teal)':'#8a9793'};">${l.split(' ')[1]}</div></div>`;
   });
-  html+=`</div><div style="margin-top:8px;padding:10px;background:rgba(0,173,181,0.05);border-radius:var(--r-sm);font-size:11px;color:var(--text2);">Capa actual estimada: <strong style="color:var(--teal-l);">${ttl.layer} ${ttl.name}</strong> — ${ttl.desc}. Iniciativas por encima de esta capa requieren consolidar las anteriores primero.</div></div>`;
+  html+=`</div><div style="margin-top:8px;padding:10px;background:rgba(0,173,181,0.05);border-radius:var(--r-sm);font-size:11px;color:#5a6b70;">Capa actual estimada: <strong style="color:#0f6e56;">${ttl.layer} ${ttl.name}</strong> — ${ttl.desc}. Iniciativas por encima de esta capa requieren consolidar las anteriores primero.</div></div>`;
   
   // ARCHETYPE
   if(arch){
-    html+=`<div class="vsm-section"><div class="vsm-section-title">🔮 Arquetipo confirmado</div><div style="padding:14px;background:var(--s2);border-radius:var(--r);margin-top:8px;">
-      <div style="font-size:22px;margin-bottom:6px;">${arch.emoji} <span style="font-size:15px;font-weight:600;color:var(--text);">${arch.name}</span></div>
-      <div style="font-size:12px;color:var(--text2);line-height:1.5;">${arch.desc}</div>
+    html+=`<div class="vsm-section"><div class="vsm-section-title">🔮 Arquetipo confirmado</div><div style="padding:14px;background:#ffffff;border-radius:var(--r);margin-top:8px;">
+      <div style="font-size:22px;margin-bottom:6px;">${arch.emoji} <span style="font-size:15px;font-weight:600;color:#16232a;">${arch.name}</span></div>
+      <div style="font-size:12px;color:#5a6b70;line-height:1.5;">${arch.desc}</div>
     </div></div>`;
   }
   
@@ -4501,22 +4557,22 @@ function renderM5(){
       const a=ARCHETYPES[archKey];
       if(!a)return;
       const isSelected=archKey===f0?.archetype_hypothesis;
-      html+=`<div style="padding:12px;background:${isSelected?'rgba(0,173,181,0.06)':'var(--s2)'};border:0.5px solid ${isSelected?'var(--teal)':'var(--border)'};border-radius:var(--r);margin-bottom:8px;">
+      html+=`<div style="padding:12px;background:${isSelected?'rgba(0,173,181,0.06)':'#ffffff'};border:0.5px solid ${isSelected?'var(--teal)':'#dde3e1'};border-radius:var(--r);margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:16px;">${a.emoji}</span>
-          <span style="font-size:13px;font-weight:600;color:var(--text);">${a.name}</span>
+          <span style="font-size:13px;font-weight:600;color:#16232a;">${a.name}</span>
           <span style="padding:2px 8px;background:var(--teal);color:white;border-radius:10px;font-size:9px;font-weight:700;">${sigs.length} señal${sigs.length!==1?'es':''}</span>
           ${isSelected?'<span style="font-size:9px;color:var(--teal);font-weight:600;">✓ Seleccionado en F0</span>':''}
         </div>
         ${sigs.map(s=>`<div style="display:flex;align-items:flex-start;gap:6px;margin-left:24px;margin-bottom:3px;">
           <span style="color:var(--amber);font-size:10px;margin-top:1px;">▸</span>
-          <div><span style="font-size:11px;color:var(--text);">${s.signal}</span><span style="font-size:9px;color:var(--text4);margin-left:6px;">[${s.source}]</span></div>
+          <div><span style="font-size:11px;color:#16232a;">${s.signal}</span><span style="font-size:9px;color:#8a9793;margin-left:6px;">[${s.source}]</span></div>
         </div>`).join('')}
       </div>`;
     });
     // Recommendation if detected != selected
     if(sorted.length&&f0?.archetype_hypothesis&&sorted[0][0]!==f0.archetype_hypothesis){
-      html+=`<div style="padding:8px 12px;background:rgba(245,158,11,0.06);border-left:3px solid var(--amber);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:11px;color:var(--text2);">⚠ El arquetipo con más señales detectadas (<strong>${ARCHETYPES[sorted[0][0]]?.name}</strong>) no coincide con la hipótesis de F0 (<strong>${arch?.name||'?'}</strong>). Considerar ajustar.</div>`;
+      html+=`<div style="padding:8px 12px;background:rgba(245,158,11,0.06);border-left:3px solid var(--amber);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:11px;color:#5a6b70;">⚠ El arquetipo con más señales detectadas (<strong>${ARCHETYPES[sorted[0][0]]?.name}</strong>) no coincide con la hipótesis de F0 (<strong>${arch?.name||'?'}</strong>). Considerar ajustar.</div>`;
     }
     html+=`</div>`;
   }
@@ -4532,15 +4588,15 @@ function renderM5(){
     {name:'M4 Dx organizacional',done:d4>0},
   ];
   completeness.forEach(c=>{
-    html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border);">
-      <div style="width:14px;height:14px;border-radius:50%;background:${c.done?'var(--green)':'var(--border2)'};display:flex;align-items:center;justify-content:center;font-size:8px;color:white;">${c.done?'✓':''}</div>
-      <div style="font-size:12px;color:${c.done?'var(--text)':'var(--text3)'};">${c.name}</div>
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #dde3e1;">
+      <div style="width:14px;height:14px;border-radius:50%;background:${c.done?'var(--green)':'#ccd4d1'};display:flex;align-items:center;justify-content:center;font-size:8px;color:white;">${c.done?'✓':''}</div>
+      <div style="font-size:12px;color:${c.done?'#16232a':'#5a6b70'};">${c.name}</div>
     </div>`;
   });
   html+=`</div></div>`;
   
   html+=renderConfidenceLayer();
-  
+  html+=`</div>`;
   document.getElementById('m5-content').innerHTML=html;
 }
 
@@ -4585,17 +4641,17 @@ function confidenceSummary(){const c=getConfidence();const filled=(c.findings||[
 function renderConfidenceLayer(){const c=getConfidence(); if(!c.findings)c.findings=defaultConfidence().findings; const sum=confidenceSummary();
   let html=`<div class="vsm-section"><div class="vsm-section-title">🧪 Confidence Layer™</div><div class="vsm-section-sub">Clasifica la defendibilidad de los hallazgos principales. Evita falsa precisión y ajusta el lenguaje del informe.</div>`;
   html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">`;
-  [['Confirmado',sum.confirmed,'var(--green)'],['Hipótesis fuerte',sum.hypothesis,'var(--amber)'],['Investigación requerida',sum.research,'var(--red)']].forEach(x=>{const pct=sum.total?Math.round(x[1]/sum.total*100):0;html+=`<div style="padding:10px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);text-align:center;"><div style="font-size:20px;font-weight:800;color:${x[2]};font-family:var(--mono);">${pct}%</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;">${x[0]}</div></div>`;});
+  [['Confirmado',sum.confirmed,'var(--green)'],['Hipótesis fuerte',sum.hypothesis,'var(--amber)'],['Investigación requerida',sum.research,'var(--red)']].forEach(x=>{const pct=sum.total?Math.round(x[1]/sum.total*100):0;html+=`<div style="padding:10px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-sm);text-align:center;"><div style="font-size:20px;font-weight:800;color:${x[2]};font-family:var(--mono);">${pct}%</div><div style="font-size:9px;color:#5a6b70;text-transform:uppercase;">${x[0]}</div></div>`;});
   html+=`</div>`;
   html+=`<div style="display:flex;flex-direction:column;gap:8px;">`;
-  c.findings.forEach((f,i)=>{const col=confidenceColor(f.confidence);html+=`<div style="padding:12px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);">
+  c.findings.forEach((f,i)=>{const col=confidenceColor(f.confidence);html+=`<div style="padding:12px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-sm);">
     <div style="display:grid;grid-template-columns:54px 1fr 190px;gap:8px;align-items:center;">
       <div style="font-size:10px;font-weight:800;color:var(--teal);font-family:var(--mono);">${f.module}</div>
-      <div><div style="font-size:12px;font-weight:600;color:var(--text);">${f.label}</div><input class="vsm-input" style="font-size:11px;padding:6px;margin-top:5px;" placeholder="Hallazgo clave observado..." value="${(f.finding||'').replace(/"/g,'&quot;')}" oninput="getConfidence().findings[${i}].finding=this.value;confidenceChanged()"></div>
-      <div><select class="vsm-select" style="font-size:11px;padding:6px;border-color:${col};color:${col};" onchange="getConfidence().findings[${i}].confidence=this.value;saveConfidence();renderM5();confidenceChanged()"><option value="">Confidence...</option><option ${f.confidence==='Confirmado'?'selected':''}>Confirmado</option><option ${f.confidence==='Hipótesis fuerte'?'selected':''}>Hipótesis fuerte</option><option ${f.confidence==='Investigación requerida'?'selected':''}>Investigación requerida</option></select><div style="font-size:9px;color:var(--text4);margin-top:4px;line-height:1.3;">${confidenceNarrative(f.confidence)}</div></div>
+      <div><div style="font-size:12px;font-weight:600;color:#16232a;">${f.label}</div><input class="vsm-input" style="font-size:11px;padding:6px;margin-top:5px;" placeholder="Hallazgo clave observado..." value="${(f.finding||'').replace(/"/g,'&quot;')}" oninput="getConfidence().findings[${i}].finding=this.value;confidenceChanged()"></div>
+      <div><select class="vsm-select" style="font-size:11px;padding:6px;border-color:${col};color:${col};" onchange="getConfidence().findings[${i}].confidence=this.value;saveConfidence();renderM5();confidenceChanged()"><option value="">Confidence...</option><option ${f.confidence==='Confirmado'?'selected':''}>Confirmado</option><option ${f.confidence==='Hipótesis fuerte'?'selected':''}>Hipótesis fuerte</option><option ${f.confidence==='Investigación requerida'?'selected':''}>Investigación requerida</option></select><div style="font-size:9px;color:#8a9793;margin-top:4px;line-height:1.3;">${confidenceNarrative(f.confidence)}</div></div>
     </div>
   </div>`;});
-  html+=`</div><div style="font-size:10px;color:var(--text4);margin-top:10px;line-height:1.45;">Regla TECNOFAB: Confirmado = ≥2 fuentes sólidas; Hipótesis = señales consistentes sin cierre completo; Investigación = visibilidad insuficiente.</div></div>`;
+  html+=`</div><div style="font-size:10px;color:#8a9793;margin-top:10px;line-height:1.45;">Regla TECNOFAB: Confirmado = ≥2 fuentes sólidas; Hipótesis = señales consistentes sin cierre completo; Investigación = visibilidad insuficiente.</div></div>`;
   return html;
 }
 function getConfidenceReportContext(){const c=confidenceData[currentClient?.id];if(!c||!c.findings)return'';const filled=c.findings.filter(f=>f.finding||f.confidence);if(!filled.length)return'';const total=filled.filter(f=>f.confidence).length;const count=(v)=>filled.filter(f=>f.confidence===v).length;let ctx='\n=== CONFIDENCE LAYER™ · NIVEL DE EVIDENCIA ===\n';if(total){ctx+=`Perfil de confianza: ${count('Confirmado')}/${total} confirmados · ${count('Hipótesis fuerte')}/${total} hipótesis fuertes · ${count('Investigación requerida')}/${total} investigación requerida\n`;}
@@ -4684,7 +4740,7 @@ function renderM8NumField(numKey,rangeKey,label,unit,critical,rangeOpts){
   const badgeText=answered?'Respondida':(critical?'Pendiente crítica':'Pendiente');
   return `<div class="m1v2-qcard ${(!answered&&critical)?'m1v2-crit':''}">
     <div class="m1v2-qtop"><div class="m1v2-qtext">${label}</div><span class="m1v2-badge ${badgeClass}">${badgeText}</span></div>
-    <div class="m1v2-numrow"><input type="number" min="0" value="${realVal}" placeholder="Número real" oninput="m1v2SetNum('${numKey}',this.value)"><span>${unit}</span></div>
+    <div class="m1v2-numrow"><input type="number" min="0" value="${realVal}" placeholder="Real" oninput="m1v2SetNum('${numKey}',this.value)"><span>${unit}</span></div>
     <div class="m1v2-fallback">Si no tienes el número exacto, marca al menos un rango:</div>
     <div class="m1v2-rangebtns">${rangeOpts.map(opt=>{const sel=rangeVal===opt;return `<button class="${sel?'m1v2-sel':''}" onclick="m1v2SetRange('${rangeKey}','${opt}')">${opt}</button>`;}).join('')}</div>
   </div>`;
@@ -4703,7 +4759,7 @@ function renderM8(){
   html+=renderM8Choice('urgency_overtime','Urgencias / overtime / cambios de plan','Presión operativa generada por urgencias, cambios o horas extra.',['Bajo','Medio','Alto']);
   html+=renderM8Choice('shifts','Turnos de operación','Nivel de utilización de la planta.',['1 turno','2 turnos','3 turnos','Continuo']);
   html+=renderM8Choice('perceived_impact','Impacto económico percibido','Si estos problemas continúan 12 meses, ¿cómo impactan el negocio?',['Bajo','Medio','Alto','Crítico']);
-  html+=`<div class="m1v2-qcard"><div class="m1v2-qtext" style="margin-bottom:8px;">Observación económica del consultor</div><textarea class="vsm-input" style="min-height:70px;resize:vertical;width:100%;" placeholder="Ej: coste real no disponible; producción estima que el horno parado impacta en toda la línea; overtime recurrente en cierre de semana..." oninput="getM8().notes=this.value;m8Changed();">${m.notes||''}</textarea></div>`;
+  html+=`<div class="m1v2-qcard"><div class="m1v2-qtext" style="margin-bottom:8px;">Observación económica del consultor</div><textarea class="m1v2-textarea" placeholder="Ej: coste real no disponible; producción estima que el horno parado impacta en toda la línea; overtime recurrente en cierre de semana..." oninput="getM8().notes=this.value;m8Changed();">${m.notes||''}</textarea></div>`;
   html+=`</div>`;
   const exp=m1v2Exposure();
   html+=`<div class="m1v2-panel">
@@ -4977,9 +5033,10 @@ function renderM6(){
   const clientTTL=ofi<15?'L1':ofi<30?'L2':ofi<45?'L3':ofi<60?'L4':ofi<75?'L5':'L6';
   
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🎯</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M6 · Initiative Backlog + RIM™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Selección, priorización y ROI de iniciativas · Capa TTL actual: ${clientTTL}</div></div></div>`;
+  html+=`<div class="m1v2-sessionwrap">`;
 
   // ── ADD FROM CATALOGUE ──
-  html+=`<div class="vsm-section"><div class="vsm-section-title">📚 Catálogo TTL™ <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;">${getFullCatalogue().length} iniciativas</span></div>
+  html+=`<div class="vsm-section"><div class="vsm-section-title">📚 Catálogo TTL™ <span style="font-size:11px;color:#5a6b70;font-weight:400;margin-left:8px;">${getFullCatalogue().length} iniciativas</span></div>
     <div class="vsm-section-sub">Selecciona iniciativas del catálogo para añadir al backlog. Las que están por encima de la capa actual (${clientTTL}) se marcan como bloqueadas.</div>`;
 
   // ── AUTO-SUGGESTIONS ──
@@ -4987,14 +5044,14 @@ function renderM6(){
   if(suggestions.length){
     html+=`<div style="margin-bottom:14px;padding:14px;background:rgba(0,173,181,0.04);border:1px solid var(--teal);border-radius:var(--r);">
       <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;">💡 Sugerencias automáticas — basadas en el diagnóstico</div>
-      <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">El sistema detecta iniciativas recomendadas a partir de los datos de M1–M4. Acepta las que apliquen.</div>
+      <div style="font-size:10px;color:#5a6b70;margin-bottom:10px;">El sistema detecta iniciativas recomendadas a partir de los datos de M1–M4. Acepta las que apliquen.</div>
       ${suggestions.map(s=>{
         const inBacklog=backlog.some(b=>b.name===s.name);
         const col=getTTLColor(s.layer);
-        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:var(--r-sm);margin-bottom:4px;border-left:3px solid ${col};">
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#ffffff;border-radius:var(--r-sm);margin-bottom:4px;border-left:3px solid ${col};">
           <span style="padding:2px 6px;background:${col}22;color:${col};border-radius:8px;font-size:9px;font-weight:700;flex-shrink:0;">${s.layer}</span>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:11px;color:var(--text);font-weight:500;">${s.name}</div>
+            <div style="font-size:11px;color:#16232a;font-weight:500;">${s.name}</div>
             <div style="font-size:9px;color:var(--amber);">↳ ${s.reason}</div>
           </div>
           ${inBacklog?'<span style="font-size:9px;color:var(--teal);">✓ añadida</span>':`<button onclick="addToBacklog('${s.name.replace(/'/g,"\\'")}')" style="padding:4px 12px;background:var(--teal);color:white;border:none;border-radius:var(--r-xs);font-size:10px;cursor:pointer;flex-shrink:0;font-family:var(--font);font-weight:600;">Aceptar</button>`}
@@ -5007,10 +5064,10 @@ function renderM6(){
   ['L1','L2','L3','L4','L5','L6'].forEach(l=>{
     html+=`<button onclick="filterCatalogue('${l}')" style="padding:4px 12px;border:1px solid ${getTTLColor(l)};background:${getTTLColor(l)}22;color:${getTTLColor(l)};border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">${l}</button>`;
   });
-  html+=`<button onclick="filterCatalogue('all')" style="padding:4px 12px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);border-radius:20px;font-size:10px;cursor:pointer;font-family:var(--font);">Todas</button>`;
+  html+=`<button onclick="filterCatalogue('all')" style="padding:4px 12px;border:1px solid #ccd4d1;background:#ffffff;color:#5a6b70;border-radius:20px;font-size:10px;cursor:pointer;font-family:var(--font);">Todas</button>`;
   html+=`<button onclick="showAddCustom()" style="padding:4px 12px;border:1px dashed var(--teal);background:transparent;color:var(--teal);border-radius:20px;font-size:10px;cursor:pointer;font-family:var(--font);">+ Nueva</button>`;
   html+=`</div><div id="catalogue-list" style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>`;
-  html+=`<div id="custom-form" style="display:none;margin-top:10px;padding:12px;background:var(--s2);border:0.5px solid var(--teal);border-radius:var(--r);">
+  html+=`<div id="custom-form" style="display:none;margin-top:10px;padding:12px;background:#ffffff;border:0.5px solid var(--teal);border-radius:var(--r);">
     <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;">Nueva iniciativa personalizada</div>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;">
       <select id="custom-layer" class="vsm-select" style="padding:5px 7px;font-size:11px;"><option>L1</option><option>L2</option><option>L3</option><option>L4</option><option>L5</option><option>L6</option></select>
@@ -5020,64 +5077,64 @@ function renderM6(){
     <select id="custom-tipo" class="vsm-select" style="padding:5px 7px;font-size:11px;margin-top:6px;">${Object.entries(TIPO_INICIATIVA).map(([k,v])=>`<option value="${k}">${v.label} (${v.horizonte})</option>`).join('')}</select>
     <div style="display:flex;gap:6px;margin-top:8px;">
       <button onclick="addCustomInitiative()" style="padding:6px 16px;background:var(--teal);color:white;border:none;border-radius:var(--r-sm);font-size:11px;cursor:pointer;font-family:var(--font);">Añadir al catálogo + backlog</button>
-      <button onclick="document.getElementById('custom-form').style.display='none'" style="padding:6px 16px;background:var(--s1);color:var(--text3);border:0.5px solid var(--border);border-radius:var(--r-sm);font-size:11px;cursor:pointer;font-family:var(--font);">Cancelar</button>
+      <button onclick="document.getElementById('custom-form').style.display='none'" style="padding:6px 16px;background:#f4f6f5;color:#5a6b70;border:0.5px solid #dde3e1;border-radius:var(--r-sm);font-size:11px;cursor:pointer;font-family:var(--font);">Cancelar</button>
     </div>
   </div></div>`;
 
   // ── BACKLOG ──
-  html+=`<div class="vsm-section"><div class="vsm-section-title">📋 Initiative Backlog <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;">${backlog.length} iniciativa${backlog.length!==1?'s':''}</span></div>`;
+  html+=`<div class="vsm-section"><div class="vsm-section-title">📋 Initiative Backlog <span style="font-size:11px;color:#5a6b70;font-weight:400;margin-left:8px;">${backlog.length} iniciativa${backlog.length!==1?'s':''}</span></div>`;
   if(!backlog.length){
-    html+=`<div style="padding:30px;text-align:center;color:var(--text4);font-size:12px;">Añade iniciativas desde el catálogo TTL™ arriba</div>`;
+    html+=`<div style="padding:30px;text-align:center;color:#8a9793;font-size:12px;">Añade iniciativas desde el catálogo TTL™ arriba</div>`;
   } else {
     html+=`<div style="display:flex;flex-direction:column;gap:8px;">`;
     backlog.forEach((b,i)=>{
       const rim=getRIMZone(b.impact||0,b.readiness||0);
       const blocked=parseInt(b.layer?.replace('L',''))>parseInt(clientTTL.replace('L',''));
       const ttlCol=getTTLColor(b.layer);
-      html+=`<div style="padding:14px;background:var(--s2);border:0.5px solid ${blocked?'var(--red)':'var(--border)'};border-radius:var(--r);${blocked?'opacity:0.7;':''}">
+      html+=`<div style="padding:14px;background:#ffffff;border:0.5px solid ${blocked?'var(--red)':'#dde3e1'};border-radius:var(--r);${blocked?'opacity:0.7;':''}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
           <div style="flex:1;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
               <span style="padding:2px 8px;background:${ttlCol}22;color:${ttlCol};border-radius:10px;font-size:9px;font-weight:700;">${b.layer}</span>
-              <span style="font-size:13px;font-weight:600;color:var(--text);">${b.name}</span>
+              <span style="font-size:13px;font-weight:600;color:#16232a;">${b.name}</span>
               ${blocked?'<span style="font-size:9px;color:var(--red);font-weight:600;">🔒 BLOQUEADA (requiere ${b.layer})</span>':''}
             </div>
-            <div style="font-size:10px;color:var(--text3);">${b.desc||''}</div>
+            <div style="font-size:10px;color:#5a6b70;">${b.desc||''}</div>
             <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-              <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Tipo (M5.3):</span>
-              <select onchange="getM6().backlog[${i}].tipo=this.value;renderM6();m6Changed();" style="background:var(--s1);border:1px solid ${tipoIniciativaColor(b.tipo)};border-radius:var(--r-xs);padding:4px 8px;color:${tipoIniciativaColor(b.tipo)};font-size:10px;font-weight:600;font-family:var(--font);">
+              <span style="font-size:9px;color:#8a9793;text-transform:uppercase;">Tipo (M5.3):</span>
+              <select onchange="getM6().backlog[${i}].tipo=this.value;renderM6();m6Changed();" style="background:#f4f6f5;border:1px solid ${tipoIniciativaColor(b.tipo)};border-radius:var(--r-xs);padding:4px 8px;color:${tipoIniciativaColor(b.tipo)};font-size:10px;font-weight:600;font-family:var(--font);">
                 ${Object.entries(TIPO_INICIATIVA).map(([k,v]) => `<option value="${k}" ${b.tipo===k?'selected':''}>${v.label} (${v.horizonte})</option>`).join('')}
               </select>
             </div>
           </div>
-          <button onclick="removeFromBacklog(${i})" style="background:none;border:none;color:var(--text4);cursor:pointer;font-size:14px;">✕</button>
+          <button onclick="removeFromBacklog(${i})" style="background:none;border:none;color:#8a9793;cursor:pointer;font-size:14px;">✕</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
           <div style="display:flex;flex-direction:column;gap:3px;">
-            <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Impacto (1-10)</span>
-            <input type="number" min="1" max="10" value="${b.impact||''}" placeholder="0" onchange="getM6().backlog[${i}].impact=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
+            <span style="font-size:9px;color:#8a9793;text-transform:uppercase;">Impacto (1-10)</span>
+            <input type="number" min="1" max="10" value="${b.impact||''}" placeholder="0" onchange="getM6().backlog[${i}].impact=parseInt(this.value);renderM6();m6Changed();" style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:var(--r-xs);padding:6px;color:#16232a;font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
           </div>
           <div style="display:flex;flex-direction:column;gap:3px;">
-            <span style="font-size:9px;color:var(--text4);text-transform:uppercase;">Readiness (1-10)</span>
-            <input type="number" min="1" max="10" value="${b.readiness||''}" placeholder="0" onchange="getM6().backlog[${i}].readiness=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:6px;color:var(--text);font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
+            <span style="font-size:9px;color:#8a9793;text-transform:uppercase;">Readiness (1-10)</span>
+            <input type="number" min="1" max="10" value="${b.readiness||''}" placeholder="0" onchange="getM6().backlog[${i}].readiness=parseInt(this.value);renderM6();m6Changed();" style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:var(--r-xs);padding:6px;color:#16232a;font-size:13px;font-family:var(--mono);text-align:center;outline:none;width:100%;">
           </div>
         </div>
-        <div style="margin-top:10px;padding:10px;background:var(--s1);border:0.5px solid var(--border);border-radius:var(--r-sm);">
-          <div style="font-size:9px;color:var(--text4);text-transform:uppercase;margin-bottom:8px;font-weight:600;">💰 ROI — 3 Escenarios</div>
+        <div style="margin-top:10px;padding:10px;background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:var(--r-sm);">
+          <div style="font-size:9px;color:#8a9793;text-transform:uppercase;margin-bottom:8px;font-weight:600;">💰 ROI — 3 Escenarios</div>
           <div style="display:grid;grid-template-columns:100px 1fr 1fr 1fr 80px;gap:6px;align-items:center;">
-            <div style="font-size:9px;color:var(--text4);">Inversión (€)</div>
-            <div style="grid-column:span 3;"><input type="number" value="${b.investment||''}" placeholder="0" onchange="getM6().backlog[${i}].investment=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--text);font-size:12px;font-family:var(--mono);text-align:center;outline:none;width:100%;"></div>
+            <div style="font-size:9px;color:#8a9793;">Inversión (€)</div>
+            <div style="grid-column:span 3;"><input type="number" value="${b.investment||''}" placeholder="0" onchange="getM6().backlog[${i}].investment=parseInt(this.value);renderM6();m6Changed();" style="background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-xs);padding:5px;color:#16232a;font-size:12px;font-family:var(--mono);text-align:center;outline:none;width:100%;"></div>
             <div></div>
-            <div style="font-size:9px;color:var(--text4);">Ahorro €/año</div>
+            <div style="font-size:9px;color:#8a9793;">Ahorro €/año</div>
             <div style="text-align:center;font-size:9px;color:var(--red);">Conservador</div>
             <div style="text-align:center;font-size:9px;color:var(--teal);">Base</div>
             <div style="text-align:center;font-size:9px;color:var(--green);">Optimista</div>
-            <div style="text-align:center;font-size:9px;color:var(--text4);">Confianza</div>
+            <div style="text-align:center;font-size:9px;color:#8a9793;">Confianza</div>
             <div></div>
-            <input type="number" value="${b.savings_low||''}" placeholder="0" onchange="getM6().backlog[${i}].savings_low=parseInt(this.value);getM6().backlog[${i}].savings=parseInt(this.value)||getM6().backlog[${i}].savings;renderM6();m6Changed();" style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--red);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
-            <input type="number" value="${b.savings||''}" placeholder="0" onchange="getM6().backlog[${i}].savings=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s2);border:0.5px solid var(--teal);border-radius:var(--r-xs);padding:5px;color:var(--teal);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
-            <input type="number" value="${b.savings_high||''}" placeholder="0" onchange="getM6().backlog[${i}].savings_high=parseInt(this.value);renderM6();m6Changed();" style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--green);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
-            <select style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--text);font-size:11px;font-family:var(--mono);outline:none;text-align:center;" onchange="getM6().backlog[${i}].confidence=parseInt(this.value);m6Changed();">
+            <input type="number" value="${b.savings_low||''}" placeholder="0" onchange="getM6().backlog[${i}].savings_low=parseInt(this.value);getM6().backlog[${i}].savings=parseInt(this.value)||getM6().backlog[${i}].savings;renderM6();m6Changed();" style="background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-xs);padding:5px;color:var(--red);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
+            <input type="number" value="${b.savings||''}" placeholder="0" onchange="getM6().backlog[${i}].savings=parseInt(this.value);renderM6();m6Changed();" style="background:#ffffff;border:0.5px solid var(--teal);border-radius:var(--r-xs);padding:5px;color:var(--teal);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
+            <input type="number" value="${b.savings_high||''}" placeholder="0" onchange="getM6().backlog[${i}].savings_high=parseInt(this.value);renderM6();m6Changed();" style="background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-xs);padding:5px;color:var(--green);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
+            <select style="background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-xs);padding:5px;color:#16232a;font-size:11px;font-family:var(--mono);outline:none;text-align:center;" onchange="getM6().backlog[${i}].confidence=parseInt(this.value);m6Changed();">
               <option value="">—</option>
               <option value="1" ${b.confidence===1?'selected':''}>1</option>
               <option value="2" ${b.confidence===2?'selected':''}>2</option>
@@ -5086,7 +5143,7 @@ function renderM6(){
               <option value="5" ${b.confidence===5?'selected':''}>5</option>
             </select>
           </div>
-          <div style="font-size:8px;color:var(--text4);margin-top:4px;">Confianza: 1=Estimación sin datos · 2=Benchmark sector · 3=Datos parciales · 4=Datos sólidos · 5=Medición directa</div>
+          <div style="font-size:8px;color:#8a9793;margin-top:4px;">Confianza: 1=Estimación sin datos · 2=Benchmark sector · 3=Datos parciales · 4=Datos sólidos · 5=Medición directa</div>
           ${b.investment>0&&b.savings>0?`<div style="margin-top:8px;display:flex;gap:12px;font-size:10px;font-family:var(--mono);">
             <span style="color:var(--red);">Conserv: ${b.savings_low?Math.round(b.investment/(b.savings_low)*12)+'m payback':'—'}</span>
             <span style="color:var(--teal);">Base: ${Math.round(b.investment/b.savings*12)}m payback · ${Math.round(b.savings/b.investment*100)}% ROI</span>
@@ -5125,26 +5182,26 @@ function renderM6(){
         <div class="vsm-result-card"><div class="vsm-result-val ${avgConf<3?'warn':''}">${avgConf?econ.confidenceBand:'—'}</div><div class="vsm-result-label">Confidence portfolio</div></div>
         <div class="vsm-result-card"><div class="vsm-result-val ${econ.riskCount?'bad':''}">${econ.riskCount}</div><div class="vsm-result-label">Riesgos Cat D</div></div>
       </div>
-      <div style="margin-top:14px;font-size:10px;color:var(--text3);font-family:var(--mono);">BNA = Beneficio Neto Anual estimado. Aplicar reglas de integridad ROI TECNOFAB antes de presentar como ahorro duro.</div>
+      <div style="margin-top:14px;font-size:10px;color:#5a6b70;font-family:var(--mono);">BNA = Beneficio Neto Anual estimado. Aplicar reglas de integridad ROI TECNOFAB antes de presentar como ahorro duro.</div>
       <div class="vsm-section-title" style="margin-top:16px;font-size:12px;">💰 Resumen ROI — 3 escenarios</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
-        <div style="padding:14px;background:var(--s2);border:1px solid rgba(226,75,74,0.3);border-radius:var(--r);text-align:center;">
+        <div style="padding:14px;background:#ffffff;border:1px solid rgba(226,75,74,0.3);border-radius:var(--r);text-align:center;">
           <div style="font-size:9px;color:var(--red);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Conservador</div>
           <div style="font-size:20px;font-weight:700;color:var(--red);font-family:var(--mono);">${totalLow>0?(totalLow/1000).toFixed(0)+'k€':'—'}</div>
-          <div style="font-size:9px;color:var(--text3);">ahorro/año</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${totalLow>0?Math.round(totalInv/totalLow*12)+'m payback':'—'}</div>
+          <div style="font-size:9px;color:#5a6b70;">ahorro/año</div>
+          <div style="font-size:11px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">${totalLow>0?Math.round(totalInv/totalLow*12)+'m payback':'—'}</div>
         </div>
-        <div style="padding:14px;background:var(--s2);border:1px solid var(--teal);border-radius:var(--r);text-align:center;">
+        <div style="padding:14px;background:#ffffff;border:1px solid var(--teal);border-radius:var(--r);text-align:center;">
           <div style="font-size:9px;color:var(--teal);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Base</div>
-          <div style="font-size:20px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${(totalBase/1000).toFixed(0)}k€</div>
-          <div style="font-size:9px;color:var(--text3);">ahorro/año</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${Math.round(totalInv/totalBase*12)}m payback · ${Math.round(totalBase/totalInv*100)}% ROI</div>
+          <div style="font-size:20px;font-weight:700;color:#0f6e56;font-family:var(--mono);">${(totalBase/1000).toFixed(0)}k€</div>
+          <div style="font-size:9px;color:#5a6b70;">ahorro/año</div>
+          <div style="font-size:11px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">${Math.round(totalInv/totalBase*12)}m payback · ${Math.round(totalBase/totalInv*100)}% ROI</div>
         </div>
-        <div style="padding:14px;background:var(--s2);border:1px solid rgba(16,185,129,0.3);border-radius:var(--r);text-align:center;">
+        <div style="padding:14px;background:#ffffff;border:1px solid rgba(16,185,129,0.3);border-radius:var(--r);text-align:center;">
           <div style="font-size:9px;color:var(--green);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Optimista</div>
           <div style="font-size:20px;font-weight:700;color:var(--green);font-family:var(--mono);">${totalHigh>0?(totalHigh/1000).toFixed(0)+'k€':'—'}</div>
-          <div style="font-size:9px;color:var(--text3);">ahorro/año</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${totalHigh>0?Math.round(totalInv/totalHigh*12)+'m payback':'—'}</div>
+          <div style="font-size:9px;color:#5a6b70;">ahorro/año</div>
+          <div style="font-size:11px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">${totalHigh>0?Math.round(totalInv/totalHigh*12)+'m payback':'—'}</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;">
@@ -5160,36 +5217,36 @@ function renderM6(){
     html += `<div class="vsm-section"><div class="vsm-section-title">🏭 Escalado a grupo (multi-planta)</div>
       <div class="vsm-section-sub">Proyecta el portfolio de esta planta piloto al resto del grupo. Estimación conservadora, sujeta a validación planta por planta — NO es sustituto de un diagnóstico real en cada fábrica.</div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
-        <label style="font-size:11px;color:var(--text3);">Nº de plantas del grupo (incluida la piloto):</label>
-        <input type="number" min="1" value="${numPlants}" onchange="getM6().numPlants=Math.max(1,parseInt(this.value)||1);m6Changed();" style="width:64px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-xs);padding:5px;color:var(--text);font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
+        <label style="font-size:11px;color:#5a6b70;">Nº de plantas del grupo (incluida la piloto):</label>
+        <input type="number" min="1" value="${numPlants}" onchange="getM6().numPlants=Math.max(1,parseInt(this.value)||1);m6Changed();" style="width:64px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-xs);padding:5px;color:#16232a;font-size:12px;font-family:var(--mono);text-align:center;outline:none;">
       </div>`;
 
     if (grp.isGroupEstimate) {
       html += `
-      <div style="margin-top:14px;font-size:10px;color:var(--text3);font-family:var(--mono);">Supuesto de réplica: cada planta adicional aporta ${(grp.replication.savingsFactor*100).toFixed(0)}% del ahorro de la piloto y cuesta ${(grp.replication.investmentFactor*100).toFixed(0)}% de su inversión (playbook ya construido). Editable — decisión del consultor, no benchmark externo.</div>
+      <div style="margin-top:14px;font-size:10px;color:#5a6b70;font-family:var(--mono);">Supuesto de réplica: cada planta adicional aporta ${(grp.replication.savingsFactor*100).toFixed(0)}% del ahorro de la piloto y cuesta ${(grp.replication.investmentFactor*100).toFixed(0)}% de su inversión (playbook ya construido). Editable — decisión del consultor, no benchmark externo.</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
-        <div style="padding:14px;background:var(--s2);border:1px solid rgba(226,75,74,0.3);border-radius:var(--r);text-align:center;">
+        <div style="padding:14px;background:#ffffff;border:1px solid rgba(226,75,74,0.3);border-radius:var(--r);text-align:center;">
           <div style="font-size:9px;color:var(--red);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Conservador · grupo</div>
           <div style="font-size:20px;font-weight:700;color:var(--red);font-family:var(--mono);">${grp.groupLow>0?(grp.groupLow/1000).toFixed(0)+'k€':'—'}</div>
-          <div style="font-size:9px;color:var(--text3);">ahorro/año · ${numPlants} plantas</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${grp.groupPaybackLow?grp.groupPaybackLow+'m payback':'—'}</div>
+          <div style="font-size:9px;color:#5a6b70;">ahorro/año · ${numPlants} plantas</div>
+          <div style="font-size:11px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">${grp.groupPaybackLow?grp.groupPaybackLow+'m payback':'—'}</div>
         </div>
-        <div style="padding:14px;background:var(--s2);border:1px solid var(--teal);border-radius:var(--r);text-align:center;">
+        <div style="padding:14px;background:#ffffff;border:1px solid var(--teal);border-radius:var(--r);text-align:center;">
           <div style="font-size:9px;color:var(--teal);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Base · grupo</div>
-          <div style="font-size:20px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${(grp.groupBase/1000).toFixed(0)}k€</div>
-          <div style="font-size:9px;color:var(--text3);">ahorro/año · ${numPlants} plantas</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${grp.groupPaybackBase}m payback</div>
+          <div style="font-size:20px;font-weight:700;color:#0f6e56;font-family:var(--mono);">${(grp.groupBase/1000).toFixed(0)}k€</div>
+          <div style="font-size:9px;color:#5a6b70;">ahorro/año · ${numPlants} plantas</div>
+          <div style="font-size:11px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">${grp.groupPaybackBase}m payback</div>
         </div>
-        <div style="padding:14px;background:var(--s2);border:1px solid rgba(16,185,129,0.3);border-radius:var(--r);text-align:center;">
+        <div style="padding:14px;background:#ffffff;border:1px solid rgba(16,185,129,0.3);border-radius:var(--r);text-align:center;">
           <div style="font-size:9px;color:var(--green);text-transform:uppercase;font-weight:600;margin-bottom:6px;">Optimista · grupo</div>
           <div style="font-size:20px;font-weight:700;color:var(--green);font-family:var(--mono);">${grp.groupHigh>0?(grp.groupHigh/1000).toFixed(0)+'k€':'—'}</div>
-          <div style="font-size:9px;color:var(--text3);">ahorro/año · ${numPlants} plantas</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:6px;font-family:var(--mono);">${grp.groupPaybackHigh?grp.groupPaybackHigh+'m payback':'—'}</div>
+          <div style="font-size:9px;color:#5a6b70;">ahorro/año · ${numPlants} plantas</div>
+          <div style="font-size:11px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">${grp.groupPaybackHigh?grp.groupPaybackHigh+'m payback':'—'}</div>
         </div>
       </div>
       <div class="vsm-result-card" style="margin-top:10px;"><div class="vsm-result-val">${(grp.groupInv/1000).toFixed(0)}k€</div><div class="vsm-result-label">Inversión total estimada del grupo</div></div>`;
     } else {
-      html += `<div style="margin-top:10px;font-size:11px;color:var(--text3);">Con 1 planta, el escalado coincide con el portfolio de la piloto. Sube el número de plantas para ver la proyección de grupo.</div>`;
+      html += `<div style="margin-top:10px;font-size:11px;color:#5a6b70;">Con 1 planta, el escalado coincide con el portfolio de la piloto. Sube el número de plantas para ver la proyección de grupo.</div>`;
     }
     html += `</div>`;
   }
@@ -5214,22 +5271,22 @@ function renderM6(){
         const isCurrent=l===clientTTL;
         const isAbove=parseInt(l.replace('L',''))>parseInt(clientTTL.replace('L',''));
         
-        html+=`<div style="border-left:3px solid ${col};padding:10px 14px;background:${isCurrent?col+'11':'var(--s2)'};border-radius:0 var(--r-sm) var(--r-sm) 0;${isAbove?'opacity:0.5;':''}">
+        html+=`<div style="border-left:3px solid ${col};padding:10px 14px;background:${isCurrent?col+'11':'#ffffff'};border-radius:0 var(--r-sm) var(--r-sm) 0;${isAbove?'opacity:0.5;':''}">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
             <span style="padding:2px 8px;background:${col}22;color:${col};border-radius:10px;font-size:10px;font-weight:700;">${l}</span>
-            <span style="font-size:12px;font-weight:600;color:var(--text);">${layerNames[l]}</span>
+            <span style="font-size:12px;font-weight:600;color:#16232a;">${layerNames[l]}</span>
             ${isCurrent?'<span style="font-size:9px;color:var(--teal);font-weight:600;padding:2px 8px;background:rgba(0,173,181,0.1);border-radius:10px;">← CAPA ACTUAL</span>':''}
             ${isAbove?'<span style="font-size:9px;color:var(--red);">🔒 Requiere completar capas anteriores</span>':''}
-            <span style="font-size:10px;color:var(--text3);margin-left:auto;">${items.length} iniciativa${items.length!==1?'s':''}</span>
+            <span style="font-size:10px;color:#5a6b70;margin-left:auto;">${items.length} iniciativa${items.length!==1?'s':''}</span>
           </div>
           ${items.map(b=>{
-            const rim=b.impact&&b.readiness?getRIMZone(b.impact,b.readiness):{zone:'—',col:'var(--text4)'};
-            return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;margin-left:16px;border-bottom:0.5px solid var(--border);">
-              <div style="flex:1;font-size:11px;color:var(--text);">${b.name}</div>
+            const rim=b.impact&&b.readiness?getRIMZone(b.impact,b.readiness):{zone:'—',col:'#8a9793'};
+            return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;margin-left:16px;border-bottom:0.5px solid #dde3e1;">
+              <div style="flex:1;font-size:11px;color:#16232a;">${b.name}</div>
               <span style="font-size:8px;padding:1px 6px;border-radius:8px;background:${tipoIniciativaColor(b.tipo)}22;color:${tipoIniciativaColor(b.tipo)};font-weight:600;">${tipoIniciativaLabel(b.tipo)}</span>
               <span style="font-size:9px;color:${rim.col};font-weight:600;">${rim.zone}</span>
-              ${b.savings?`<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">${(b.savings/1000).toFixed(0)}k€/año</span>`:''}
-              ${b.ttm?`<span style="font-size:9px;color:var(--text4);">${b.ttm}</span>`:''}
+              ${b.savings?`<span style="font-size:9px;color:#5a6b70;font-family:var(--mono);">${(b.savings/1000).toFixed(0)}k€/año</span>`:''}
+              ${b.ttm?`<span style="font-size:9px;color:#8a9793;">${b.ttm}</span>`:''}
             </div>`;
           }).join('')}
         </div>`;
@@ -5238,6 +5295,7 @@ function renderM6(){
     }
   }
 
+  html+=`</div>`;
   document.getElementById('m6-content').innerHTML=html;
   filterCatalogue(clientTTL);
   if(backlog.some(b=>b.impact&&b.readiness))renderRIMMatrix(backlog);
@@ -5258,11 +5316,11 @@ function filterCatalogue(layer){
     const inBacklog=backlogNames.includes(c.name);
     const blocked=parseInt(c.layer.replace('L',''))>parseInt(clientTTL.replace('L',''));
     const ttlCol=getTTLColor(c.layer);
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:var(--r-sm);border:0.5px solid var(--border);${blocked?'opacity:0.5;':''}">
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#ffffff;border-radius:var(--r-sm);border:0.5px solid #dde3e1;${blocked?'opacity:0.5;':''}">
       <span style="padding:2px 6px;background:${ttlCol}22;color:${ttlCol};border-radius:8px;font-size:9px;font-weight:700;flex-shrink:0;">${c.layer}</span>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:11px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
-        <div style="font-size:9px;color:var(--text4);">${c.ttm||''}</div>
+        <div style="font-size:11px;color:#16232a;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+        <div style="font-size:9px;color:#8a9793;">${c.ttm||''}</div>
       </div>
       ${inBacklog?'<span style="font-size:9px;color:var(--teal);">✓ añadida</span>':`<button onclick="addToBacklog('${c.name.replace(/'/g,"\\'")}')" style="padding:4px 10px;background:rgba(0,173,181,0.1);border:1px solid var(--teal);color:var(--teal);border-radius:var(--r-xs);font-size:10px;cursor:pointer;flex-shrink:0;font-family:var(--font);">+ Añadir</button>`}
     </div>`;
@@ -5316,12 +5374,12 @@ function renderRIMMatrix(backlog){
   
   let h=`<div style="display:grid;grid-template-columns:30px repeat(3,1fr);grid-template-rows:20px repeat(3,1fr);gap:4px;min-height:280px;">`;
   // Header row
-  h+=`<div></div><div style="text-align:center;font-size:9px;color:var(--text4);">Readiness Baja</div><div style="text-align:center;font-size:9px;color:var(--text4);">Readiness Media</div><div style="text-align:center;font-size:9px;color:var(--text4);">Readiness Alta</div>`;
+  h+=`<div></div><div style="text-align:center;font-size:9px;color:#8a9793;">Readiness Baja</div><div style="text-align:center;font-size:9px;color:#8a9793;">Readiness Media</div><div style="text-align:center;font-size:9px;color:#8a9793;">Readiness Alta</div>`;
   
   const impactLabels=['Impacto Alto','Impacto Medio','Impacto Bajo'];
   for(let r=0;r<3;r++){
     // Row label
-    h+=`<div style="writing-mode:vertical-lr;text-orientation:mixed;transform:rotate(180deg);font-size:9px;color:var(--text4);text-align:center;">${impactLabels[r]}</div>`;
+    h+=`<div style="writing-mode:vertical-lr;text-orientation:mixed;transform:rotate(180deg);font-size:9px;color:#8a9793;text-align:center;">${impactLabels[r]}</div>`;
     for(let c=0;c<3;c++){
       const z=zones[r][c];
       // Find initiatives in this cell
@@ -5332,7 +5390,7 @@ function renderRIMMatrix(backlog){
       });
       h+=`<div style="background:${z.col}11;border:1px solid ${z.col}44;border-radius:var(--r-sm);padding:6px;position:relative;min-height:70px;">
         <div style="font-size:8px;color:${z.col};font-weight:700;margin-bottom:4px;">${z.label}</div>
-        ${inCell.map(b=>`<div style="font-size:9px;color:var(--text);background:var(--s1);padding:3px 6px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${b.name}"><span style="color:${getTTLColor(b.layer)};font-weight:700;">${b.layer}</span> ${b.name.substring(0,25)}${b.name.length>25?'…':''}</div>`).join('')}
+        ${inCell.map(b=>`<div style="font-size:9px;color:#16232a;background:#f4f6f5;padding:3px 6px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${b.name}"><span style="color:${getTTLColor(b.layer)};font-weight:700;">${b.layer}</span> ${b.name.substring(0,25)}${b.name.length>25?'…':''}</div>`).join('')}
       </div>`;
     }
   }
@@ -5374,11 +5432,24 @@ function renderM2ext(){
   const scrollPos=mainContent?mainContent.scrollTop:0;
   const d=getM2ext();
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">📋</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M2 · Herramientas de campo</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Gemba Walk · Árbol de pérdidas · 5S · Causa raíz</div></div></div>`;
+  html+=`<div class="m1v2-sessionwrap">`;
+  const gembaKeys=['wip_station','wt_visible','flow_interrupted','pt_constraint','wt_constraint','speed_nominal','speed_real','info_method','realtime_screens','stops_system'];
+  const gembaCount=gembaKeys.filter(k=>d.gemba[k]).length;
+  const lossCats=['averia','falta_material','changeover','otros_disp','microparos','velocidad','scrap','retrabajo','arranque'];
+  const lossCount=lossCats.filter(k=>d.losses[k]).length;
+  const fiveSKeys=['seiri','seiton','seiso','seiketsu','shitsuke'];
+  const fiveSCount=fiveSKeys.filter(k=>parseInt(d.fiveS[k])>0).length;
+  const rcCount=(d.rootCause||[]).filter(rc=>rc&&rc.desc).length;
+  const kpiListForCount=d.kpiBaseline||[];
+  const kpiFilledCount=kpiListForCount.filter(k=>k.value).length;
+  const tabProgress={gemba:[gembaCount,gembaKeys.length],losses:[lossCount,lossCats.length],fiveS:[fiveSCount,fiveSKeys.length],rootcause:[rcCount,3],kpi:[kpiFilledCount,kpiListForCount.length]};
   // Tabs
   html+=`<div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;">`;
   [{k:'gemba',l:'🔍 Gemba Walk'},{k:'losses',l:'📉 Árbol pérdidas'},{k:'fiveS',l:'🧹 5S'},{k:'rootcause',l:'🔬 Causa raíz'},{k:'kpi',l:'📊 KPI Baseline'}].forEach(t=>{
     const sel=m2extTab===t.k;
-    html+=`<button onclick="m2extTab='${t.k}';renderM2ext();" style="padding:8px 16px;border:1px solid ${sel?'var(--teal)':'var(--border2)'};background:${sel?'rgba(0,173,181,0.1)':'var(--s2)'};color:${sel?'var(--teal-l)':'var(--text2)'};border-radius:20px;font-size:12px;font-weight:${sel?'600':'400'};cursor:pointer;font-family:var(--font);">${t.l}</button>`;
+    const prog=tabProgress[t.k];
+    const progDone=prog[0]===prog[1]&&prog[1]>0;
+    html+=`<button onclick="m2extTab='${t.k}';renderM2ext();" style="padding:8px 16px;border:1px solid ${sel?'var(--teal)':'#ccd4d1'};background:${sel?'rgba(0,173,181,0.1)':'#ffffff'};color:${sel?'#0f6e56':'#5a6b70'};border-radius:20px;font-size:12px;font-weight:${sel?'600':'400'};cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:6px;">${t.l}<span style="font-size:9.5px;padding:1px 6px;border-radius:999px;background:${progDone?'rgba(29,158,117,0.14)':'rgba(90,107,112,0.1)'};color:${progDone?'#0f6e56':'#5a6b70'};font-family:var(--mono);">${prog[0]}/${prog[1]}</span></button>`;
   });
   html+=`</div>`;
 
@@ -5389,12 +5460,12 @@ function renderM2ext(){
       {k:'wt_visible',l:'WT visible (operario esperando)',p:'Estación + tiempo estimado (min)'},
       {k:'flow_interrupted',l:'Flujo interrumpido — ¿dónde?',p:'Descripción + causa observada'},
     ];
-    html+=`<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Flujo y WIP — observar movimiento de material</div>`;
+    html+=`<div style="font-size:12px;font-weight:600;color:#16232a;margin-bottom:8px;">Flujo y WIP — observar movimiento de material</div>`;
     gf.forEach(f=>{html+=`<div class="vsm-field" style="margin-bottom:8px;"><div class="vsm-label">${f.l}</div><input class="vsm-input" placeholder="${f.p}" value="${d.gemba[f.k]||''}" oninput="getM2ext().gemba['${f.k}']=this.value;m2extChanged()"></div>`;});
-    html+=`<div style="font-size:12px;font-weight:600;color:var(--text);margin:14px 0 8px;">Medición directa — cronómetro obligatorio</div>`;
+    html+=`<div style="font-size:12px;font-weight:600;color:#16232a;margin:14px 0 8px;">Medición directa — cronómetro obligatorio</div>`;
     [{k:'pt_constraint',l:'PT en el constraint (min/ud)',p:'Estación + PT medido'},{k:'wt_constraint',l:'WT antes del constraint (min)',p:'Tiempo espera medido'},{k:'speed_nominal',l:'Velocidad nominal (uds/h)',p:''},{k:'speed_real',l:'Velocidad real observada (uds/h)',p:''}].forEach(f=>{
       html+=`<div class="vsm-field" style="margin-bottom:8px;"><div class="vsm-label">${f.l}</div><input class="vsm-input" placeholder="${f.p}" value="${d.gemba[f.k]||''}" oninput="getM2ext().gemba['${f.k}']=this.value;m2extChanged()"></div>`;});
-    html+=`<div style="font-size:12px;font-weight:600;color:var(--text);margin:14px 0 8px;">Información y sistemas en planta</div>`;
+    html+=`<div style="font-size:12px;font-weight:600;color:#16232a;margin:14px 0 8px;">Información y sistemas en planta</div>`;
     [{k:'info_method',l:'¿Cómo sabe el operario qué producir?',p:'Papel / pantalla / de memoria / radio'},{k:'realtime_screens',l:'¿Hay pantallas con datos en tiempo real?',p:'Descripción + qué muestran'},{k:'stops_system',l:'¿Se registran los paros en algún sistema?',p:'Sistema / papel / nada'}].forEach(f=>{
       html+=`<div class="vsm-field" style="margin-bottom:8px;"><div class="vsm-label">${f.l}</div><input class="vsm-input" placeholder="${f.p}" value="${d.gemba[f.k]||''}" oninput="getM2ext().gemba['${f.k}']=this.value;m2extChanged()"></div>`;});
     html+=`<div class="vsm-field" style="margin-top:10px;"><div class="vsm-label">Notas de observación</div><textarea class="vsm-input" style="min-height:60px;resize:vertical;" placeholder="Observaciones libres del Gemba Walk..." oninput="getM2ext().gemba.notes=this.value;m2extChanged()">${d.gemba.notes||''}</textarea></div>`;
@@ -5408,13 +5479,13 @@ function renderM2ext(){
     cats.forEach(c=>{
       if(c.g!==lastG){lastG=c.g;html+=`<div style="font-size:10px;font-weight:700;color:var(--teal);margin:12px 0 6px;letter-spacing:.05em;">${c.g}</div>`;}
       html+=`<div style="display:grid;grid-template-columns:1fr 80px 100px 70px;gap:8px;align-items:center;margin-bottom:4px;">
-        <div style="font-size:11px;color:var(--text);">${c.l}</div>
+        <div style="font-size:11px;color:#16232a;">${c.l}</div>
         <input class="vsm-input" style="font-size:11px;text-align:right;" placeholder="%" value="${d.losses[c.k]||''}" oninput="getM2ext().losses['${c.k}']=this.value;m2extChanged()">
         <input class="vsm-input" style="font-size:11px;text-align:right;" placeholder="€/año" value="${d.losses_eur[c.k]||''}" oninput="getM2ext().losses_eur['${c.k}']=this.value;m2extChanged()">
         <select class="vsm-select" style="font-size:10px;padding:4px;" onchange="getM2ext().losses_level['${c.k}']=this.value;m2extChanged()"><option value="">Obs</option><option ${d.losses_level[c.k]==='A'?'selected':''}>A</option><option ${d.losses_level[c.k]==='B'?'selected':''}>B</option><option ${d.losses_level[c.k]==='C'?'selected':''}>C</option><option ${d.losses_level[c.k]==='D'?'selected':''}>D</option></select>
       </div>`;
     });
-    html+=`<div style="margin-top:8px;font-size:9px;color:var(--text4);">Obs: A=Automático fiable · B=Mayoritariamente fiable · C=Manual/inconsistente · D=Inexistente</div>`;
+    html+=`<div style="margin-top:8px;font-size:9px;color:#8a9793;">Obs: A=Automático fiable · B=Mayoritariamente fiable · C=Manual/inconsistente · D=Inexistente</div>`;
     html+=`</div>`;
   }
   
@@ -5422,16 +5493,16 @@ function renderM2ext(){
     const dims=[{k:'seiri',n:'Seiri — Clasificar',low:'Caos visible, materiales mezclados',high:'Solo lo que se usa hoy',q:'¿Hay objetos innecesarios en las zonas de trabajo?'},{k:'seiton',n:'Seiton — Ordenar',low:'Nada tiene lugar fijo',high:'Panel sombra, todo < 30s',q:'¿Cada herramienta tiene lugar designado y marcado?'},{k:'seiso',n:'Seiso — Limpiar',low:'Suciedad significativa, fugas',high:'Rutina diaria con inspección',q:'¿Superficies, suelos y equipos limpios?'},{k:'seiketsu',n:'Seiketsu — Estandarizar',low:'Cada persona a su manera',high:'Fichas visuales en cada puesto',q:'¿Hay estándares visuales? ¿Son consistentes entre turnos?'},{k:'shitsuke',n:'Shitsuke — Sostener',low:'Sin auditoría ni responsable',high:'Auditorías con tendencia, 5S integrado',q:'¿Hay registros de auditoría recientes y publicados?'}];
     const avg=dims.reduce((a,d)=>a+(parseInt(getM2ext().fiveS[d.k])||0),0)/dims.length;
     html+=`<div class="vsm-section"><div class="vsm-section-title">🧹 Evaluación 5S</div><div class="vsm-section-sub">Puntuación basada en observación directa. < 2.5 → Quick Win obligatorio en backlog.</div>`;
-    if(avg>0){const col=avg<2.5?'var(--red)':avg<3.5?'var(--amber)':'var(--green)';html+=`<div style="text-align:center;margin-bottom:14px;"><span style="font-size:28px;font-weight:700;color:${col};font-family:var(--mono);">${avg.toFixed(1)}</span><span style="font-size:14px;color:var(--text3);">/5</span></div>`;}
+    if(avg>0){const col=avg<2.5?'var(--red)':avg<3.5?'var(--amber)':'var(--green)';html+=`<div style="text-align:center;margin-bottom:14px;"><span style="font-size:28px;font-weight:700;color:${col};font-family:var(--mono);">${avg.toFixed(1)}</span><span style="font-size:14px;color:#5a6b70;">/5</span></div>`;}
     dims.forEach(dim=>{
       const val=parseInt(d.fiveS[dim.k])||0;
-      html+=`<div style="padding:14px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:8px;">
-        <div style="font-size:13px;font-weight:600;color:var(--text);">${dim.n}</div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">${dim.q}</div>
+      html+=`<div style="padding:14px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r);margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:600;color:#16232a;">${dim.n}</div>
+        <div style="font-size:10px;color:#5a6b70;margin-bottom:8px;">${dim.q}</div>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
-          ${[1,2,3,4,5].map(n=>{const sel=val===n;const col=n<=2?'var(--red)':n===3?'var(--amber)':'var(--green)';return `<div onclick="getM2ext().fiveS['${dim.k}']=${n};renderM2ext();m2extChanged();" style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);cursor:pointer;font-size:16px;font-weight:700;border:1.5px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};">${n}</div>`;}).join('')}
+          ${[1,2,3,4,5].map(n=>{const sel=val===n;const col=n<=2?'var(--red)':n===3?'var(--amber)':'var(--green)';return `<div onclick="getM2ext().fiveS['${dim.k}']=${n};renderM2ext();m2extChanged();" style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);cursor:pointer;font-size:16px;font-weight:700;border:1.5px solid ${sel?col:'#dde3e1'};background:${sel?col+'22':'#f4f6f5'};color:${sel?col:'#5a6b70'};">${n}</div>`;}).join('')}
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--text4);"><span>${dim.low}</span><span>${dim.high}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:8px;color:#8a9793;"><span>${dim.low}</span><span>${dim.high}</span></div>
       </div>`;
     });
     html+=`<div class="vsm-field"><div class="vsm-label">Notas 5S</div><textarea class="vsm-input" style="min-height:40px;resize:vertical;" placeholder="Observaciones..." oninput="getM2ext().fiveS.notes=this.value;m2extChanged()">${d.fiveS.notes||''}</textarea></div></div>`;
@@ -5441,7 +5512,7 @@ function renderM2ext(){
     html+=`<div class="vsm-section"><div class="vsm-section-title">🔬 Análisis de causa raíz — Top 3 pérdidas</div><div class="vsm-section-sub">Para cada pérdida de mayor impacto, aplicar herramienta de causa raíz y vincular a iniciativa TTL.</div>`;
     for(let i=0;i<3;i++){
       const rc=d.rootCause[i]||{};
-      html+=`<div style="padding:14px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:10px;">
+      html+=`<div style="padding:14px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r);margin-bottom:10px;">
         <div style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:8px;">Pérdida ${i+1}</div>
         <div class="vsm-field" style="margin-bottom:6px;"><div class="vsm-label">Descripción del problema</div><input class="vsm-input" value="${rc.desc||''}" oninput="getM2ext().rootCause[${i}].desc=this.value;m2extChanged()"></div>
         <div class="vsm-field" style="margin-bottom:6px;"><div class="vsm-label">Herramienta utilizada</div><select class="vsm-select" onchange="getM2ext().rootCause[${i}].tool=this.value;m2extChanged()"><option value="">Seleccionar...</option><option ${rc.tool==='5 Whys'?'selected':''}>5 Whys</option><option ${rc.tool==='Ishikawa'?'selected':''}>Ishikawa (6M)</option><option ${rc.tool==='FMEA'?'selected':''}>FMEA ligero</option><option ${rc.tool==='Pareto'?'selected':''}>Pareto</option></select></div>
@@ -5461,19 +5532,19 @@ function renderM2ext(){
       <div class="vsm-section-sub">Registrar valor actual, fuente y calidad del dato. Obs: A=Automático fiable · B=Mayoritariamente fiable · C=Manual/inconsistente · D=Inexistente</div>`;
     const kpis=d.kpiBaseline||[];
     html+=`<div style="display:grid;grid-template-columns:160px 80px 40px 100px 55px 1fr;gap:4px;padding:4px 0;margin-bottom:4px;">
-      <div style="font-size:9px;color:var(--text4);font-weight:600;">KPI</div>
-      <div style="font-size:9px;color:var(--text4);font-weight:600;">VALOR</div>
-      <div style="font-size:9px;color:var(--text4);font-weight:600;">UD</div>
-      <div style="font-size:9px;color:var(--text4);font-weight:600;">FUENTE</div>
-      <div style="font-size:9px;color:var(--text4);font-weight:600;">OBS</div>
-      <div style="font-size:9px;color:var(--text4);font-weight:600;">NOTAS</div>
+      <div style="font-size:9px;color:#8a9793;font-weight:600;">KPI</div>
+      <div style="font-size:9px;color:#8a9793;font-weight:600;">VALOR</div>
+      <div style="font-size:9px;color:#8a9793;font-weight:600;">UD</div>
+      <div style="font-size:9px;color:#8a9793;font-weight:600;">FUENTE</div>
+      <div style="font-size:9px;color:#8a9793;font-weight:600;">OBS</div>
+      <div style="font-size:9px;color:#8a9793;font-weight:600;">NOTAS</div>
     </div>`;
     kpis.forEach((kpi,i)=>{
-      const obsCol=kpi.obs==='A'?'var(--green)':kpi.obs==='B'?'var(--teal)':kpi.obs==='C'?'var(--amber)':kpi.obs==='D'?'var(--red)':'var(--text4)';
+      const obsCol=kpi.obs==='A'?'var(--green)':kpi.obs==='B'?'var(--teal)':kpi.obs==='C'?'var(--amber)':kpi.obs==='D'?'var(--red)':'#8a9793';
       html+=`<div style="display:grid;grid-template-columns:160px 80px 40px 100px 55px 1fr;gap:4px;align-items:center;margin-bottom:3px;">
-        <div style="font-size:11px;color:var(--text);font-weight:500;">${kpi.name}</div>
+        <div style="font-size:11px;color:#16232a;font-weight:500;">${kpi.name}</div>
         <input class="vsm-input" style="font-size:11px;padding:5px;text-align:right;" placeholder="—" value="${kpi.value||''}" oninput="getM2ext().kpiBaseline[${i}].value=this.value;m2extChanged()">
-        <div style="font-size:10px;color:var(--text3);text-align:center;">${kpi.unit}</div>
+        <div style="font-size:10px;color:#5a6b70;text-align:center;">${kpi.unit}</div>
         <input class="vsm-input" style="font-size:10px;padding:4px;" placeholder="SCADA, ERP..." value="${kpi.source||''}" oninput="getM2ext().kpiBaseline[${i}].source=this.value;m2extChanged()">
         <select class="vsm-select" style="font-size:10px;padding:4px;color:${obsCol};font-weight:600;" onchange="getM2ext().kpiBaseline[${i}].obs=this.value;renderM2ext();m2extChanged()">
           <option value="">—</option>
@@ -5491,12 +5562,13 @@ function renderM2ext(){
     const obsC=kpis.filter(k=>k.obs==='C').length;
     if(filled.length||obsD||obsC){
       html+=`<div style="margin-top:12px;padding:10px 14px;background:rgba(0,173,181,0.05);border-left:3px solid var(--teal);border-radius:0 var(--r-sm) var(--r-sm) 0;">
-        <div style="font-size:11px;color:var(--text);">${filled.length}/${kpis.length} KPIs con valor · ${obsD} nivel D (inexistente) · ${obsC} nivel C (manual/inconsistente)</div>
+        <div style="font-size:11px;color:#16232a;">${filled.length}/${kpis.length} KPIs con valor · ${obsD} nivel D (inexistente) · ${obsC} nivel C (manual/inconsistente)</div>
         ${obsD>5?'<div style="font-size:10px;color:var(--red);margin-top:4px;">⚠ Más del 30% de KPIs sin dato → activar protocolo Gemba de 2 turnos con registro manual</div>':''}
       </div>`;
     }
     html+=`</div>`;
   }
+  html+=`</div>`;
   document.getElementById('m2ext-content').innerHTML=html;
   if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
 }
@@ -5519,17 +5591,28 @@ function renderM3ext(){
   const scrollPos=mainContent?mainContent.scrollTop:0;
   const d=getM3ext();
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">💻</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M3 · Herramientas digitales de campo</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Inventario sistemas · 7 dimensiones digitales · Flujo datos · Ciberseguridad OT</div></div></div>`;
+  html+=`<div class="m1v2-sessionwrap">`;
+  const sysCount=d.systems.filter(s=>s.name).length;
+  const digDimsKeys=['produccion','mantenimiento','calidad','gestion','analytics','arquitectura','ciberseguridad'];
+  const digCount=digDimsKeys.filter(k=>parseInt(d.digital_dims[k])>0).length;
+  const flowKeys=['planta_scada','scada_erp','scada_historian','erp_bi','calidad_erp','maint_erp','planning_prod'];
+  const flowCount=flowKeys.filter(k=>d.dataflow[k]).length;
+  const cyberKeys=['net_separation','mfa_scada','default_passwords','firmware_updated','policy_documented'];
+  const cyberCount=cyberKeys.filter(k=>d.cyber[k]).length;
+  const m3Progress={systems:[sysCount,d.systems.length],digital:[digCount,digDimsKeys.length],dataflow:[flowCount,flowKeys.length],cyber:[cyberCount,cyberKeys.length]};
   html+=`<div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;">`;
   [{k:'systems',l:'🖥️ Sistemas'},{k:'digital',l:'📊 7 Dimensiones'},{k:'dataflow',l:'🔄 Flujo datos'},{k:'cyber',l:'🔒 Ciberseguridad'}].forEach(t=>{
     const sel=m3extTab===t.k;
-    html+=`<button onclick="m3extTab='${t.k}';renderM3ext();" style="padding:8px 16px;border:1px solid ${sel?'var(--teal)':'var(--border2)'};background:${sel?'rgba(0,173,181,0.1)':'var(--s2)'};color:${sel?'var(--teal-l)':'var(--text2)'};border-radius:20px;font-size:12px;font-weight:${sel?'600':'400'};cursor:pointer;font-family:var(--font);">${t.l}</button>`;
+    const prog=m3Progress[t.k];
+    const progDone=prog[0]===prog[1]&&prog[1]>0;
+    html+=`<button onclick="m3extTab='${t.k}';renderM3ext();" style="padding:8px 16px;border:1px solid ${sel?'var(--teal)':'#ccd4d1'};background:${sel?'rgba(0,173,181,0.1)':'#ffffff'};color:${sel?'#0f6e56':'#5a6b70'};border-radius:20px;font-size:12px;font-weight:${sel?'600':'400'};cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:6px;">${t.l}<span style="font-size:9.5px;padding:1px 6px;border-radius:999px;background:${progDone?'rgba(29,158,117,0.14)':'rgba(90,107,112,0.1)'};color:${progDone?'#0f6e56':'#5a6b70'};font-family:var(--mono);">${prog[0]}/${prog[1]}</span></button>`;
   });
   html+=`</div>`;
 
   if(m3extTab==='systems'){
     html+=`<div class="vsm-section"><div class="vsm-section-title">🖥️ Inventario de sistemas existentes</div><div class="vsm-section-sub">Uso real < 50% = señal de Legacy Digitalization Trap</div>`;
     d.systems.forEach((s,i)=>{
-      html+=`<div style="display:grid;grid-template-columns:90px 1fr 1fr 70px 70px 1fr;gap:6px;align-items:center;margin-bottom:4px;padding:6px 0;border-bottom:0.5px solid var(--border);">
+      html+=`<div style="display:grid;grid-template-columns:90px 1fr 1fr 70px 70px 1fr;gap:6px;align-items:center;margin-bottom:4px;padding:6px 0;border-bottom:0.5px solid #dde3e1;">
         <div style="font-size:11px;font-weight:600;color:var(--teal);">${s.type}</div>
         <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Sistema" value="${s.name}" oninput="getM3ext().systems[${i}].name=this.value;m3extChanged()">
         <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Proveedor" value="${s.vendor}" oninput="getM3ext().systems[${i}].vendor=this.value;m3extChanged()">
@@ -5553,13 +5636,13 @@ function renderM3ext(){
     ];
     const avg=dims.reduce((a,dim)=>a+(parseInt(d.digital_dims[dim.k])||0),0)/dims.length;
     html+=`<div class="vsm-section"><div class="vsm-section-title">📊 Madurez digital × 7 dimensiones → OFI D3</div><div class="vsm-section-sub">1=Solo papel · 2=Herramientas aisladas · 3=Integrados parcialmente · 4=Datos RT · 5=Predictivo/IA</div>`;
-    if(avg>0){const col=avg<2?'var(--red)':avg<3?'var(--amber)':avg<4?'var(--teal)':'var(--green)';html+=`<div style="text-align:center;margin-bottom:14px;"><span style="font-size:28px;font-weight:700;color:${col};font-family:var(--mono);">${avg.toFixed(1)}</span><span style="font-size:14px;color:var(--text3);">/5</span></div>`;}
+    if(avg>0){const col=avg<2?'var(--red)':avg<3?'var(--amber)':avg<4?'var(--teal)':'var(--green)';html+=`<div style="text-align:center;margin-bottom:14px;"><span style="font-size:28px;font-weight:700;color:${col};font-family:var(--mono);">${avg.toFixed(1)}</span><span style="font-size:14px;color:#5a6b70;">/5</span></div>`;}
     dims.forEach(dim=>{
       const val=parseInt(d.digital_dims[dim.k])||0;
-      html+=`<div style="padding:12px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:8px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text);">${dim.n}</div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">${dim.q}</div>
-        <div style="display:flex;gap:6px;margin-bottom:6px;">${[1,2,3,4,5].map(n=>{const sel=val===n;const col=n<=2?'var(--red)':n===3?'var(--amber)':'var(--green)';return `<div onclick="getM3ext().digital_dims['${dim.k}']=${n};renderM3ext();m3extChanged();" style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);cursor:pointer;font-size:16px;font-weight:700;border:1.5px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};">${n}</div>`;}).join('')}</div>
+      html+=`<div style="padding:12px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r);margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:600;color:#16232a;">${dim.n}</div>
+        <div style="font-size:10px;color:#5a6b70;margin-bottom:8px;">${dim.q}</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">${[1,2,3,4,5].map(n=>{const sel=val===n;const col=n<=2?'var(--red)':n===3?'var(--amber)':'var(--green)';return `<div onclick="getM3ext().digital_dims['${dim.k}']=${n};renderM3ext();m3extChanged();" style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);cursor:pointer;font-size:16px;font-weight:700;border:1.5px solid ${sel?col:'#dde3e1'};background:${sel?col+'22':'#f4f6f5'};color:${sel?col:'#5a6b70'};">${n}</div>`;}).join('')}</div>
         <textarea class="vsm-input" style="min-height:30px;resize:vertical;font-size:10px;" placeholder="Evidencia observada..." oninput="getM3ext().digital_evidence['${dim.k}']=this.value;m3extChanged()">${d.digital_evidence[dim.k]||''}</textarea>
       </div>`;
     });
@@ -5570,8 +5653,8 @@ function renderM3ext(){
     const flows=[{k:'planta_scada',l:'Planta → SCADA'},{k:'scada_erp',l:'SCADA → ERP'},{k:'scada_historian',l:'SCADA → Historian'},{k:'erp_bi',l:'ERP → BI / Dashboard'},{k:'calidad_erp',l:'Calidad → ERP'},{k:'maint_erp',l:'Mantenimiento → ERP'},{k:'planning_prod',l:'Planificación → Producción'}];
     html+=`<div class="vsm-section"><div class="vsm-section-title">🔄 Mapa de flujo de datos IT/OT</div><div class="vsm-section-sub">Cada transferencia manual es una brecha de observabilidad</div>`;
     flows.forEach(f=>{
-      html+=`<div style="display:grid;grid-template-columns:180px 120px 1fr;gap:8px;align-items:center;margin-bottom:6px;padding:8px;background:var(--s2);border-radius:var(--r-sm);">
-        <div style="font-size:12px;color:var(--text);font-weight:500;">${f.l}</div>
+      html+=`<div style="display:grid;grid-template-columns:180px 120px 1fr;gap:8px;align-items:center;margin-bottom:6px;padding:8px;background:#ffffff;border-radius:var(--r-sm);">
+        <div style="font-size:12px;color:#16232a;font-weight:500;">${f.l}</div>
         <select class="vsm-select" style="font-size:11px;" onchange="getM3ext().dataflow['${f.k}']=this.value;m3extChanged()"><option value="">—</option><option ${d.dataflow[f.k]==='Auto'?'selected':''}>Auto</option><option ${d.dataflow[f.k]==='Manual'?'selected':''}>Manual</option><option ${d.dataflow[f.k]==='No existe'?'selected':''}>No existe</option></select>
         <input class="vsm-input" style="font-size:10px;padding:5px;" placeholder="Brecha / problema" value="${d.dataflow_breach[f.k]||''}" oninput="getM3ext().dataflow_breach['${f.k}']=this.value;m3extChanged()">
       </div>`;
@@ -5584,16 +5667,17 @@ function renderM3ext(){
     html+=`<div class="vsm-section"><div class="vsm-section-title">🔒 Checklist ciberseguridad OT</div><div class="vsm-section-sub">Cualquier "No" en las dos primeras = riesgo crítico. No negociable.</div>`;
     checks.forEach(c=>{
       const val=d.cyber[c.k];
-      html+=`<div style="padding:10px;background:var(--s2);border:0.5px solid ${val==='No'&&c.critical?'var(--red)':'var(--border)'};border-radius:var(--r);margin-bottom:6px;">
-        <div style="font-size:12px;color:var(--text);margin-bottom:6px;">${c.l}${c.critical?' <span style="color:var(--red);font-size:10px;font-weight:600;">CRÍTICO</span>':''}</div>
+      html+=`<div style="padding:10px;background:#ffffff;border:0.5px solid ${val==='No'&&c.critical?'var(--red)':'#dde3e1'};border-radius:var(--r);margin-bottom:6px;">
+        <div style="font-size:12px;color:#16232a;margin-bottom:6px;">${c.l}${c.critical?' <span style="color:var(--red);font-size:10px;font-weight:600;">CRÍTICO</span>':''}</div>
         <div style="display:flex;gap:6px;">
-          ${['Sí','No','N/D'].map(o=>{const sel=val===o;const col=o==='No'&&c.critical?'var(--red)':o==='Sí'?'var(--green)':'var(--text3)';return `<button onclick="getM3ext().cyber['${c.k}']='${o}';renderM3ext();m3extChanged();" style="padding:8px 20px;border:1.5px solid ${sel?col:'var(--border)'};background:${sel?col+'22':'var(--s1)'};color:${sel?col:'var(--text3)'};border-radius:var(--r-sm);font-size:12px;font-weight:${sel?'700':'400'};cursor:pointer;font-family:var(--font);">${o}</button>`;}).join('')}
+          ${['Sí','No','N/D'].map(o=>{const sel=val===o;const col=o==='No'&&c.critical?'var(--red)':o==='Sí'?'var(--green)':'#5a6b70';return `<button onclick="getM3ext().cyber['${c.k}']='${o}';renderM3ext();m3extChanged();" style="padding:8px 20px;border:1.5px solid ${sel?col:'#dde3e1'};background:${sel?col+'22':'#f4f6f5'};color:${sel?col:'#5a6b70'};border-radius:var(--r-sm);font-size:12px;font-weight:${sel?'700':'400'};cursor:pointer;font-family:var(--font);">${o}</button>`;}).join('')}
         </div>
         <input class="vsm-input" style="font-size:10px;margin-top:6px;padding:5px;" placeholder="Notas..." value="${d.cyber_notes[c.k]||''}" oninput="getM3ext().cyber_notes['${c.k}']=this.value;m3extChanged()">
       </div>`;
     });
     html+=`</div>`;
   }
+  html+=`</div>`;
   document.getElementById('m3ext-content').innerHTML=html;
   if(mainContent)requestAnimationFrame(()=>{mainContent.scrollTop=scrollPos;});
 }
@@ -5736,6 +5820,7 @@ function renderVSM() {
       <div><div style="font-size:15px;font-weight:600;color:var(--text);">Value Stream Map</div>
       <div style="font-size:12px;color:var(--text3);margin-top:2px;">Mapeo del flujo de valor · Current State</div></div>
     </div>
+    <div class="m1v2-sessionwrap">
 
     <!-- DEMAND SETUP -->
     <div class="vsm-section">
@@ -5763,7 +5848,7 @@ function renderVSM() {
           <input class="vsm-input" placeholder="Diario" value="${vsm.client_info.frequency||''}" oninput="getVSM().client_info.frequency=this.value;vsmChanged()">
         </div>
       </div>
-      ${takt ? `<div class="vsm-takt-box"><div class="vsm-takt-val">${takt.toFixed(2)}</div><div class="vsm-takt-label">seg/ud — Takt Time<br><span style="color:var(--text3);font-size:10px;">Cada ${takt.toFixed(2)} seg necesitas 1 unidad terminada</span></div></div>` : ''}
+      ${takt ? `<div class="vsm-takt-box"><div class="vsm-takt-val">${takt.toFixed(2)}</div><div class="vsm-takt-label">seg/ud — Takt Time<br><span style="color:#5a6b70;font-size:10px;">Cada ${takt.toFixed(2)} seg necesitas 1 unidad terminada</span></div></div>` : ''}
     </div>
 
     <!-- SUPPLIER & PLANNING -->
@@ -5791,7 +5876,7 @@ function renderVSM() {
 
     <!-- PROCESSES -->
     <div class="vsm-section">
-      <div class="vsm-section-title">⚙️ Procesos <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;">${vsm.processes.length} proceso${vsm.processes.length!==1?'s':''}</span></div>
+      <div class="vsm-section-title">⚙️ Procesos <span style="font-size:11px;color:#5a6b70;font-weight:400;margin-left:8px;">${vsm.processes.length} proceso${vsm.processes.length!==1?'s':''}</span></div>
       <div class="vsm-section-sub">Datos recogidos en el Gemba — de izquierda a derecha según el flujo</div>
       <div class="vsm-proc-list" id="vsm-proc-list">
         ${vsm.processes.map((p, i) => renderProcessCard(p, i, takt)).join('')}
@@ -5826,6 +5911,7 @@ function renderVSM() {
       <div class="vsm-section-title">📋 Análisis y conclusiones — Entregable cliente</div>
       <div class="vsm-section-sub">Benchmarks del sector, hallazgos clave y recomendaciones priorizadas</div>
       <div id="vsm-conclusions"></div>
+    </div>
     </div>
   `;
   
@@ -5892,7 +5978,7 @@ function renderInventories(vsm) {
   html += `<div class="vsm-inv-row">
     <div class="vsm-inv-label">📦 Almacén MP</div>
     <input class="vsm-inv-input" type="number" step="any" placeholder="0" value="${vsm.inventories.mp||''}" oninput="getVSM().inventories.mp=this.value;vsmChanged()">
-    <span style="font-size:11px;color:var(--text3);width:50px;">días</span>
+    <span style="font-size:11px;color:#5a6b70;width:50px;">días</span>
     <div class="vsm-inv-time">${vsm.inventories.mp ? (parseFloat(vsm.inventories.mp)*24).toFixed(1) + ' h' : '—'}</div>
   </div>`;
   
@@ -5905,7 +5991,7 @@ function renderInventories(vsm) {
     html += `<div class="vsm-inv-row">
       <div class="vsm-inv-label">▸ ${procs[i].name || '?'} → ${procs[i+1].name || '?'}</div>
       <input class="vsm-inv-input" type="number" placeholder="0" value="${wip}" oninput="if(!getVSM().inventories.between)getVSM().inventories.between={};getVSM().inventories.between['${key}']=this.value;vsmChanged()">
-      <span style="font-size:11px;color:var(--text3);width:50px;">uds</span>
+      <span style="font-size:11px;color:#5a6b70;width:50px;">uds</span>
       <div class="vsm-inv-time">${timeS !== null ? formatTime(timeS) : '—'}</div>
     </div>`;
   }
@@ -5916,7 +6002,7 @@ function renderInventories(vsm) {
   html += `<div class="vsm-inv-row">
     <div class="vsm-inv-label">🏭 Almacén PT</div>
     <input class="vsm-inv-input" type="number" placeholder="0" value="${vsm.inventories.pt||''}" oninput="getVSM().inventories.pt=this.value;vsmChanged()">
-    <span style="font-size:11px;color:var(--text3);width:50px;">uds</span>
+    <span style="font-size:11px;color:#5a6b70;width:50px;">uds</span>
     <div class="vsm-inv-time">${ptDays !== null && !isNaN(ptDays) ? ptDays.toFixed(1) + ' días' : '—'}</div>
   </div>`;
   
@@ -5953,7 +6039,7 @@ function renderVSMResults() {
   
   const takt = calcTaktTime(vsm);
   const procs = vsm.processes;
-  if (!procs.length) { el.innerHTML = '<div style="color:var(--text4);font-size:12px;">Añade procesos para ver resultados</div>'; return; }
+  if (!procs.length) { el.innerHTML = '<div style="color:#8a9793;font-size:12px;">Añade procesos para ver resultados</div>'; return; }
   
   // Total VA
   let totalVA = 0;
@@ -6003,7 +6089,7 @@ function renderVSMResults() {
     </div>
     ${bottlenecks.length ? `<div style="margin-top:12px;padding:10px 14px;background:rgba(226,75,74,0.06);border:0.5px solid rgba(226,75,74,0.2);border-radius:var(--r-sm);">
       <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:4px;">⚠ Cuellos de botella detectados</div>
-      ${bottlenecks.map(b => `<div style="font-size:11px;color:var(--text2);margin-top:2px;">• <strong>${b.name||'Sin nombre'}</strong> — C/T efectivo: ${effectiveCT(b).toFixed(2)} seg/ud (takt: ${takt.toFixed(2)})</div>`).join('')}
+      ${bottlenecks.map(b => `<div style="font-size:11px;color:#5a6b70;margin-top:2px;">• <strong>${b.name||'Sin nombre'}</strong> — C/T efectivo: ${effectiveCT(b).toFixed(2)} seg/ud (takt: ${takt.toFixed(2)})</div>`).join('')}
     </div>` : ''}
   `;
 }
@@ -6015,7 +6101,7 @@ function renderVSMDiagram() {
   if (!el) return;
   
   const procs = vsm.processes;
-  if (!procs.length) { el.innerHTML = '<div style="color:var(--text4);font-size:12px;text-align:center;padding:40px;">Añade procesos para generar el diagrama</div>'; return; }
+  if (!procs.length) { el.innerHTML = '<div style="color:#8a9793;font-size:12px;text-align:center;padding:40px;">Añade procesos para generar el diagrama</div>'; return; }
   
   const takt = calcTaktTime(vsm);
   const n = procs.length;
@@ -6193,7 +6279,7 @@ function renderVSMConclusions() {
   
   const vsm = getVSM();
   const procs = vsm.processes;
-  if (!procs.length) { el.innerHTML = '<div style="color:var(--text4);font-size:12px;">Añade procesos y datos para generar conclusiones</div>'; return; }
+  if (!procs.length) { el.innerHTML = '<div style="color:#8a9793;font-size:12px;">Añade procesos y datos para generar conclusiones</div>'; return; }
   
   const takt = calcTaktTime(vsm);
   const sector = currentClient?.sector || '';
@@ -6240,7 +6326,7 @@ function renderVSMConclusions() {
   let html = '';
   
   // ── BENCHMARK COMPARISON ──
-  html += `<div style="margin-top:12px;"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">📊 Benchmark sectorial — ${bench.label}</div>`;
+  html += `<div style="margin-top:12px;"><div style="font-size:13px;font-weight:600;color:#16232a;margin-bottom:10px;">📊 Benchmark sectorial — ${bench.label}</div>`;
   html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
   
   const vaStatus = vaRatio <= bench.va_ratio[0] ? 'bad' : vaRatio <= bench.va_ratio[1] ? 'warn' : '';
@@ -6259,34 +6345,34 @@ function renderVSMConclusions() {
   
   benchItems.forEach(b => {
     const col = b.status === 'bad' ? 'var(--red)' : b.status === 'warn' ? 'var(--amber)' : 'var(--green)';
-    html += `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r);padding:12px;text-align:center;">
+    html += `<div style="background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r);padding:12px;text-align:center;">
       <div style="font-size:18px;font-weight:700;color:${col};font-family:var(--mono);">${b.value}</div>
-      <div style="font-size:9px;color:var(--text3);margin-top:2px;text-transform:uppercase;">${b.label}</div>
-      <div style="font-size:9px;color:var(--text3);margin-top:4px;padding-top:4px;border-top:0.5px solid var(--border);">Sector: ${b.bench}</div>
+      <div style="font-size:9px;color:#5a6b70;margin-top:2px;text-transform:uppercase;">${b.label}</div>
+      <div style="font-size:9px;color:#5a6b70;margin-top:4px;padding-top:4px;border-top:0.5px solid #dde3e1;">Sector: ${b.bench}</div>
     </div>`;
   });
   html += `</div></div>`;
   
   // ── LEAD TIME BREAKDOWN ──
   if (nvaBreakdown.length) {
-    html += `<div style="margin-top:20px;"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">⏱️ Desglose del Lead Time — ¿Dónde se pierde el tiempo?</div>`;
+    html += `<div style="margin-top:20px;"><div style="font-size:13px;font-weight:600;color:#16232a;margin-bottom:10px;">⏱️ Desglose del Lead Time — ¿Dónde se pierde el tiempo?</div>`;
     html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
     nvaBreakdown.forEach(n => {
       const barW = Math.max(n.pct * 2, 4);
       html += `<div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:180px;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.name}</div>
-        <div style="flex:1;height:12px;background:var(--s1);border-radius:3px;overflow:hidden;">
+        <div style="width:180px;font-size:11px;color:#5a6b70;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.name}</div>
+        <div style="flex:1;height:12px;background:#f4f6f5;border-radius:3px;overflow:hidden;">
           <div style="width:${barW}%;height:100%;background:${n.pct > 40 ? 'var(--red)' : n.pct > 20 ? 'var(--amber)' : 'var(--teal)'};border-radius:3px;"></div>
         </div>
-        <div style="width:70px;text-align:right;font-size:11px;color:var(--text2);font-family:var(--mono);">${formatTime(n.seconds)}</div>
-        <div style="width:45px;text-align:right;font-size:10px;color:var(--text3);font-family:var(--mono);">${n.pct.toFixed(1)}%</div>
+        <div style="width:70px;text-align:right;font-size:11px;color:#5a6b70;font-family:var(--mono);">${formatTime(n.seconds)}</div>
+        <div style="width:45px;text-align:right;font-size:10px;color:#5a6b70;font-family:var(--mono);">${n.pct.toFixed(1)}%</div>
       </div>`;
     });
     html += `</div></div>`;
   }
   
   // ── KEY FINDINGS ──
-  html += `<div style="margin-top:20px;"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">🔍 Hallazgos clave</div>`;
+  html += `<div style="margin-top:20px;"><div style="font-size:13px;font-weight:600;color:#16232a;margin-bottom:10px;">🔍 Hallazgos clave</div>`;
   html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
   
   // Finding 1: VA ratio
@@ -6325,7 +6411,7 @@ function renderVSMConclusions() {
   html += `</div></div>`;
   
   // ── PRIORITIZED RECOMMENDATIONS ──
-  html += `<div style="margin-top:20px;"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">🎯 Recomendaciones priorizadas</div>`;
+  html += `<div style="margin-top:20px;"><div style="font-size:13px;font-weight:600;color:#16232a;margin-bottom:10px;">🎯 Recomendaciones priorizadas</div>`;
   html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
   
   let recNum = 1;
@@ -6365,15 +6451,15 @@ function renderFinding(color, text) {
   const colors = { red: 'var(--red)', amber: 'var(--amber)', green: 'var(--green)' };
   const bgs = { red: 'rgba(226,75,74,0.06)', amber: 'rgba(186,117,23,0.06)', green: 'rgba(29,158,117,0.06)' };
   return `<div style="padding:10px 14px;background:${bgs[color]};border-left:3px solid ${colors[color]};border-radius:0 var(--r-sm) var(--r-sm) 0;">
-    <div style="font-size:12px;color:var(--text);line-height:1.5;">${text}</div>
+    <div style="font-size:12px;color:#16232a;line-height:1.5;">${text}</div>
   </div>`;
 }
 
 function renderRec(num, text, rationale) {
-  return `<div style="padding:12px 14px;background:var(--s2);border:0.5px solid var(--border);border-radius:var(--r-sm);display:flex;gap:12px;align-items:flex-start;">
-    <div style="width:24px;height:24px;border-radius:50%;background:rgba(0,173,181,0.15);border:1px solid var(--teal);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--teal-l);flex-shrink:0;">${num}</div>
-    <div><div style="font-size:12px;color:var(--text);line-height:1.5;">${text}</div>
-    <div style="font-size:10px;color:var(--text3);margin-top:4px;font-style:italic;">↳ ${rationale}</div></div>
+  return `<div style="padding:12px 14px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-sm);display:flex;gap:12px;align-items:flex-start;">
+    <div style="width:24px;height:24px;border-radius:50%;background:rgba(0,173,181,0.15);border:1px solid var(--teal);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f6e56;flex-shrink:0;">${num}</div>
+    <div><div style="font-size:12px;color:#16232a;line-height:1.5;">${text}</div>
+    <div style="font-size:10px;color:#5a6b70;margin-top:4px;font-style:italic;">↳ ${rationale}</div></div>
   </div>`;
 }
 
