@@ -693,6 +693,13 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
 .m1v2-sessionwrap .vsm-result-val.warn{color:#854f0b;}
 .m1v2-sessionwrap .vsm-result-val.bad{color:#a32d2d;}
 .m1v2-sessionwrap .vsm-result-label{color:#5a6b70;}
+.m1v2-sessionwrap .vsm-proc-metric{color:#5a6b70;}
+.m1v2-sessionwrap .vsm-proc-metric input{background:#f4f6f5;border:0.5px solid #ccd4d1;color:#16232a;}
+.m1v2-sessionwrap .vsm-proc-name-input{color:#16232a;}
+.m1v2-sessionwrap .vsm-inv-row{background:#f4f6f5;border:0.5px solid #dde3e1;}
+.m1v2-sessionwrap .vsm-inv-label{color:#16232a;}
+.m1v2-sessionwrap .vsm-inv-input{background:#ffffff;border:0.5px solid #ccd4d1;color:#16232a;}
+.m1v2-sessionwrap .vsm-inv-time{color:#0f6e56;}
 
 /* ── FIX BADGES SUPERPUESTOS · "Modificada" vs "Respondida" ──
    Antes: .q-card.q-dirty::before ponía "Modificada" en la tarjeta (top:10px;right:10px)
@@ -6124,11 +6131,11 @@ function renderProcessCard(proc, idx, takt) {
     <div class="vsm-proc-grid">
       <div class="vsm-proc-metric">
         <span>C/T (valor)</span>
-        <input type="number" step="any" value="${proc.ct_value||''}" placeholder="0" oninput="getVSM().processes[${idx}].ct_value=this.value;renderVSM()">
+        <input type="number" step="any" value="${proc.ct_value||''}" placeholder="0" oninput="getVSM().processes[${idx}].ct_value=this.value;vsmChanged()" onblur="renderVSM()">
       </div>
       <div class="vsm-proc-metric">
         <span>C/T (unidad)</span>
-        <select class="vsm-select" style="padding:5px 7px;font-size:12px;" onchange="getVSM().processes[${idx}].ct_unit=this.value;renderVSM()">
+        <select class="vsm-select" style="padding:5px 7px;font-size:12px;" onchange="getVSM().processes[${idx}].ct_unit=this.value;vsmChanged();renderVSM()">
           <option value="seg/ud" ${proc.ct_unit==='seg/ud'?'selected':''}>seg/ud</option>
           <option value="min/ud" ${proc.ct_unit==='min/ud'?'selected':''}>min/ud</option>
           <option value="min/batch" ${proc.ct_unit==='min/batch'?'selected':''}>min/batch</option>
@@ -6137,7 +6144,7 @@ function renderProcessCard(proc, idx, takt) {
       </div>
       ${needsBatch ? `<div class="vsm-proc-metric">
         <span>Batch size (uds)</span>
-        <input type="number" value="${proc.batch_size||''}" placeholder="0" oninput="getVSM().processes[${idx}].batch_size=this.value;renderVSM()">
+        <input type="number" value="${proc.batch_size||''}" placeholder="0" oninput="getVSM().processes[${idx}].batch_size=this.value;vsmChanged()" onblur="renderVSM()">
       </div>` : ''}
       <div class="vsm-proc-metric">
         <span>C/O (min)</span>
@@ -6145,7 +6152,7 @@ function renderProcessCard(proc, idx, takt) {
       </div>
       <div class="vsm-proc-metric">
         <span>Uptime (%)</span>
-        <input type="number" step="any" value="${proc.uptime||''}" placeholder="100" oninput="getVSM().processes[${idx}].uptime=this.value;renderVSM()">
+        <input type="number" step="any" value="${proc.uptime||''}" placeholder="100" oninput="getVSM().processes[${idx}].uptime=this.value;vsmChanged()" onblur="renderVSM()">
       </div>
       <div class="vsm-proc-metric">
         <span>Operadores</span>
