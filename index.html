@@ -1571,9 +1571,13 @@ async function completeSession(sessionId) {
   showToast('Sesión completada ✓');
   renderSidebarRoadmap();
   const prog = getProgress(currentClient);
-  const nextSess = SESSION_ORDER.find(s=>s!==sessionId && prog.sessions[s]!=='done');
-  if(!nextSess || SESSION_ORDER.every(s=>prog.sessions[s]==='done' || s===sessionId)) {
-    setTimeout(()=>openReport(),800);
+  // FIX: en modo pilot solo existen las sesiones ceo+fab — antes esto usaba
+  // siempre SESSION_ORDER completo y saltaba a 'ops' aunque el cliente fuera pilot.
+  const isPilot = (currentClient.client_mode || 'full') === 'pilot';
+  const order = isPilot ? ['ceo', 'fab'] : SESSION_ORDER;
+  const nextSess = order.find(s=>s!==sessionId && prog.sessions[s]!=='done');
+  if(!nextSess || order.every(s=>prog.sessions[s]==='done' || s===sessionId)) {
+    setTimeout(()=>(isPilot ? openFreeTrial() : openReport()),800);
   } else {
     setTimeout(()=>openSession(nextSess),800);
   }
@@ -3712,11 +3716,15 @@ renderSidebarRoadmap();
   document.querySelectorAll('.notes-tab').forEach((b,i) => b.classList.toggle('active', i===0));
   loadNotes(currentClient.id);
   const prog = getProgress(currentClient);
-  const allDone = ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done');
+  // FIX: mismo criterio que completeSession() — un cliente pilot solo tiene
+  // ceo+fab, así que ni el "allDone" ni el "nextSess" deben mirar sys/ops/etc.
+  const isPilot = (currentClient.client_mode || 'full') === 'pilot';
+  const order = isPilot ? ['ceo', 'fab'] : SESSION_ORDER;
+  const allDone = order.every(s => prog.sessions[s] === 'done');
   const reportOutdated = prog.reportOutdated;
-  const nextSess = SESSION_ORDER.find(s => prog.sessions[s] !== 'done') || 'ceo';
+  const nextSess = order.find(s => prog.sessions[s] !== 'done') || 'ceo';
 
-  if (allDone) openReport();
+  if (allDone) { if (isPilot) openFreeTrial(); else openReport(); }
   else openSession(nextSess);
 }
 
