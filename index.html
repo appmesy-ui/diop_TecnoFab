@@ -1673,20 +1673,34 @@ function normalizeReportProcesos(r) {
 
   // 1) Preferir iniciativas M6 reales si existen
   const backlog = currentClient && m6Data[currentClient.id]?.backlog ? m6Data[currentClient.id].backlog : [];
+  // Traducción RIM™ → etiqueta cliente. Antes 'categoria' se recalculaba de forma
+  // independiente a partir de impacto/esfuerzo (con 'esfuerzo' derivado de
+  // readiness invertido) — mismos datos de entrada que RIM™, pero con umbrales
+  // de corte distintos, así que una misma iniciativa podía salir "Preparar" en
+  // el RIM™ que usa el consultor y "Nice-to-Have" en lo que ve el cliente.
+  // Ahora el RIM™ es la única fuente de verdad: la etiqueta cliente es
+  // simplemente su traducción de lenguaje, nunca un cálculo distinto.
+  const RIM_TO_CATEGORIA = {
+    'LANZAR AHORA': 'quick_win',
+    'PREPARAR': 'big_swing',
+    'VISIÓN': 'big_swing',
+    'EVALUAR': 'nice_to_have',
+    'DESCARTAR': 'deprioritize'
+  };
   backlog.forEach((b, i) => {
     const impactRaw = Number(b.impact || 0);
     const readRaw = Number(b.readiness || 0);
     const impacto = Math.max(1, Math.min(5, Math.round(impactRaw / 2) || 3));
     const esfuerzo = Math.max(1, Math.min(5, Math.round((10 - readRaw) / 2) || 3));
-    let categoria = 'nice_to_have';
-    if (impacto >= 3 && esfuerzo <= 2) categoria = 'quick_win';
-    else if (impacto >= 4 && esfuerzo >= 3) categoria = 'big_swing';
-    else if (impacto <= 2 && esfuerzo >= 3) categoria = 'deprioritize';
+    const rimZone = (impactRaw && readRaw) ? getRIMZone(impactRaw, readRaw).zone : null;
+    const categoria = rimZone ? (RIM_TO_CATEGORIA[rimZone] || 'nice_to_have') : 'nice_to_have';
     procesos.push({
       nombre: b.name || `Iniciativa ${i+1}`,
       impacto, esfuerzo, categoria,
       horas_mes: b.hours || b.horas_mes || 20,
       ttl_capa: b.layer || 'L1',
+      tipo: b.tipo || 'quick_win',
+      rim_zone: rimZone,
       fuente: 'M6'
     });
   });
@@ -1775,6 +1789,7 @@ function renderMatrixTab() {
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
         <span style="font-size:9px;padding:1px 6px;border-radius:3px;font-weight:600;background:${cfg.color}20;color:${cfg.color};">${cfg.label}</span>
         ${p.ttl_capa?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;font-weight:600;background:rgba(0,173,181,0.1);color:var(--teal);">${p.ttl_capa}</span>`:''}
+        ${p.tipo?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;font-weight:600;background:${tipoIniciativaColor(p.tipo)}20;color:${tipoIniciativaColor(p.tipo)};">${tipoIniciativaLabel(p.tipo)}</span>`:''}
         ${p.fuente==='M6'?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(16,185,129,0.1);color:var(--green);">Consultor</span>`:''}
         <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">I:${p.impacto} E:${p.esfuerzo}${p.horas_mes?' · '+p.horas_mes+'h/mes':''}</span>
       </div>
@@ -3503,6 +3518,21 @@ function exportPDF() {
     }).join('')}
   </div>
   ${matrixSVG}
+  ${procesos.length ? `<div style="margin-top:4mm;">
+    <div style="font-size:8pt;font-weight:bold;color:#5a6b70;margin-bottom:2mm;">Leyenda — nº de burbuja → iniciativa</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5mm 4mm;">
+      ${procesos.map((p,i) => {
+        const cfg = CAT_PDF[p.categoria] || CAT_PDF.nice_to_have;
+        const tipoLbl = p.tipo ? tipoIniciativaLabel(p.tipo) : '';
+        return `<div style="font-size:7.5pt;color:#0f1a2e;display:flex;gap:1.5mm;align-items:baseline;">
+          <span style="font-family:'Courier New',monospace;color:#7ab0b8;flex-shrink:0;">${String(i+1).padStart(2,'0')}</span>
+          <span style="flex:1;">${pdfEsc(p.nombre)}</span>
+          <span style="font-size:6.5pt;font-weight:bold;color:${cfg.color};white-space:nowrap;">${cfg.label}</span>
+          ${tipoLbl ? `<span style="font-size:6.5pt;color:#8a9793;white-space:nowrap;">· ${pdfEsc(tipoLbl)}</span>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>` : ''}
 </div>
 <div class="footer">
   <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
