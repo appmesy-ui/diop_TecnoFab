@@ -7237,13 +7237,16 @@ ${(r.resumenEjecutivo && r.resumenEjecutivo.length) ? `<div class="cta no-break"
   <div class="section-label">01 · El número que no sabían</div>
   <div class="number-big">${fmtMoney(d1.valor)}</div>
   <div class="number-label">${esc(d1.label||'')}</div>
-  ${d1.calculo ? `<div class="calc-pill">${esc(d1.calculo)}</div>` : ''}
+  ${d1.components && d1.components.length ? `<div style="margin-bottom:3mm;">${d1.components.map(c => `<span class="calc-pill">${esc(c.label)}: ${c.value.toLocaleString('es-ES')}€</span>`).join(' ')}</div>` : ''}
   ${d1.contexto ? `<div class="narr">${esc(d1.contexto)}</div>` : ''}
 </div>
 
-${(d2.valor || d2.texto) ? `<div class="section no-break">
+${(d2.valor || d2.valorRiesgoAusencia || d2.texto) ? `<div class="section no-break">
   <div class="section-label">02 · Dependéis de personas que no podéis perder</div>
-  ${d2.valor ? `<div class="number-big" style="font-size:20pt;">${fmtMoney(d2.valor)}</div>` : ''}
+  <div style="display:flex;gap:8mm;flex-wrap:wrap;margin-bottom:2mm;">
+    ${d2.valor ? `<div><div class="number-big" style="font-size:18pt;">${fmtMoney(d2.valor)}</div><div style="font-size:8pt;color:#628f98;">coste anual de rotación</div></div>` : ''}
+    ${d2.valorRiesgoAusencia ? `<div><div class="number-big" style="font-size:18pt;color:#a32d2d;">${fmtMoney(d2.valorRiesgoAusencia)}</div><div style="font-size:8pt;color:#628f98;">riesgo si falta 1 semana</div></div>` : ''}
+  </div>
   <div class="narr">${esc(d2.texto||'')}</div>
 </div>` : ''}
 
