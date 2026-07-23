@@ -1098,6 +1098,22 @@ function getProcesesBySector() {
 }
 const SESSION_LABELS = {ceo:'CEO',ops:'Dir. Operaciones',itot:'IT/OT',operario:'Operario',fab:'Fábrica',sys:'Sistemas'};
 
+// ── FIX: scroll accidental cambia el valor de los <input type="number"> ──
+// Comportamiento nativo del navegador: si un input numérico tiene el foco y el
+// ratón hace scroll por encima (incluso sin querer, de paso hacia otra parte de
+// la pantalla), Chrome/Firefox incrementan/decrementan el valor como si fueran
+// las flechitas del campo — sin que el usuario haya tecleado nada. Esto afecta
+// a TODOS los campos numéricos de la app (Impacto, Readiness, Inversión,
+// Ahorro, KPIs...), de forma silenciosa. Un único listener delegado en
+// document evita el comportamiento nativo solo cuando el scroll ocurre
+// exactamente sobre un input numérico — el resto de la página sigue
+// haciendo scroll con normalidad.
+document.addEventListener('wheel', function(e) {
+  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+    e.preventDefault();
+  }
+}, { passive: false });
+
 // ── INIT ──
 async function init() {
   sb = supabase.createClient(SB_URL, SB_KEY);
@@ -5267,7 +5283,7 @@ function renderM6(){
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
               <span style="padding:2px 8px;background:${ttlCol}22;color:${ttlCol};border-radius:10px;font-size:9px;font-weight:700;">${b.layer}</span>
               <span style="font-size:13px;font-weight:600;color:#16232a;">${b.name}</span>
-              ${blocked?'<span style="font-size:9px;color:var(--red);font-weight:600;">🔒 BLOQUEADA (requiere ${b.layer})</span>':''}
+              ${blocked?`<span style="font-size:9px;color:var(--red);font-weight:600;">🔒 BLOQUEADA (requiere ${b.layer})</span>`:''}
             </div>
             <div style="font-size:10px;color:#5a6b70;">${b.desc||''}</div>
             <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
