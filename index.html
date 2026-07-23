@@ -3236,6 +3236,15 @@ function exportPDF() {
   const roi = r.roi||{};
   const qws = r.quick_wins||[];
   const tools = r.herramientas_mercado||[];
+  // Datos frescos para las secciones nuevas del PDF (Economic Bridge™ y Confidence Layer™),
+  // calculados igual que en la vista previa — a partir del backlog M6 y del confidence layer
+  // vivos, no de un snapshot guardado en el momento de generar el informe.
+  const m6 = m6Data[client.id];
+  const econ = calcPortfolioEconomics(m6?.backlog || []);
+  const conf = confidenceData[client.id];
+  const confFindings = (conf?.findings || []).filter(f => f.finding || f.confidence);
+  const confTotal = confFindings.filter(f => f.confidence).length;
+  const confCount = (v) => confFindings.filter(f => f.confidence === v).length;
 
   // ── PDF add-ons: export high-value diagnostic blocks without changing API/generate-report.js ──
   const pdfEsc = (v) => String(v ?? '—')
@@ -3503,15 +3512,38 @@ ${fieldIntelligencePDF}
   </div>
 
   <div class="section no-break">
-    <h2>Benchmark sectorial · ${bench.kpi_referencia||''}</h2>
-    <div class="bench-grid">
-      <div class="bench-card bc1"><div class="bench-lbl">Tu empresa</div><div class="bench-val" style="color:#E24B4A;">${bench.valor_cliente||'—'}</div></div>
-      <div class="bench-card bc2"><div class="bench-lbl">Media sector</div><div class="bench-val" style="color:#BA7517;">${bench.valor_sector_medio||'—'}</div></div>
-      <div class="bench-card bc3"><div class="bench-lbl">Top sector</div><div class="bench-val" style="color:#1D9E75;">${bench.valor_sector_top||'—'}</div></div>
-    </div>
-    ${bench.gap_euros?`<div class="bench-gap">Gap vs media del sector: <strong>${bench.gap_euros}</strong></div>`:''}
+    <h2>Benchmark sectorial — ${esc(currentClient.sector||'')}</h2>
+    ${(r.benchmark_items && r.benchmark_items.length) ? `
+      ${r.benchmark_items.map(it => {
+        const col = it.esBueno ? '#1D9E75' : '#E24B4A';
+        return `<div style="padding:3mm 4mm;background:#f7fafa;border-left:3px solid ${col};border-radius:0 5px 5px 0;margin-bottom:2.5mm;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:9.5pt;font-weight:bold;color:#0f1a2e;">${esc(it.nombre)}</span>
+            <span style="font-size:8pt;font-weight:bold;color:${col};">${esc(it.gap_label)}</span>
+          </div>
+          <div style="font-size:8.5pt;color:#5a6b70;margin-top:1mm;">Vosotros: ${esc(it.valor_cliente)} · Sector: ${esc(it.valor_sector)}</div>
+        </div>`;
+      }).join('')}
+    ` : `<div style="font-size:8.5pt;color:#8a9793;">Sin datos suficientes en las sesiones para comparar contra el sector todavía.</div>`}
   </div>
 </div>
+
+${confFindings.length ? `<div class="section no-break">
+  <h2>Confidence Layer™ — Nivel de evidencia de los hallazgos</h2>
+  <div class="grid3" style="margin-bottom:3mm;">
+    <div class="card"><div class="card-lbl">Confirmado</div><div class="card-val" style="color:#1D9E75;">${confTotal?Math.round(confCount('Confirmado')/confTotal*100):0}%</div></div>
+    <div class="card"><div class="card-lbl">Hipótesis fuerte</div><div class="card-val" style="color:#BA7517;">${confTotal?Math.round(confCount('Hipótesis fuerte')/confTotal*100):0}%</div></div>
+    <div class="card"><div class="card-lbl">Investigación requerida</div><div class="card-val" style="color:#E24B4A;">${confTotal?Math.round(confCount('Investigación requerida')/confTotal*100):0}%</div></div>
+  </div>
+  <div style="font-size:8pt;color:#666;margin-bottom:2mm;">Cada hallazgo se clasifica según su nivel de evidencia. El lenguaje del informe se ajusta a este nivel — no se afirma como hecho lo que está marcado como hipótesis o investigación.</div>
+  ${confFindings.slice(0,6).map(f => {
+    const fc = f.confidence === 'Confirmado' ? '#1D9E75' : f.confidence === 'Hipótesis fuerte' ? '#BA7517' : '#E24B4A';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:2mm 3mm;background:#f7fafa;border-radius:4px;margin-bottom:1.5mm;">
+      <span style="font-size:8.5pt;color:#0f1a2e;">${pdfEsc(f.finding || 'Hallazgo sin descripción')}</span>
+      <span style="font-size:7pt;font-weight:bold;padding:1pt 6pt;border-radius:8pt;background:${fc}20;color:${fc};white-space:nowrap;margin-left:3mm;">${pdfEsc(f.confidence || '—')}</span>
+    </div>`;
+  }).join('')}
+</div>` : ''}
 
 <div class="footer">
   <div class="footer-left">Tecno-Fab · DIOP · ${today}</div>
@@ -3544,13 +3576,21 @@ ${fieldIntelligencePDF}
 </div>
 
 <div class="section no-break">
-  <h2>ROI estimado del proyecto</h2>
-  <div class="roi-grid">
-    <div class="roi-card"><div class="roi-lbl">Presupuesto herramienta</div><div class="roi-val">${roi.presupuesto_herramienta||'—'}</div></div>
-    <div class="roi-card"><div class="roi-lbl">Ahorro anual estimado</div><div class="roi-val">${roi.ahorro_estimado_anual||'—'}</div></div>
-    <div class="roi-card"><div class="roi-lbl">Plazo de retorno</div><div class="roi-val">${roi.plazo_retorno_meses||'—'} meses</div></div>
+  <h2>Economic Bridge™ — Portfolio de iniciativas (3 escenarios)</h2>
+  ${econ.list.length ? `
+  <div class="grid3" style="margin-bottom:3mm;">
+    <div class="card"><div class="card-lbl">Inversión portfolio</div><div class="card-val" style="color:#00706e;">${(econ.totalInv/1000).toFixed(0)}k€</div></div>
+    <div class="card"><div class="card-lbl">Payback base</div><div class="card-val" style="color:#BA7517;">${econ.paybackBase||'—'}m</div></div>
+    <div class="card"><div class="card-lbl">Confianza portfolio</div><div class="card-val" style="font-size:11pt;color:#00706e;">${econ.confidenceBand}</div></div>
   </div>
-  <div class="roi-note" style="margin-top:2mm;">${roi.base_calculo||''}</div>
+  <div class="bench-grid">
+    <div class="bench-card bc1"><div class="bench-lbl">Conservador</div><div class="bench-val" style="color:#E24B4A;">${econ.totalLow>0?(econ.totalLow/1000).toFixed(0)+'k€':'—'}</div><div style="font-size:7pt;color:#999;margin-top:1mm;">${econ.paybackLow?econ.paybackLow+'m payback':''}</div></div>
+    <div class="bench-card bc2"><div class="bench-lbl">Base</div><div class="bench-val" style="color:#0f6e56;">${(econ.totalBase/1000).toFixed(0)}k€</div><div style="font-size:7pt;color:#999;margin-top:1mm;">${econ.paybackBase?econ.paybackBase+'m payback':''}</div></div>
+    <div class="bench-card bc3"><div class="bench-lbl">Optimista</div><div class="bench-val" style="color:#1D9E75;">${econ.totalHigh>0?(econ.totalHigh/1000).toFixed(0)+'k€':'—'}</div><div style="font-size:7pt;color:#999;margin-top:1mm;">${econ.paybackHigh?econ.paybackHigh+'m payback':''}</div></div>
+  </div>
+  <div style="font-size:8pt;color:#666;margin-top:2mm;">BNA = Beneficio Neto Anual estimado, sobre ${econ.list.length} iniciativa${econ.list.length!==1?'s':''} del portfolio M6 con inversión y ahorro definidos.</div>
+  ${econ.riskCount ? `<div style="margin-top:2mm;font-size:8pt;color:#E24B4A;font-weight:bold;">⚠ ${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} de categoría D (riesgo) incluida${econ.riskCount>1?'s':''} en este portfolio.</div>` : ''}
+  ` : `<div style="font-size:8.5pt;color:#8a9793;">Sin iniciativas con inversión y ahorro definidos en M6 todavía.</div>`}
 </div>
 
 <div class="footer">
