@@ -7958,23 +7958,93 @@ Devuelve SOLO este JSON, sin texto adicional:
     const narrative = JSON.parse(text);
 
     // ── Red de seguridad: detección de relleno genérico ──
-    // El prompt YA prohíbe estas frases (instrucción 0b), pero un LLM puede
-    // ignorarlo. Esta es una segunda capa determinista — nunca confiar solo
-    // en que el prompt se obedezca. Solo lo ve el consultor, nunca el cliente.
+    // El prompt YA prohíbe esto (instrucción 0b), pero un LLM puede ignorarlo.
+    // Dos capas, ninguna sustituye a la otra:
+    //   Capa 1 (lista): coincidencia literal contra frases típicas de informe
+    //   de consultora genérica. Rápida, pero solo detecta lo que ya conocemos.
+    //   Capa 2 (estructural): por cada FRASE de los campos de negocio, exige
+    //   que tenga un "ancla" — un número/€/%, una cita entre comillas, o una
+    //   palabra que solo pertenece a ESTE cliente (su nombre, su sector, o
+    //   algo que él mismo dijo en observaciones de campo). Una frase sin
+    //   ninguna de las tres cosas es sospechosa de relleno aunque no
+    //   coincida con ninguna frase de la lista — así detecta variantes que
+    //   la lista nunca podría prever.
+    // Solo lo ve el consultor, nunca el cliente.
     const GENERIC_FILLER_PHRASES = [
       'sinergia', 'clase mundial', 'world-class', 'world class',
       'comprometidos con la excelencia', 'revolucionar', 'siguiente nivel',
       'mercado cada vez más competitivo', 'identificamos oportunidades de mejora',
       'optimizar procesos', 'valor añadido', 'llevar al siguiente',
-      'de vanguardia', 'cutting-edge', 'cutting edge'
+      'de vanguardia', 'cutting-edge', 'cutting edge',
+      'oportunidades de mejora', 'aún no cuantificad', 'aun no cuantificad',
+      'queda por determinar', 'por determinar', 'mejor visibilidad',
+      'mayor control', 'más control', 'mas control', 'de forma general',
+      'en general', 'diversas áreas', 'diversas areas', 'múltiples frentes',
+      'multiples frentes', 'diferentes aspectos', 'toma de decisiones informadas',
+      'decisiones informadas', 'eficiencia operativa', 'mejora continua',
+      'impulsar el crecimiento', 'maximizar el potencial', 'capitalizar oportunidades',
+      'apalancar', 'leverage', 'zonas problemáticas', 'zonas problematicas'
     ];
+
     function detectGenericFiller(nrv) {
-      const textFields = [
+      const hits = [];
+
+      // Capa 1 — coincidencia de frase, sobre todos los campos de negocio a la vez
+      const allText = [
         nrv.dolor1_contexto, nrv.dolor2_texto, nrv.traceability_texto, nrv.dolor3_texto,
         nrv.diagnostico_narrativo?.patron, nrv.diagnostico_narrativo?.causa_raiz, nrv.diagnostico_narrativo?.posibilidad,
-        nrv.la_pregunta, ...(nrv.resumen_ejecutivo || [])
+        nrv.la_pregunta, ...(nrv.resumen_ejecutivo || []),
+        nrv.hipotesis_pendientes?.it_ot, nrv.hipotesis_pendientes?.vsm,
+        nrv.hipotesis_pendientes?.ofi, nrv.hipotesis_pendientes?.roadmap
       ].filter(Boolean).join(' \n ').toLowerCase();
-      return GENERIC_FILLER_PHRASES.filter(p => textFields.includes(p));
+      GENERIC_FILLER_PHRASES.forEach(p => { if (allText.includes(p)) hits.push(`frase genérica: "${p}"`); });
+
+      // Capa 2 — heurística estructural, frase por frase
+      // "Ancla" = número/€/%, cita entre comillas, o una palabra (>4 letras)
+      // tomada de algo que ESTE cliente dijo o que lo identifica (nombre,
+      // sector, comentario revelador, hipótesis de causa raíz, persona clave,
+      // cuello de botella físico observado).
+      const anchorSource = [
+        currentClient?.name, currentClient?.sector,
+        a('fab', 'revealing_comment'), a('fab', 'root_cause_hypothesis'),
+        a('fab', 'key_person_field'), a('fab', 'physical_bottleneck'),
+        a('ceo', 'main_problem')
+      ].filter(Boolean).join(' ').toLowerCase();
+      const anchorTerms = Array.from(new Set(
+        anchorSource.split(/[^a-zñáéíóúü]+/i).filter(w => w.length > 4)
+      ));
+
+      const fieldsToCheck = [
+        ['dolor1_contexto', nrv.dolor1_contexto],
+        ['dolor2_texto', nrv.dolor2_texto],
+        ['traceability_texto', nrv.traceability_texto],
+        ['dolor3_texto', nrv.dolor3_texto],
+        ['diagnóstico → patrón', nrv.diagnostico_narrativo?.patron],
+        ['diagnóstico → causa raíz', nrv.diagnostico_narrativo?.causa_raiz],
+        ['diagnóstico → posibilidad', nrv.diagnostico_narrativo?.posibilidad],
+        ...(nrv.resumen_ejecutivo || []).map((f, i) => [`resumen ejecutivo (frase ${i + 1})`, f]),
+        ['hipótesis IT/OT', nrv.hipotesis_pendientes?.it_ot],
+        ['hipótesis VSM', nrv.hipotesis_pendientes?.vsm],
+        ['hipótesis OFI', nrv.hipotesis_pendientes?.ofi],
+        ['hipótesis roadmap', nrv.hipotesis_pendientes?.roadmap]
+      ];
+
+      fieldsToCheck.forEach(([label, text]) => {
+        if (!text) return;
+        const sentences = text.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 15);
+        sentences.forEach(s => {
+          const sLower = s.toLowerCase();
+          const hasNumber = /[0-9€%]/.test(s);
+          const hasQuote = /["“”]/.test(s);
+          const hasAnchor = anchorTerms.some(t => sLower.includes(t));
+          if (!hasNumber && !hasQuote && !hasAnchor) {
+            const preview = s.length > 90 ? s.slice(0, 90) + '…' : s;
+            hits.push(`sin ancla real (${label}): "${preview}"`);
+          }
+        });
+      });
+
+      return Array.from(new Set(hits));
     }
     const genericHits = detectGenericFiller(narrative);
 
