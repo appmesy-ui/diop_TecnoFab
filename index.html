@@ -694,6 +694,22 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
 .m1v2-sessionwrap .vsm-result-val.bad{color:#a32d2d;}
 .m1v2-sessionwrap .vsm-result-label{color:#5a6b70;}
 
+/* ── FIX BADGES SUPERPUESTOS · "Modificada" vs "Respondida" ──
+   Antes: .q-card.q-dirty::before ponía "Modificada" en la tarjeta (top:10px;right:10px)
+   Y a la vez .m1v2-sessionwrap .q-card.q-answered .q-meta::after ponía "Respondida"
+   en la misma esquina. Una pregunta respondida y luego editada tenía las dos clases
+   (.q-answered + .q-dirty) a la vez, así que ambos badges se dibujaban encimados.
+   Fix: dentro de las sesiones (m1v2-sessionwrap), el badge genérico "Modificada" de
+   .q-card se desactiva (ese sistema es el legado, no el que usan las sesiones) y se
+   sustituye por una única regla que, si la tarjeta está modificada, manda sobre la
+   de "Respondida" — nunca se muestran los dos badges a la vez. */
+.m1v2-sessionwrap .q-card.q-dirty::before{content:none;}
+.m1v2-sessionwrap .q-card.q-dirty .q-meta::after{
+  content:'Modificada';
+  background:rgba(186,117,23,0.14);
+  color:#854f0b;
+}
+
 </style>
 </head>
 <body onload="init()">
