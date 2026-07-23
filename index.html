@@ -3294,6 +3294,62 @@ function exportPDF() {
   <table class="vsm-table"><thead><tr><th>Proceso</th><th>C/T</th><th>C/T efectivo</th><th>C/O</th><th>Uptime</th><th>Ops</th></tr></thead><tbody>${vsmRows}</tbody></table>
 </div>` : '';
 
+  // ── Organizational Readiness Premium (Human Capability™ / Operating System™ / Execution Readiness™) ──
+  // Antes solo existía en la vista previa (renderReport) y en el workbench de M4 —
+  // nunca llegaba al PDF que se entrega al cliente. Se replica aquí con los mismos
+  // datos vivos de m4Data, no un snapshot congelado en el momento de generar el informe.
+  const m4Pdf = m4Data[client.id];
+  const orgHumanKeys = [
+    ['human','key_people','Dependencia personas clave'],
+    ['human','info_search','Búsqueda manual información'],
+    ['human','troubleshooting','Troubleshooting experto'],
+    ['human','coordination','Coordinación / silos'],
+    ['human','reactive_planning','Planificación reactiva']
+  ];
+  const orgOsKeys = [
+    ['operating','kpi_ownership','Ownership KPI'],
+    ['operating','routines','Rutinas operativas'],
+    ['operating','action_followup','Seguimiento acciones'],
+    ['operating','escalation','Escalado problemas'],
+    ['operating','continuous_improvement','Mejora continua']
+  ];
+  const orgExKeys = [
+    ['execution','sponsor','Sponsor visible'],
+    ['execution','execution_capacity','Capacidad ejecución'],
+    ['execution','team_time','Disponibilidad equipo'],
+    ['execution','skills','Skills'],
+    ['execution','change_openness','Apertura cambio']
+  ];
+  const orgLevelColor = (v) => v === 'Alto' ? '#1D9E75' : v === 'Medio' ? '#BA7517' : v === 'Bajo' ? '#E24B4A' : '#8a9793';
+  const orgHasM4Data = [...orgHumanKeys, ...orgOsKeys, ...orgExKeys].some(([s,k]) => m4Pdf?.[s]?.[k]);
+  const orgScoreBlock = (section, label, keys) => {
+    const vals = keys.map(([s,k]) => m4Pdf?.[s]?.[k]).filter(v=>v);
+    const scores = vals.map(v => v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0).filter(v=>v>0);
+    const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+    const col = avg>=2.4?'#1D9E75':avg>=1.7?'#BA7517':avg>0?'#E24B4A':'#8a9793';
+    return `<div class="card" style="text-align:center;"><div class="card-lbl">${label}</div><div class="card-val" style="color:${col};">${avg?avg.toFixed(1):'—'}<span style="font-size:8pt;color:#999;">/3</span></div></div>`;
+  };
+  const orgSignalList = (keys) => keys.map(([s,k,l]) => {
+    const v = m4Pdf?.[s]?.[k] || '—';
+    return `<li style="display:flex;justify-content:space-between;"><span>${pdfEsc(l)}</span><span style="font-weight:bold;color:${orgLevelColor(v)};">${pdfEsc(v)}</span></li>`;
+  }).join('');
+  const orgReadinessPDF = `
+<div class="section no-break">
+  <h2>Organizational Readiness Premium</h2>
+  ${orgHasM4Data ? `
+  <div class="grid3" style="margin-bottom:3mm;">
+    ${orgScoreBlock('human','Human Capability™',orgHumanKeys)}
+    ${orgScoreBlock('operating','Operating System™',orgOsKeys)}
+    ${orgScoreBlock('execution','Execution Readiness™',orgExKeys)}
+  </div>
+  <div class="grid3">
+    <div class="card"><div class="card-lbl">Human Capability™</div><ul class="mini-list">${orgSignalList(orgHumanKeys)}</ul></div>
+    <div class="card"><div class="card-lbl">Operating System™</div><ul class="mini-list">${orgSignalList(orgOsKeys)}</ul></div>
+    <div class="card"><div class="card-lbl">Execution Readiness™</div><ul class="mini-list">${orgSignalList(orgExKeys)}</ul></div>
+  </div>
+  ` : `<div style="font-size:8.5pt;color:#8a9793;">Sin datos de M4 · Diagnóstico organizacional pendiente todavía.</div>`}
+</div>`;
+
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3489,6 +3545,7 @@ ${r.vsm_resumen && r.vsm_resumen.lead_time ? `<div class="section no-break">
 
 ${flowBottleneckPDF}
 ${fieldIntelligencePDF}
+${orgReadinessPDF}
 
 <div class="section no-break">
   <h2>KPIs identificados</h2>
