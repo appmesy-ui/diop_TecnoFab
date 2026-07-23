@@ -5108,7 +5108,21 @@ function generateSuggestions(currentBacklog){
     });
   }
   
-  return sug;
+  // FIX: 'already' solo evita duplicados contra el backlog YA aceptado, no contra
+  // sugerencias generadas en esta misma pasada — así que si dos señales distintas
+  // (ej. árbol de pérdidas + VSM) apuntaban a la misma iniciativa del catálogo,
+  // salían dos tarjetas idénticas con el mismo botón "Aceptar". Se fusionan aquí
+  // por nombre, combinando los motivos en vez de duplicar la tarjeta.
+  const merged = new Map();
+  sug.forEach(s => {
+    if (merged.has(s.name)) {
+      const existing = merged.get(s.name);
+      existing.reason = existing.reason + ' · ' + s.reason;
+    } else {
+      merged.set(s.name, { ...s });
+    }
+  });
+  return Array.from(merged.values());
 }
 
 function confidenceBandFromScore(v){return v>=4?'Alta':v>=3?'Media':v>0?'Baja':'Pendiente';}
