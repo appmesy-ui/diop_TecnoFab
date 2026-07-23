@@ -6332,10 +6332,15 @@ function renderVSMDiagram() {
   // ── INFO ARROWS ──
   // Client → Planning
   svg += `<line x1="${cliX}" y1="${cliY+20}" x2="${planX+120}" y2="${planY+16}" stroke="${cText3}" stroke-width="0.8" stroke-dasharray="4,2" marker-end="url(#arrowInfo)"/>`;
+  // FIX: la etiqueta se posicionaba casi encima de la propia línea (solape visual).
+  // Se añade un rectángulo de fondo del mismo color que el lienzo, para que el
+  // texto quede legible por encima de la línea en vez de cruzado con ella.
+  svg += `<rect x="${(cliX+planX+120)/2-16}" y="${cliY+10-4.5}" width="32" height="7" fill="${cBg}" opacity="0.9"/>`;
   svg += `<text x="${(cliX+planX+120)/2}" y="${cliY+10}" text-anchor="middle" fill="${cText3}" font-size="5.5">Pedidos</text>`;
   
   // Planning → Supplier
   svg += `<line x1="${planX}" y1="${planY+16}" x2="${supX+80}" y2="${supY+20}" stroke="${cText3}" stroke-width="0.8" stroke-dasharray="4,2" marker-end="url(#arrowInfo)"/>`;
+  svg += `<rect x="${(planX+supX+80)/2-19}" y="${supY+10-4.5}" width="38" height="7" fill="${cBg}" opacity="0.9"/>`;
   svg += `<text x="${(planX+supX+80)/2}" y="${supY+10}" text-anchor="middle" fill="${cText3}" font-size="5.5">Pedido MP</text>`;
   
   // Planning → Processes
