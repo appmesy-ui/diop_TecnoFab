@@ -7988,16 +7988,32 @@ Devuelve SOLO este JSON, sin texto adicional:
 
     function detectGenericFiller(nrv) {
       const hits = [];
+      const fields = new Set(); // claves machine-readable, para poder reescribir solo estos campos
 
-      // Capa 1 — coincidencia de frase, sobre todos los campos de negocio a la vez
-      const allText = [
-        nrv.dolor1_contexto, nrv.dolor2_texto, nrv.traceability_texto, nrv.dolor3_texto,
-        nrv.diagnostico_narrativo?.patron, nrv.diagnostico_narrativo?.causa_raiz, nrv.diagnostico_narrativo?.posibilidad,
-        nrv.la_pregunta, ...(nrv.resumen_ejecutivo || []),
-        nrv.hipotesis_pendientes?.it_ot, nrv.hipotesis_pendientes?.vsm,
-        nrv.hipotesis_pendientes?.ofi, nrv.hipotesis_pendientes?.roadmap
-      ].filter(Boolean).join(' \n ').toLowerCase();
-      GENERIC_FILLER_PHRASES.forEach(p => { if (allText.includes(p)) hits.push(`frase genérica: "${p}"`); });
+      // Mapa campo → [label legible, texto, key programática]
+      const fieldMap = [
+        ['dolor1_contexto', 'dolor1_contexto', nrv.dolor1_contexto],
+        ['dolor2_texto', 'dolor2_texto', nrv.dolor2_texto],
+        ['traceability_texto', 'traceability_texto', nrv.traceability_texto],
+        ['dolor3_texto', 'dolor3_texto', nrv.dolor3_texto],
+        ['diagnóstico → patrón', 'diagnostico_narrativo.patron', nrv.diagnostico_narrativo?.patron],
+        ['diagnóstico → causa raíz', 'diagnostico_narrativo.causa_raiz', nrv.diagnostico_narrativo?.causa_raiz],
+        ['diagnóstico → posibilidad', 'diagnostico_narrativo.posibilidad', nrv.diagnostico_narrativo?.posibilidad],
+        ...(nrv.resumen_ejecutivo || []).map((f, i) => [`resumen ejecutivo (frase ${i + 1})`, `resumen_ejecutivo.${i}`, f]),
+        ['hipótesis IT/OT', 'hipotesis_pendientes.it_ot', nrv.hipotesis_pendientes?.it_ot],
+        ['hipótesis VSM', 'hipotesis_pendientes.vsm', nrv.hipotesis_pendientes?.vsm],
+        ['hipótesis OFI', 'hipotesis_pendientes.ofi', nrv.hipotesis_pendientes?.ofi],
+        ['hipótesis roadmap', 'hipotesis_pendientes.roadmap', nrv.hipotesis_pendientes?.roadmap]
+      ];
+
+      // Capa 1 — coincidencia de frase, campo por campo (para poder marcar qué campo reescribir)
+      fieldMap.forEach(([label, key, text]) => {
+        if (!text) return;
+        const lower = text.toLowerCase();
+        GENERIC_FILLER_PHRASES.forEach(p => {
+          if (lower.includes(p)) { hits.push(`frase genérica (${label}): "${p}"`); fields.add(key); }
+        });
+      });
 
       // Capa 2 — heurística estructural, frase por frase
       // "Ancla" = número/€/%, cita entre comillas, o una palabra (>4 letras)
@@ -8014,22 +8030,7 @@ Devuelve SOLO este JSON, sin texto adicional:
         anchorSource.split(/[^a-zñáéíóúü]+/i).filter(w => w.length > 4)
       ));
 
-      const fieldsToCheck = [
-        ['dolor1_contexto', nrv.dolor1_contexto],
-        ['dolor2_texto', nrv.dolor2_texto],
-        ['traceability_texto', nrv.traceability_texto],
-        ['dolor3_texto', nrv.dolor3_texto],
-        ['diagnóstico → patrón', nrv.diagnostico_narrativo?.patron],
-        ['diagnóstico → causa raíz', nrv.diagnostico_narrativo?.causa_raiz],
-        ['diagnóstico → posibilidad', nrv.diagnostico_narrativo?.posibilidad],
-        ...(nrv.resumen_ejecutivo || []).map((f, i) => [`resumen ejecutivo (frase ${i + 1})`, f]),
-        ['hipótesis IT/OT', nrv.hipotesis_pendientes?.it_ot],
-        ['hipótesis VSM', nrv.hipotesis_pendientes?.vsm],
-        ['hipótesis OFI', nrv.hipotesis_pendientes?.ofi],
-        ['hipótesis roadmap', nrv.hipotesis_pendientes?.roadmap]
-      ];
-
-      fieldsToCheck.forEach(([label, text]) => {
+      fieldMap.forEach(([label, key, text]) => {
         if (!text) return;
         const sentences = text.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 15);
         sentences.forEach(s => {
@@ -8040,13 +8041,75 @@ Devuelve SOLO este JSON, sin texto adicional:
           if (!hasNumber && !hasQuote && !hasAnchor) {
             const preview = s.length > 90 ? s.slice(0, 90) + '…' : s;
             hits.push(`sin ancla real (${label}): "${preview}"`);
+            fields.add(key);
           }
         });
       });
 
-      return Array.from(new Set(hits));
+      return { hits: Array.from(new Set(hits)), fields: Array.from(fields) };
     }
-    const genericHits = detectGenericFiller(narrative);
+
+    function getNarrativeField(nrv, key) {
+      if (key.startsWith('diagnostico_narrativo.')) return nrv.diagnostico_narrativo?.[key.split('.')[1]];
+      if (key.startsWith('hipotesis_pendientes.')) return nrv.hipotesis_pendientes?.[key.split('.')[1]];
+      if (key.startsWith('resumen_ejecutivo.')) return nrv.resumen_ejecutivo?.[parseInt(key.split('.')[1])];
+      return nrv[key];
+    }
+    function setNarrativeField(nrv, key, value) {
+      if (value === undefined || value === null || value === '') return;
+      if (key.startsWith('diagnostico_narrativo.')) { nrv.diagnostico_narrativo = nrv.diagnostico_narrativo || {}; nrv.diagnostico_narrativo[key.split('.')[1]] = value; }
+      else if (key.startsWith('hipotesis_pendientes.')) { nrv.hipotesis_pendientes = nrv.hipotesis_pendientes || {}; nrv.hipotesis_pendientes[key.split('.')[1]] = value; }
+      else if (key.startsWith('resumen_ejecutivo.')) { nrv.resumen_ejecutivo = nrv.resumen_ejecutivo || []; nrv.resumen_ejecutivo[parseInt(key.split('.')[1])] = value; }
+      else nrv[key] = value;
+    }
+
+    // ── Auto-reparación: en vez de solo avisar, se le pide a la IA que
+    // reescriba ÚNICAMENTE los campos marcados, citando datos reales
+    // disponibles. Un único intento — si tras reescribir sigue sin anclar,
+    // se deja de insistir (evita bucles de coste/latencia) y se muestra el
+    // aviso al consultor como red de seguridad final. ──
+    async function repairGenericFiller(nrv, fieldKeys) {
+      if (!fieldKeys.length) return nrv;
+      const currentValues = fieldKeys.map(k => `- ${k}: "${getNarrativeField(nrv, k)}"`).join('\n');
+      const repairPrompt = `Estas frases de un informe para ${currentClient.name} se detectaron como relleno genérico — no citan ningún dato concreto de este cliente:
+${currentValues}
+
+Datos reales disponibles para anclar cada frase (usa SOLO estos, no inventes nada nuevo):
+${d1Breakdown}
+- Observación de campo (comentario revelador): ${obsCampo.revealing_comment || 'no disponible'}
+- Persona clave identificada: ${obsCampo.key_person_field || 'no disponible'}
+- Hipótesis de causa raíz del consultor: ${obsCampo.root_cause_hypothesis || 'no disponible'}
+- Cuello de botella físico observado: ${obsCampo.physical_bottleneck || 'no disponible'}
+- Problema principal declarado por el CEO: ${a('ceo','main_problem') || 'no disponible'}
+
+Reescribe cada una de las frases de arriba para que cite explícitamente al menos uno de estos datos concretos (una cifra, un proceso, una observación, una persona). Si de verdad no hay ningún dato real que sustente una frase, devuélvela como cadena vacía "" en vez de rellenarla con otra frase genérica.
+
+Devuelve SOLO un JSON con esta forma exacta, una entrada por cada clave de arriba:
+{
+${fieldKeys.map(k => `  "${k}": "texto reescrito o vacío"`).join(',\n')}
+}`;
+      try {
+        const res = await fetch('/api/generate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: repairPrompt })
+        });
+        const data = await res.json();
+        const text = (data.content || '').replace(/```json|```/g, '').trim();
+        const fixed = JSON.parse(text);
+        fieldKeys.forEach(k => { if (fixed[k]) setNarrativeField(nrv, k, fixed[k]); });
+      } catch (e) {
+        console.warn('Reparación de relleno genérico falló, se mantiene el texto original y el aviso al consultor:', e);
+      }
+      return nrv;
+    }
+
+    let { hits: genericHits, fields: genericFields } = detectGenericFiller(narrative);
+    if (genericFields.length) {
+      await repairGenericFiller(narrative, genericFields);
+      const recheck = detectGenericFiller(narrative);
+      genericHits = recheck.hits; // si la reparación funcionó, esto ya sale vacío
+    }
 
     // Ensamblamos el informe final: números validados (JS) + narrativa (IA), nunca mezclados
     ftReport = {
