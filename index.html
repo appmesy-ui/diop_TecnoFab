@@ -5061,7 +5061,12 @@ function generateSuggestions(currentBacklog){
   
   // ── From traceability ──
   const lt=a('sys','lot_tracking');
-  if(lt&&(lt.includes('No hay')||lt.includes('parcial')))add('Trazabilidad de lotes (MP → PT)','Trazabilidad inexistente o parcial');
+  // FIX: antes comprobaba lt.includes('No hay')||lt.includes('parcial'), pero las
+  // opciones reales son "Solo se registra el lote de entrada" y "No se hace
+  // trazabilidad de lotes" — ninguna contiene "No hay", así que las DOS peores
+  // respuestas posibles nunca disparaban esta sugerencia. Ahora se compara contra
+  // la única respuesta buena; cualquier otra cosa (incluida ausencia de dato) sugiere mejora.
+  if(lt && lt !== 'Trazabilidad completa de lote a producto final')add('Trazabilidad de lotes (MP → PT)','Trazabilidad inexistente o parcial: "'+lt+'"');
   
   // ── From warehouse ──
   const wh=a('sys','warehouse_management');
