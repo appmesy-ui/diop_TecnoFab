@@ -1805,6 +1805,11 @@ function updateSessionProgress(sessionId) {
 
   const criticalMissing = criticalTotal - criticalAnswered;
   const nonCriticalMissing = (total - answered) - criticalMissing;
+  const isPilot = (currentClient.client_mode || 'full') === 'pilot';
+  const order = isPilot ? ['ceo', 'fab'] : SESSION_ORDER;
+  const prog = getProgress(currentClient);
+  const isFinalSession = order.every(s=>s===sessionId || prog.sessions[s]==='done');
+  const finalLabel = isPilot ? 'Finalizar assessment y ver resultado →' : 'Finalizar y generar informe →';
   const el = document.getElementById('sb-progress');
   const btn = document.getElementById('btn-complete-session');
 
@@ -1813,10 +1818,12 @@ function updateSessionProgress(sessionId) {
     if(btn) btn.textContent = `Revisar ${criticalMissing} crítica${criticalMissing!==1?'s':''} pendiente${criticalMissing!==1?'s':''} →`;
   } else if(nonCriticalMissing > 0) {
     if(el) el.textContent = `Preguntas críticas completas · ${nonCriticalMissing} complementaria${nonCriticalMissing!==1?'s':''} pendiente${nonCriticalMissing!==1?'s':''}`;
-    if(btn) btn.textContent = `Cerrar sesión con ${nonCriticalMissing} pendiente${nonCriticalMissing!==1?'s':''} →`;
+    if(btn) btn.textContent = isFinalSession
+      ? `Finalizar con ${nonCriticalMissing} pendiente${nonCriticalMissing!==1?'s':''} →`
+      : `Continuar con ${nonCriticalMissing} pendiente${nonCriticalMissing!==1?'s':''} →`;
   } else {
-    if(el) el.textContent = 'Todas las preguntas respondidas';
-    if(btn) btn.textContent = 'Cerrar sesión →';
+    if(el) el.textContent = 'Todas las preguntas de esta sesión respondidas';
+    if(btn) btn.textContent = isFinalSession ? finalLabel : 'Guardar y continuar →';
   }
 }
 
