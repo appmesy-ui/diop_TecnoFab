@@ -2244,7 +2244,8 @@ function openReport() {
   renderSidebarRoadmap();
 
 const prog = getProgress(currentClient);
-const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
+const readiness = getFullDiagnosticReadiness();
+const allDone = readiness.ready;
 const reportOutdated = prog.reportOutdated;
 const reports = currentClient?.reports || [];
 const latestReportRow = reports.length ? reports[0] : null;
@@ -2272,8 +2273,8 @@ document.getElementById('report-content').innerHTML = `
         ? 'Se detectaron cambios en las respuestas después del último informe. Conviene actualizarlo para reflejar la información más reciente.'
         : 'Se muestra automáticamente la última versión guardada del informe DIOP para este cliente.')
     : allDone
-      ? 'Las tres sesiones están completadas. La IA analizará todas las respuestas y generará el informe DIOP completo.'
-      : 'Completa las tres sesiones para poder generar el informe DIOP final.'}
+      ? 'Las entrevistas y los módulos esenciales están completos. La IA analizará toda la evidencia y generará el informe DIOP completo.'
+      : `Faltan ${readiness.missing.length} bloque${readiness.missing.length!==1?'s':''} esencial${readiness.missing.length!==1?'es':''}: ${readiness.missing.join(' · ')}.`}
 </div>
       ${
   allDone
@@ -2325,6 +2326,12 @@ document.getElementById('report-content').innerHTML = `
   }
 }
 async function generateReport(confirmedOperationalImpact) {
+  const readiness = getFullDiagnosticReadiness();
+  if (!readiness.ready) {
+    showToast(`Faltan ${readiness.missing.length} bloques esenciales para generar el informe`);
+    openReport();
+    return;
+  }
   const btn = document.getElementById('gen-btn') || document.getElementById('m7-confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Analizando...'; }
 
@@ -4158,6 +4165,27 @@ ${r.riesgos_principales && r.riesgos_principales.length ? `<div class="section n
     win.print();
   }, 1000);
 }
+function getFullDiagnosticReadiness() {
+  if (!currentClient) return { ready:false, completed:0, total:8, missing:['Cliente no seleccionado'], checks:[] };
+  const prog = getProgress(currentClient);
+  const confidence = confidenceData[currentClient.id] || { findings:[] };
+  const findings = confidence.findings || [];
+  const m4 = m4Data[currentClient.id];
+  const m8 = m8Data[currentClient.id];
+  const checks = [
+    { id:'sessions', label:'6 entrevistas', done:SESSION_ORDER.every(s => prog.sessions[s] === 'done') },
+    { id:'f0', label:'F0 · Pre-engagement', done:!!f0Data[currentClient.id]?.archetype_hypothesis },
+    { id:'m2', label:'M2 · VSM y diagnóstico operativo', done:!!(vsmData[currentClient.id]?.processes?.length && m2extData[currentClient.id]) },
+    { id:'m3', label:'M3 · Diagnóstico digital', done:!!m3extData[currentClient.id] },
+    { id:'m4', label:'M4 · Diagnóstico organizacional', done:!!(m4?.dimensions && M4_DIMENSIONS.every(dim => Number(m4.dimensions[dim.k] || 0) > 0)) },
+    { id:'m5', label:'M5 · Confidence Layer', done:findings.length >= 6 && findings.every(f => !!f?.confidence) },
+    { id:'m6', label:'M6 · Portfolio priorizado', done:!!m6Data[currentClient.id]?.backlog?.length },
+    { id:'baseline', label:'Baseline económico', done:!!(m8 && Object.entries(m8).some(([k,v]) => k !== 'notes' && !!v)) }
+  ];
+  const missing = checks.filter(c => !c.done).map(c => c.label);
+  return { ready:missing.length === 0, completed:checks.length-missing.length, total:checks.length, missing, checks };
+}
+
 function getProgress(client) {
   const sessions = {};
 
@@ -4253,7 +4281,8 @@ function renderSidebarRoadmap() {
   const m5Findings = (m5Confidence && m5Confidence.findings) ? m5Confidence.findings : [];
   const m5Done = m5Findings.length >= 6 && m5Findings.every(f => !!(f && f.confidence));
   const m5HasData = m5Findings.some(f => !!(f && (f.confidence || (f.finding && f.finding.trim && f.finding.trim()))));
-  const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
+  const fullReadiness = currentClient ? getFullDiagnosticReadiness() : {ready:false};
+  const reportState = fullReadiness.ready ? 'rc-done' : 'rc-pending';
   const ftHasData = currentClient && allAnswers[`${currentClient.id}_freetrial_generated`] === 'true';
 
   function ss(sid){ return prog?.sessions[sid]||'pending'; }
