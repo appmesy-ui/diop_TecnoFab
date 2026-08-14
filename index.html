@@ -670,7 +670,8 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
 .m1v2-sessionwrap .q-roi-hint{background:#eef1f0;color:#5a6b70;}
 .m1v2-sessionwrap .q-meta{position:relative;padding-right:90px;}
 .m1v2-sessionwrap .q-meta::after{position:absolute;right:0;top:-2px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
-.m1v2-sessionwrap .q-card:not(.q-answered) .q-meta:has(.qp-c)::after{content:'Pendiente crítica';background:rgba(226,75,74,0.13);color:#a32d2d;}
+.m1v2-sessionwrap .q-card.q-missing::before{content:none;display:none;}
+.m1v2-sessionwrap .q-card:not(.q-answered) .q-meta:has(.qp-c)::after{content:'Crítica pendiente';background:rgba(226,75,74,0.13);color:#a32d2d;}
 .m1v2-sessionwrap .q-card:not(.q-answered) .q-meta:not(:has(.qp-c))::after{content:'Pendiente';background:rgba(186,117,23,0.14);color:#854f0b;}
 .m1v2-sessionwrap .q-card.q-answered .q-meta::after{content:'Respondida';background:rgba(29,158,117,0.12);color:#0f6e56;}
 .m1v2-sessionwrap .missing-banner{background:rgba(226,75,74,0.08);border:0.5px solid rgba(226,75,74,0.3);color:#a32d2d;}
