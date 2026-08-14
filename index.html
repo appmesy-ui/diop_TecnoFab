@@ -4171,96 +4171,94 @@ window.onload=()=>{ window.focus(); window.print(); };
   win.document.write(html);
   win.document.close();
 }
-async function exportPDF() {
+function exportPDF() {
   const source = document.getElementById('diop-report-v2');
   if (!source) {
     showToast('No encuentro el informe visible. Abre o genera el informe y vuelve a intentarlo.');
     return;
   }
-  if (typeof html2pdf !== 'function') {
-    showToast('El generador PDF no está disponible. Recarga la página y vuelve a intentarlo.');
+
+  const win = window.open('', '_blank', 'width=1050,height=800');
+  if (!win) {
+    showToast('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes y vuelve a intentarlo.');
     return;
   }
 
-  const exportBtn = document.querySelector('button[onclick="exportPDF()"]');
-  const originalText = exportBtn?.textContent || '';
-  if (exportBtn) {
-    exportBtn.disabled = true;
-    exportBtn.textContent = 'Preparando PDF...';
+  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    .map(node => node.outerHTML)
+    .join('\n');
+  const safeTitle = (currentClient?.name || 'Cliente').replace(/[<>]/g, '');
+  const report = source.cloneNode(true);
+  const exportActions = report.querySelectorAll('.no-print, .report-export-actions');
+  exportActions.forEach(node => node.remove());
+
+  win.document.open();
+  win.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Informe DIOP - ${safeTitle}</title>
+${styles}
+<style>
+  @page { size: A4 portrait; margin: 9mm; }
+  html, body {
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
-
-  const wrapper = document.createElement('div');
-  const clone = source.cloneNode(true);
-  wrapper.style.cssText = 'position:fixed;left:-100000px;top:0;width:794px;background:#fff;padding:0;margin:0;z-index:-1;';
-  clone.style.maxWidth = '794px';
-  clone.style.width = '794px';
-  clone.style.margin = '0';
-  const card = clone.querySelector('.diop-report-card');
-  if (card) {
-    card.style.boxShadow = 'none';
-    card.style.borderRadius = '0';
-    card.style.margin = '0';
+  .diop-report-v2 {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
   }
-
-  // PDF-only pagination: long report sections must flow across pages.
-  // Keep only compact cards together and prevent orphaned section headings.
-  const printStyles = document.createElement('style');
-  printStyles.textContent = `
-    .diop-section {
-      page-break-inside: auto !important;
-      break-inside: auto !important;
-    }
-    .diop-section-title {
-      page-break-after: avoid !important;
-      break-after: avoid-page !important;
-    }
-    .diop-page-start {
-      page-break-before: always !important;
-      break-before: page !important;
-    }
-    .diop-section-title + * {
-      page-break-before: avoid !important;
-      break-before: avoid-page !important;
-    }
-    .diop-report-cover,
-    .diop-pdf-block,
-    .diop-metric,
-    .diop-evidence-card,
-    .diop-list-item,
-    .diop-signal,
-    .diop-roadmap-step,
-    .diop-section [style*="border-left:3px"] {
-      page-break-inside: avoid !important;
-      break-inside: avoid-page !important;
-    }
-  `;
-  clone.prepend(printStyles);
-  wrapper.appendChild(clone);
-  document.body.appendChild(wrapper);
-
-  const safeName = (currentClient?.name || 'Cliente').replace(/[\\/:*?"<>|]+/g,'-');
-  const options = {
-    margin: [6, 6, 8, 6],
-    filename: `Informe DIOP — ${safeName}.pdf`,
-    image: { type:'jpeg', quality:0.96 },
-    html2canvas: { scale:2, useCORS:true, backgroundColor:'#ffffff', logging:false },
-    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-    pagebreak: { mode:['css','legacy'], before:['.diop-page-start'], avoid:['.diop-report-cover','.diop-section-title','.diop-pdf-block','.diop-metric','.diop-list-item','.diop-evidence-card','.diop-signal','.diop-roadmap-step'] }
-  };
-
-  try {
-    await html2pdf().set(options).from(clone).save();
-    showToast('PDF DIOP descargado ✓');
-  } catch (error) {
-    console.error('Error exportando PDF DIOP:', error);
-    showToast('No se pudo generar el PDF. Recarga la página e inténtalo de nuevo.');
-  } finally {
-    wrapper.remove();
-    if (exportBtn) {
-      exportBtn.disabled = false;
-      exportBtn.textContent = originalText || '↓ Exportar PDF';
-    }
+  .diop-report-card {
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
   }
+  .diop-cover-v2 { break-inside: avoid-page !important; }
+  .diop-section {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+  .diop-page-start {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+  .diop-section-title {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+  .diop-pdf-block,
+  .diop-metric,
+  .diop-evidence-card,
+  .diop-list-item,
+  .diop-signal,
+  .diop-roadmap-step,
+  .diop-section [style*="border-left:3px"] {
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+</style>
+</head>
+<body>
+${report.outerHTML}
+<script>
+  window.addEventListener('load', function () {
+    setTimeout(function () { window.print(); }, 350);
+  });
+<\/script>
+</body>
+</html>`);
+  win.document.close();
+  showToast('Se abrió la vista de impresión. Elige "Guardar como PDF".');
 }
 
 
