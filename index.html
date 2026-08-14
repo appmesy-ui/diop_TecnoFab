@@ -4157,16 +4157,19 @@ ${r.riesgos_principales && r.riesgos_principales.length ? `<div class="section n
 </div>
 </div>
 
+<script>
+window.onload=()=>{ window.focus(); window.print(); };
+<\/script>
 </body>
 </html>`;
 
   const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) {
+    showToast('El navegador bloqueó la ventana del PDF. Permite ventanas emergentes y vuelve a intentarlo.');
+    return;
+  }
   win.document.write(html);
   win.document.close();
-  setTimeout(() => {
-    win.focus();
-    win.print();
-  }, 1000);
 }
 function getFullDiagnosticReadiness() {
   if (!currentClient) return { ready:false, completed:0, total:8, missing:['Cliente no seleccionado'], checks:[] };
