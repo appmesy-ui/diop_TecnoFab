@@ -221,7 +221,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .rr-icon{font-size:40px;margin-bottom:12px;}
 .rr-title{font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;}
 .rr-sub{font-size:13px;color:var(--text2);margin-bottom:24px;}
-.gen-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:linear-gradient(135deg,var(--teal-d),var(--teal));border:none;border-radius:var(--r-sm);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:opacity .15s;}
+.gen-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:linear-gradient(135deg,var(--teal-d),var(--teal));border:none;border-radius:var(--r-sm);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:opacity .15s;}
 .gen-btn:hover{opacity:.9;}
 .gen-btn:disabled{opacity:.4;cursor:not-allowed;}
 
@@ -319,7 +319,7 @@ select.fi{cursor:pointer;}
 .btn-create:disabled{opacity:.4;cursor:not-allowed;}
 
 /* TOAST */
-.toast{position:fixed;bottom:20px;right:20px;background:var(--teal-d);border:0.5px solid var(--teal);color:var(--teal-l);padding:9px 16px;border-radius:var(--r-sm);font-size:12px;z-index:200;opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none;}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--teal-d);border:0.5px solid var(--teal);color:#fff;padding:9px 16px;border-radius:var(--r-sm);font-size:12px;z-index:200;opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none;}
 .toast.show{opacity:1;transform:translateY(0);}
 
 /* EMPTY STATE */
@@ -670,7 +670,8 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
 .m1v2-sessionwrap .q-roi-hint{background:#eef1f0;color:#5a6b70;}
 .m1v2-sessionwrap .q-meta{position:relative;padding-right:90px;}
 .m1v2-sessionwrap .q-meta::after{position:absolute;right:0;top:-2px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
-.m1v2-sessionwrap .q-card:not(.q-answered) .q-meta:has(.qp-c)::after{content:'Pendiente crítica';background:rgba(226,75,74,0.13);color:#a32d2d;}
+.m1v2-sessionwrap .q-card.q-missing::before{content:none;display:none;}
+.m1v2-sessionwrap .q-card:not(.q-answered) .q-meta:has(.qp-c)::after{content:'Crítica pendiente';background:rgba(226,75,74,0.13);color:#a32d2d;}
 .m1v2-sessionwrap .q-card:not(.q-answered) .q-meta:not(:has(.qp-c))::after{content:'Pendiente';background:rgba(186,117,23,0.14);color:#854f0b;}
 .m1v2-sessionwrap .q-card.q-answered .q-meta::after{content:'Respondida';background:rgba(29,158,117,0.12);color:#0f6e56;}
 .m1v2-sessionwrap .missing-banner{background:rgba(226,75,74,0.08);border:0.5px solid rgba(226,75,74,0.3);color:#a32d2d;}
@@ -717,6 +718,287 @@ button[onclick*="m4Set"],button[onclick*="m8Set"]{border-radius:999px!important;
   color:#854f0b;
 }
 
+</style>
+
+<style id="diop-visual-v2">
+/* Visual V2 — presentation layer only. No diagnostic logic or methodology changes. */
+:root{
+  --bg:#f3f5f4;
+  --s1:#ffffff;
+  --s2:#f5f7f6;
+  --s3:#e8edeb;
+  --border:rgba(15,23,42,.09);
+  --border2:rgba(15,23,42,.16);
+  --border3:rgba(0,140,148,.32);
+  --text:#141a1f;
+  --text2:#4d5b61;
+  --text3:#718087;
+  --text4:#9aa5aa;
+  --teal:#00aab3;
+  --teal-l:#007f87;
+  --teal-d:#006b72;
+  --green:#16805f;
+  --green-l:#16805f;
+  --green-d:#0f694d;
+  --amber:#9b651e;
+  --red:#c94848;
+  --purple:#665ec7;
+  --r:14px;
+  --r-sm:9px;
+  --r-xs:6px;
+  --font:'DM Sans','Segoe UI',Arial,sans-serif;
+}
+body{letter-spacing:-.006em;-webkit-font-smoothing:antialiased;}
+.topbar{
+  height:60px;
+  padding:0 26px;
+  background:rgba(255,255,255,.94);
+  border-bottom:1px solid var(--border);
+  box-shadow:0 1px 0 rgba(15,23,42,.02);
+}
+.topbar-brand{font-size:14px;letter-spacing:-.01em;}
+.topbar-version{color:var(--teal-d);background:#edf8f8;border-color:rgba(0,170,179,.18);}
+.topbar-client{color:var(--text2);font-family:var(--font);}
+.topbar-back{color:var(--text2);}
+.app-body{background:var(--bg);}
+.sidebar{
+  width:248px;
+  background:#fafcfb;
+  border-right:1px solid var(--border);
+}
+.sidebar-section{padding:22px 18px 10px;}
+.sidebar-label{font-family:var(--font);font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text3);}
+.sidebar-client-name{font-size:15px;color:var(--text);}
+.sidebar-client-meta{font-size:12px;color:var(--text3);}
+.sidebar-divider{background:var(--border);margin:10px 18px;}
+.rm-list{padding:10px 12px 18px;}
+.rm-phase{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:none;
+  margin-bottom:14px;
+}
+.rm-phase-head{
+  padding:14px;
+  background:#f7f9f8;
+  border-bottom:1px solid var(--border);
+}
+.rm-phase-icon{background:#ecf7f7;border-color:rgba(0,170,179,.13);}
+.rm-phase-title{font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:.11em;color:var(--text2);}
+.rm-phase-sub{color:var(--text3);}
+.rm-item{padding:9px 10px;margin:3px 7px;}
+.rm-item:hover{background:#f2f6f5;}
+.rm-item.rm-active,.rm-active{background:#e9f7f7;border-color:rgba(0,170,179,.18);}
+.rm-label{color:var(--text2);}
+.rm-label.rla{color:var(--teal-d);}
+.rc-active{color:var(--teal-d);box-shadow:none;}
+.rc-pending{background:#f3f5f4;border-color:var(--border2);color:var(--text3);}
+.sidebar-footer{background:#fafcfb;border-color:var(--border);}
+.content{padding:36px 44px;}
+.page-title{font-size:26px;letter-spacing:-.035em;color:var(--text);}
+.page-sub{font-size:13px;color:var(--text2);margin-top:5px;}
+.home-count{font-family:var(--font);color:var(--text3);}
+.new-btn{
+  padding:10px 18px;
+  color:#fff;
+  background:var(--teal-d);
+  border:1px solid var(--teal-d);
+  box-shadow:0 3px 10px rgba(0,107,114,.12);
+}
+.new-btn:hover{background:#005c62;color:#fff;}
+.search-input{background:#fff!important;color:var(--text)!important;border-color:var(--border2)!important;}
+.sector-card{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:0 1px 2px rgba(15,23,42,.025);
+}
+.sector-card.open{border-color:rgba(0,170,179,.24);}
+.sector-header{padding:16px 18px;}
+.sector-header:hover{background:#f8faf9;}
+.sector-icon{background:#eef8f8;border-color:rgba(0,170,179,.14);}
+.sector-count,.cc-sector{background:#f2f5f4;border-color:var(--border);color:var(--text3);}
+.cc{background:#fff;border:1px solid var(--border);border-radius:12px;padding:17px 18px;}
+.cc:hover{background:#fbfcfc;border-color:rgba(0,170,179,.28);box-shadow:0 6px 20px rgba(15,23,42,.05);}
+.prog-track{height:4px;background:#e4e9e7;}
+.prog-fill{background:var(--teal);}
+.session-hero{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px 22px;
+  box-shadow:0 1px 2px rgba(15,23,42,.025);
+}
+.sh-title{font-size:18px;letter-spacing:-.018em;}
+.sh-sub{color:var(--text2);line-height:1.5;}
+.sh-time{font-family:var(--font);background:#f2f5f4;color:var(--text3);}
+.qb-header{background:#f7f9f8;border-left-width:3px;padding:13px 16px;}
+.qbh-name{font-size:13px;color:var(--text);}
+.qbh-obj{color:var(--text3);}
+.q-card{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:12px;
+  margin-bottom:9px;
+}
+.q-card:focus-within{border-color:rgba(0,170,179,.36);box-shadow:0 0 0 3px rgba(0,170,179,.07);}
+.q-card.q-answered{background:#fbfdfc;border-color:rgba(22,128,95,.18);}
+.q-card.q-answered .q-text{color:var(--text);}
+.q-num{color:var(--text3);}
+.q-text{font-size:13px;line-height:1.55;color:var(--text);}
+.opt{background:#f6f8f7!important;border-color:var(--border)!important;color:var(--text2)!important;}
+.opt:hover{border-color:rgba(0,170,179,.28)!important;background:#eef8f8!important;}
+.opt.selected{background:#e6f6f6!important;border-color:rgba(0,170,179,.45)!important;color:var(--teal-d)!important;}
+.fi,.fs,.fta{background:#fff;color:var(--text);border-color:var(--border2);}
+.save-bar{background:rgba(255,255,255,.96);border-color:var(--border);box-shadow:0 -8px 24px rgba(15,23,42,.05);}
+.btn-complete-sess,.btn-save-sess{color:#fff;background:var(--teal-d);border-color:var(--teal-d);}
+.gen-btn,#ft-confirm-btn,#m7-confirm-btn{color:#fff!important;}
+button:disabled{cursor:not-allowed;}
+.gen-btn:disabled,#ft-gen-btn:disabled,#ft-confirm-btn:disabled,#m7-confirm-btn:disabled{opacity:.58;color:#fff!important;}
+.btn-complete-sess:hover,.btn-save-sess:hover{background:#005c62;}
+.modal{background:#fff;border-color:var(--border);box-shadow:0 24px 70px rgba(15,23,42,.18);}
+.modal-ov{background:rgba(20,26,31,.38);backdrop-filter:blur(4px);}
+.empty{color:var(--text3);}
+@media(max-width:900px){
+  .content{padding:26px 22px;}
+  .sidebar{width:220px;}
+}
+</style>
+
+<style id="diop-visual-v2-shell-fix">
+/* V2.1 — unify application shell with the light workbench. */
+html body .topbar{
+  background:#ffffff !important;
+  color:#141a1f !important;
+  border-bottom:1px solid rgba(15,23,42,.09) !important;
+  box-shadow:0 1px 2px rgba(15,23,42,.035) !important;
+  backdrop-filter:none !important;
+}
+html body .topbar-brand{color:#141a1f !important;}
+html body .topbar-client,
+html body .topbar-back{color:#5b696f !important;font-family:var(--font) !important;}
+html body .topbar-version{
+  color:#00747b !important;
+  background:#edf8f8 !important;
+  border-color:rgba(0,170,179,.18) !important;
+}
+html body .app-body,
+html body .content{
+  background:#f3f5f4 !important;
+}
+html body .sidebar{
+  width:272px !important;
+  background:#fafcfb !important;
+  border-right:1px solid rgba(15,23,42,.09) !important;
+  box-shadow:none !important;
+}
+html body .sidebar-label{
+  color:#718087 !important;
+  font-family:var(--font) !important;
+  font-weight:650 !important;
+  letter-spacing:.10em !important;
+}
+html body .sidebar-client-name{color:#141a1f !important;}
+html body .sidebar-client-meta{color:#718087 !important;}
+html body .sidebar-divider{background:rgba(15,23,42,.09) !important;}
+html body .rm-phase{
+  background:#ffffff !important;
+  border:1px solid rgba(15,23,42,.09) !important;
+  box-shadow:none !important;
+}
+html body .rm-phase-head{
+  background:#f6f8f7 !important;
+  border-bottom:1px solid rgba(15,23,42,.08) !important;
+}
+html body .rm-phase-title{
+  color:#526168 !important;
+  font-family:var(--font) !important;
+}
+html body .rm-phase-sub,
+html body .rm-phase-pct{color:#7c898f !important;}
+html body .rm-phase-fill{background:#00aab3 !important;}
+html body .rm-item{border-color:transparent !important;}
+html body .rm-item:hover{background:#f1f5f3 !important;}
+html body .rm-item.rm-active{
+  background:#e9f7f7 !important;
+  border-color:rgba(0,170,179,.22) !important;
+}
+html body .rm-label{color:#526168 !important;}
+html body .rm-label.rld{color:#3f6658 !important;}
+html body .rm-label.rla{color:#00747b !important;}
+html body .rc-done{
+  background:#edf7f3 !important;
+  border-color:rgba(22,128,95,.38) !important;
+  color:#16805f !important;
+}
+html body .rc-active{
+  background:#e7f7f7 !important;
+  border-color:rgba(0,170,179,.42) !important;
+  color:#00747b !important;
+  box-shadow:none !important;
+}
+html body .sidebar-footer{
+  background:#fafcfb !important;
+  border-color:rgba(15,23,42,.09) !important;
+}
+html body .sidebar::-webkit-scrollbar-track{background:#f3f5f4 !important;}
+html body .sidebar::-webkit-scrollbar-thumb{background:#ccd5d1 !important;}
+html body .session-hero{
+  background:#ffffff !important;
+  border-color:rgba(15,23,42,.09) !important;
+}
+html body .sh-title{color:#141a1f !important;}
+html body .sh-sub{color:#526168 !important;}
+html body .sh-time{background:#f1f4f3 !important;color:#65747a !important;border-color:rgba(15,23,42,.08) !important;}
+html body .qbh-name,
+html body .q-text{font-family:var(--font) !important;}
+@media(max-width:1100px){
+  html body .sidebar{width:248px !important;}
+}
+</style>
+
+<style id="diop-visual-v2-focus">
+/* V2.2 — progressive disclosure and reading comfort. */
+html body #screen-home,
+html body #screen-session > #session-content,
+html body #screen-freetrial > #freetrial-content{
+  max-width:1360px;
+  margin-left:auto;
+  margin-right:auto;
+}
+html body .page-sub,
+html body .sh-sub,
+html body .qbh-obj,
+html body .sector-meta,
+html body .sidebar-client-meta{
+  font-size:12px !important;
+  line-height:1.5 !important;
+}
+html body .rm-phase-title{
+  text-transform:none !important;
+  letter-spacing:.035em !important;
+  font-size:11.5px !important;
+  line-height:1.25 !important;
+}
+html body .rm-phase-sub{font-size:10.5px !important;line-height:1.35 !important;}
+html body .rm-phase-head{cursor:pointer !important;}
+html body .rm-phase-head::after{
+  content:'⌃';
+  margin-left:7px;
+  color:#8b989d;
+  font-size:12px;
+  transition:transform .18s ease;
+}
+html body .rm-phase.ux-collapsed .rm-phase-head::after{transform:rotate(180deg);}
+html body .rm-phase.ux-collapsed .rm-phase-body{display:none !important;}
+html body .rm-phase.ux-collapsed .rm-phase-head{border-bottom:0 !important;}
+html body .rm-phase.ux-collapsed{margin-bottom:9px !important;}
+html body .q-text{font-size:14px !important;line-height:1.55 !important;}
+html body .qbh-name{font-size:13.5px !important;}
+html body .fi,
+html body .fta,
+html body .opt{font-size:13px !important;}
 </style>
 </head>
 <body onload="init()">
@@ -1321,7 +1603,7 @@ function openSession(sessionId) {
   html += `<div class="save-bar">
     <div class="sb-info" id="sb-progress">Calculando progreso...</div>
     <div class="sb-actions">
-      <button class="btn-complete-sess" onclick="completeSession('${sessionId}')">Marcar sesión como completada →</button>
+      <button class="btn-complete-sess" id="btn-complete-session" onclick="completeSession('${sessionId}')">Revisar cierre de sesión →</button>
     </div>
   </div>`;
 
@@ -1513,13 +1795,39 @@ function updateBlockProgress() {
 
 function updateSessionProgress(sessionId) {
   const sess = SESSIONS[sessionId];
-  let total=0,answered=0;
+  let total=0, answered=0, criticalTotal=0, criticalAnswered=0;
   sess.blocks.forEach(b=>b.questions.forEach(q=>{
     total++;
-    if(allAnswers[`${currentClient.id}_${sessionId}_${q.id}`]?.trim()) answered++;
+    const hasAnswer = !!allAnswers[`${currentClient.id}_${sessionId}_${q.id}`]?.trim();
+    if(hasAnswer) answered++;
+    if(q.prio === 'c') {
+      criticalTotal++;
+      if(hasAnswer) criticalAnswered++;
+    }
   }));
+
+  const criticalMissing = criticalTotal - criticalAnswered;
+  const nonCriticalMissing = (total - answered) - criticalMissing;
+  const isPilot = (currentClient.client_mode || 'full') === 'pilot';
+  const order = isPilot ? ['ceo', 'fab'] : SESSION_ORDER;
+  const prog = getProgress(currentClient);
+  const isFinalSession = order.every(s=>s===sessionId || prog.sessions[s]==='done');
+  const finalLabel = isPilot ? 'Finalizar assessment y ver resultado →' : 'Finalizar y generar informe →';
   const el = document.getElementById('sb-progress');
-  if(el) el.textContent = `${answered} de ${total} preguntas respondidas`;
+  const btn = document.getElementById('btn-complete-session');
+
+  if(criticalMissing > 0) {
+    if(el) el.textContent = `${answered} de ${total} respondidas · ${criticalMissing} crítica${criticalMissing!==1?'s':''} pendiente${criticalMissing!==1?'s':''}`;
+    if(btn) btn.textContent = `Revisar ${criticalMissing} crítica${criticalMissing!==1?'s':''} pendiente${criticalMissing!==1?'s':''} →`;
+  } else if(nonCriticalMissing > 0) {
+    if(el) el.textContent = `Preguntas críticas completas · ${nonCriticalMissing} complementaria${nonCriticalMissing!==1?'s':''} pendiente${nonCriticalMissing!==1?'s':''}`;
+    if(btn) btn.textContent = isFinalSession
+      ? `Finalizar con ${nonCriticalMissing} pendiente${nonCriticalMissing!==1?'s':''} →`
+      : `Continuar con ${nonCriticalMissing} pendiente${nonCriticalMissing!==1?'s':''} →`;
+  } else {
+    if(el) el.textContent = 'Todas las preguntas de esta sesión respondidas';
+    if(btn) btn.textContent = isFinalSession ? finalLabel : 'Guardar y continuar →';
+  }
 }
 
 async function saveAnswer(sessionId, questionId, value, btn, selClass) {
@@ -1939,7 +2247,8 @@ function openReport() {
   renderSidebarRoadmap();
 
 const prog = getProgress(currentClient);
-const allDone = SESSION_ORDER.every(s => prog.sessions[s] === 'done');
+const readiness = getFullDiagnosticReadiness();
+const allDone = readiness.ready;
 const reportOutdated = prog.reportOutdated;
 const reports = currentClient?.reports || [];
 const latestReportRow = reports.length ? reports[0] : null;
@@ -1967,8 +2276,8 @@ document.getElementById('report-content').innerHTML = `
         ? 'Se detectaron cambios en las respuestas después del último informe. Conviene actualizarlo para reflejar la información más reciente.'
         : 'Se muestra automáticamente la última versión guardada del informe DIOP para este cliente.')
     : allDone
-      ? 'Las tres sesiones están completadas. La IA analizará todas las respuestas y generará el informe DIOP completo.'
-      : 'Completa las tres sesiones para poder generar el informe DIOP final.'}
+      ? 'Las entrevistas y los módulos esenciales están completos. La IA analizará toda la evidencia y generará el informe DIOP completo.'
+      : `Faltan ${readiness.missing.length} bloque${readiness.missing.length!==1?'s':''} esencial${readiness.missing.length!==1?'es':''}: ${readiness.missing.join(' · ')}.`}
 </div>
       ${
   allDone
@@ -2020,6 +2329,12 @@ document.getElementById('report-content').innerHTML = `
   }
 }
 async function generateReport(confirmedOperationalImpact) {
+  const readiness = getFullDiagnosticReadiness();
+  if (!readiness.ready) {
+    showToast(`Faltan ${readiness.missing.length} bloques esenciales para generar el informe`);
+    openReport();
+    return;
+  }
   const btn = document.getElementById('gen-btn') || document.getElementById('m7-confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Analizando...'; }
 
@@ -2573,7 +2888,7 @@ function renderReport(r, reportsHistoryHtml = '') {
     return n ? n.toLocaleString('es-ES') + '€' : '—';
   };
   const textBlock = (v) => esc(v || '—').replace(/\n/g,'<br>');
-  const chip = (label, color='var(--teal)') => `<span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;background:${color}18;color:${color};border:0.5px solid ${color}55;font-size:10px;font-weight:700;white-space:nowrap;">${label}</span>`;
+  const chip = (label, color='var(--teal)') => `<span style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;background:#ffffff;color:${color};border:1px solid ${color};font-size:10px;font-weight:700;white-space:nowrap;">${label}</span>`;
 
   const today = new Date().toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' });
   const kpis = r.kpis || {};
@@ -2586,6 +2901,13 @@ function renderReport(r, reportsHistoryHtml = '') {
   const risks = r.riesgos_principales || [];
   const tools = r.herramientas_mercado || [];
   const procesos = r.procesos || [];
+  const displayTools = tools.filter(t => !/\b(SAP|NetSuite|Oracle|Dynamics 365)\b/i.test(t?.nombre || ''));
+  const roadmapText = (r.roadmap_narrativo || '').trim();
+  const roadmapSteps = roadmapText ? (roadmapText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [roadmapText]).map(x=>x.trim()).filter(Boolean) : [];
+  const formatMoneyText = (value) => esc(value || '—').replace(/(\d[\d.,]*)\s*€/g, (_, raw) => {
+    const digits = raw.replace(/\D/g,'');
+    return digits ? Number(digits).toLocaleString('es-ES') + ' €' : raw + ' €';
+  });
 
   const m4 = currentClient && m4Data[currentClient.id] ? m4Data[currentClient.id] : null;
   const m8 = currentClient && m8Data[currentClient.id] ? m8Data[currentClient.id] : null;
@@ -2668,6 +2990,8 @@ function renderReport(r, reportsHistoryHtml = '') {
     .diop-title{font-size:30px;line-height:1.05;font-weight:750;color:#16232a;letter-spacing:-.03em;margin-bottom:8px;}
     .diop-subtitle{font-size:13px;color:#5a6b70;}
     .diop-cover-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;}
+    .diop-estimate-note{display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:10px 12px;border:0.5px solid #d7dedb;border-radius:10px;background:rgba(255,255,255,0.72);font-size:10px;line-height:1.45;color:#5a6b70;}
+    .diop-estimate-note strong{color:#16232a;white-space:nowrap;}
     .diop-report-body{padding:24px 30px 30px;}
     .diop-section{margin-bottom:24px;page-break-inside:avoid;}
     .diop-section:last-child{margin-bottom:0;}
@@ -2707,6 +3031,9 @@ function renderReport(r, reportsHistoryHtml = '') {
     .diop-list-desc{font-size:12px;color:#5a6b70;line-height:1.55;}
     .diop-risk{border-left:3px solid var(--amber);}
     .diop-method{background:rgba(0,173,181,0.035);border:0.5px dashed #ccd4d1;border-radius:12px;padding:15px;font-size:12px;color:#5a6b70;line-height:1.65;}
+    .diop-roadmap{display:flex;flex-direction:column;gap:8px;}
+    .diop-roadmap-step{display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start;padding:11px 13px;background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:10px;font-size:12px;color:#5a6b70;line-height:1.55;}
+    .diop-roadmap-step strong{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#ffffff;border:1px solid var(--teal);color:var(--teal);font-family:var(--mono);font-size:10px;}
     @media(max-width:900px){.diop-grid-4,.diop-grid-3,.diop-grid-2,.diop-opp-row{grid-template-columns:1fr}.diop-title{font-size:24px}.diop-report-body,.diop-cover-v2{padding:20px}}
   </style>
 
@@ -2736,9 +3063,10 @@ function renderReport(r, reportsHistoryHtml = '') {
             <div class="diop-metric-note">Capa TTL: <strong style="color:#0f6e56;">${esc(ofi.ttl_capa || '—')}</strong></div>
           </div>
           <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:#5a6b70;font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
-          <div class="diop-metric"><div class="diop-metric-label">Impacto estimado</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark</div></div>
-          <div class="diop-metric"><div class="diop-metric-label">Portfolio base</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">${econ.paybackBase?'Payback '+econ.paybackBase+'m':'BNA anual'} · Conf. ${esc(econ.confidenceBand||'—')}</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Impacto anual orientativo</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark · No auditado</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Escenario base orientativo</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">Confianza ${esc(econ.confidenceBand||'—')} · ${econ.paybackBase?'Payback '+econ.paybackBase+'m':'BNA anual'}</div></div>
         </div>
+        <div class="diop-estimate-note"><strong>Estimación económica · Confianza ${esc(econ.confidenceBand||'—')}</strong><span>Importes orientativos sujetos a validación con evidencias operativas y financieras del cliente.</span></div>
       </div>
 
       <div class="diop-report-body">
@@ -2747,7 +3075,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="diop-exec">${textBlock(r.resumen_ejecutivo)}</div>
         </div>
 
-        <div class="diop-section">
+        <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>02 · Diagnóstico operativo + Value Stream Map</h3></div>
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric"><div class="diop-metric-label">OEE estimado</div><div class="diop-metric-value" style="color:var(--red);">${esc(kpis.oee_estimado || '—')}</div></div>
@@ -2781,7 +3109,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             const maxRatio = Math.max(...procData.map(p => p.ratio), 100);
             
             // Build C/T vs Takt bar chart
-            let chartHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
+            let chartHtml = `<div class="diop-pdf-block" style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
               <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:4px;">C/T efectivo vs Takt Time</div>
               <div style="font-size:10px;color:#5a6b70;margin-bottom:12px;">Takt: ${takt.toFixed(1)} seg/ud — Cualquier barra que supere la línea roja es cuello de botella</div>
               <div style="position:relative;">`;
@@ -2806,7 +3134,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             chartHtml += `</div></div>`;
             
             // Process metrics table
-            let tableHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
+            let tableHtml = `<div class="diop-pdf-block" style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
               <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:10px;">Detalle por proceso</div>
               <div style="display:grid;grid-template-columns:1fr repeat(5,auto);gap:0;font-size:10px;">
                 <div style="padding:6px 8px;font-weight:700;color:#5a6b70;border-bottom:1px solid #dde3e1;">Proceso</div>
@@ -2828,32 +3156,32 @@ function renderReport(r, reportsHistoryHtml = '') {
             tableHtml += `</div></div>`;
             
             // Process flow mini-diagram
-            let flowHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow-x:auto;">
+            let flowHtml = `<div class="diop-pdf-block" style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow:hidden;">
               <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:10px;">Flujo de valor — ${esc(vd.supplier?.name||'Proveedor')} → ${esc(vd.client_info?.name||'Cliente')}</div>
-              <div style="display:flex;align-items:center;gap:4px;min-width:max-content;">
-                <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.supplier?.name||'MP')}<br><span style="font-size:8px;color:#8a9793;">${esc(vd.inventories?.mp||'?')}d</span></div>`;
+              <div style="display:flex;align-items:center;gap:3px;width:100%;min-width:0;">
+                <div style="flex:0 1 84px;min-width:58px;padding:6px 5px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:8px;line-height:1.25;color:var(--teal);text-align:center;overflow-wrap:anywhere;">${esc(vd.supplier?.name||'MP')}<br><span style="font-size:8px;color:#8a9793;">${esc(vd.inventories?.mp||'?')}d</span></div>`;
             procs.forEach((p, i) => {
               const pd = procData[i];
               flowHtml += `<div style="font-size:10px;color:#8a9793;">→</div>`;
               if (i > 0 && vd.inventories?.between?.[`${i-1}_${i}`]) {
                 const inv = vd.inventories.between[`${i-1}_${i}`];
-                flowHtml += `<div style="font-size:8px;color:var(--amber);font-family:var(--mono);text-align:center;min-width:30px;">▽<br>${inv}</div>
+                flowHtml += `<div style="font-size:8px;color:var(--amber);font-family:var(--mono);text-align:center;flex:0 1 28px;min-width:20px;">▽<br>${inv}</div>
                 <div style="font-size:10px;color:#8a9793;">→</div>`;
               }
-              flowHtml += `<div style="padding:8px 10px;background:${pd.isBottleneck?'rgba(226,75,74,0.1)':'#ffffff'};border:1px solid ${pd.isBottleneck?'var(--red)':'#dde3e1'};border-radius:10px;text-align:center;min-width:80px;">
+              flowHtml += `<div style="padding:8px 10px;background:${pd.isBottleneck?'rgba(226,75,74,0.1)':'#ffffff'};border:1px solid ${pd.isBottleneck?'var(--red)':'#dde3e1'};border-radius:10px;text-align:center;flex:1 1 70px;min-width:54px;padding-left:5px;padding-right:5px;">
                 <div style="font-size:10px;font-weight:700;color:${pd.isBottleneck?'var(--red)':'#16232a'};">${esc(p.name)}</div>
                 <div style="font-size:8px;color:#5a6b70;font-family:var(--mono);margin-top:3px;">C/T ${pd.ct.toFixed(1)}s · Up ${pd.uptime}%</div>
-                ${pd.isBottleneck?'<div style="font-size:7px;color:var(--red);font-weight:700;margin-top:2px;">BOTTLENECK</div>':''}
+                ${pd.isBottleneck?'<div style="font-size:7px;color:var(--red);font-weight:700;margin-top:2px;">CUELLO</div>':''}
               </div>`;
             });
             flowHtml += `<div style="font-size:10px;color:#8a9793;">→</div>
-              <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.client_info?.name||'Cliente')}<br><span style="font-size:8px;color:#8a9793;">${demandDay} ud/día</span></div>
+              <div style="flex:0 1 84px;min-width:58px;padding:6px 5px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:8px;line-height:1.25;color:var(--teal);text-align:center;overflow-wrap:anywhere;">${esc(vd.client_info?.name||'Cliente')}<br><span style="font-size:8px;color:#8a9793;">${demandDay} ud/día</span></div>
             </div></div>`;
             
             // Planning info
             let planHtml = '';
             if (vd.planning) {
-              planHtml = `<div style="display:flex;gap:12px;margin-bottom:14px;">
+              planHtml = `<div class="diop-pdf-block" style="display:flex;gap:12px;margin-bottom:14px;">
                 <div style="flex:1;padding:10px 14px;background:rgba(245,158,11,0.06);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;">
                   <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);font-family:var(--mono);font-weight:700;margin-bottom:3px;">Sistema de planificación</div>
                   <div style="font-size:12px;color:#16232a;">${esc(vd.planning.type || '—')} — Programa ${esc(vd.planning.frequency || '—')}</div>
@@ -2899,17 +3227,42 @@ function renderReport(r, reportsHistoryHtml = '') {
           </div>
         </div>
 
-        <div class="diop-section">
-          <div class="diop-section-title"><h3>04 · Organizational Readiness Premium</h3></div>
+        <div class="diop-section diop-page-start">
+          <div class="diop-section-title"><h3>04 · Diagnóstico organizacional</h3></div>
           ${(() => {
             const allKeys = [...humanKeys, ...osKeys, ...exKeys];
-            const hasM4Data = allKeys.some(([s,k]) => m4?.[s]?.[k]);
-            if (!hasM4Data) {
+            const hasPremiumData = allKeys.some(([section,k]) => m4?.[section]?.[k]);
+            const dimensionRows = M4_DIMENSIONS.map(dim => ({
+              name: dim.name,
+              value: Number(m4?.dimensions?.[dim.k] || 0)
+            })).filter(dim => dim.value > 0);
+            const hasDimensionData = dimensionRows.length > 0;
+
+            if (!hasPremiumData && !hasDimensionData) {
               return `<div style="padding:18px 20px;background:#f4f6f5;border:1px dashed #ccd4d1;border-radius:12px;text-align:center;">
-                <div style="font-size:12.5px;color:#5a6b70;margin-bottom:4px;">Sin datos de M4 · Diagnóstico organizacional todavía</div>
-                <div style="font-size:11px;color:#5a6b70;">Completa la pantalla "Readiness organizacional" en el sidebar para que esta sección se rellene en el próximo informe.</div>
+                <div style="font-size:12.5px;color:#5a6b70;margin-bottom:4px;">Diagnóstico organizacional pendiente</div>
+                <div style="font-size:11px;color:#5a6b70;">Completa M4 para incorporar readiness, gobernanza y capacidad de ejecución al informe.</div>
               </div>`;
             }
+
+            const dimensionSummary = hasDimensionData ? (() => {
+              const avg = dimensionRows.reduce((sum,dim)=>sum+dim.value,0)/dimensionRows.length;
+              const col = avg>=4?'var(--green)':avg>=3?'var(--amber)':'var(--red)';
+              return `<div class="diop-evidence-card" style="margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+                  <div><div class="diop-tagline">READINESS ORGANIZACIONAL · 7 DIMENSIONES</div><strong style="font-size:13px;color:#16232a;">Evaluación general M4</strong><p style="font-size:11px;color:#5a6b70;margin-top:5px;">${dimensionRows.length} de ${M4_DIMENSIONS.length} dimensiones evaluadas.</p></div>
+                  <div style="font-size:28px;font-weight:800;color:${col};font-family:var(--mono);white-space:nowrap;">${avg.toFixed(1)}<span style="font-size:11px;color:#8a9793;">/5</span></div>
+                </div>
+              </div>`;
+            })() : '';
+
+            if (!hasPremiumData) {
+              return `${dimensionSummary}<div style="padding:13px 16px;background:#f4f6f5;border:1px dashed #ccd4d1;border-radius:12px;">
+                <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:3px;">Desglose avanzado pendiente</div>
+                <div style="font-size:10.5px;color:#5a6b70;">La evaluación general está disponible. Completa Human Capability, Operating System y Execution Readiness para añadir el desglose premium.</div>
+              </div>`;
+            }
+
             const scoreBlock = (section, label, icon, keys) => {
               const vals = keys.map(([s,k]) => m4?.[s]?.[k]).filter(v=>v);
               const scores = vals.map(v => v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0).filter(v=>v>0);
@@ -2918,7 +3271,7 @@ function renderReport(r, reportsHistoryHtml = '') {
               const pct = Math.round((avg/3)*100);
               return `<div style="text-align:center;padding:8px 0;"><div style="font-size:20px;margin-bottom:4px;">${icon}</div><div style="font-size:24px;font-weight:800;color:${col};font-family:var(--mono);">${avg?avg.toFixed(1):'—'}</div><div style="font-size:8px;color:#8a9793;">/3</div><div style="height:3px;background:#f4f6f5;border-radius:4px;margin:6px auto;width:80%;"><div style="height:100%;width:${pct}%;background:${col};border-radius:4px;"></div></div><div style="font-size:10px;color:#5a6b70;font-weight:600;">${label}</div></div>`;
             };
-            return `<div class="diop-grid-3" style="margin-bottom:14px;">
+            return `${dimensionSummary}<div class="diop-grid-3" style="margin-bottom:14px;">
               <div class="diop-metric">${scoreBlock('human','Human Capability™','🧠',humanKeys)}</div>
               <div class="diop-metric">${scoreBlock('operating','Operating System™','⚙️',osKeys)}</div>
               <div class="diop-metric">${scoreBlock('execution','Execution Readiness™','🚀',exKeys)}</div>
@@ -2931,7 +3284,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           })()}
         </div>
 
-        ${fiTotal > 0 ? `<div class="diop-section">
+        ${fiTotal > 0 ? `<div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>05 · Field Intelligence™ — Señales críticas de campo</h3></div>
           <div style="font-size:12px;color:#5a6b70;margin-bottom:14px;line-height:1.55;">Inteligencia extraída del cruce de entrevistas, observación directa y datos de campo. Estas señales no aparecen en ningún KPI — solo emergen cuando se comparan las perspectivas de CEO, operaciones y planta.</div>
           <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">
@@ -2981,7 +3334,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           </div>` : ''}
         </div>` : ''}
 
-        <div class="diop-section">
+        <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>06 · Evidence + Risks + Confidence</h3></div>
           <div class="diop-grid-2" style="margin-bottom:12px;">
             ${evidenceCards.map(c => `<div class="diop-evidence-card"><div class="diop-tagline">${c.tag}</div><strong>${c.title}</strong><p>${c.body}</p></div>`).join('')}
@@ -2993,8 +3346,8 @@ function renderReport(r, reportsHistoryHtml = '') {
           }).join('')}</div>` : ''}
         </div>
 
-        <div class="diop-section">
-          <div class="diop-section-title"><h3>07 · Economic Bridge™ + Opportunity Portfolio</h3></div>
+        <div class="diop-section diop-page-start">
+          <div class="diop-section-title"><h3>07 · Economic Bridge™ · Portfolio de oportunidades</h3></div>
           <div class="diop-opp-row">${opportunitySummary}</div>
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric" style="border-left:3px solid var(--red);border-radius:0 12px 12px 0;">
@@ -3022,33 +3375,33 @@ function renderReport(r, reportsHistoryHtml = '') {
             ${econ.riskCount?`<div style="width:1px;height:20px;background:#dde3e1;"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
           </div>
           <div class="diop-list">
-            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div><div style="display:flex;gap:6px;">${chip(`💰 ${esc(qw.impacto_euros || '—')}`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div></div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:#8a9793;margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
+            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div><div style="display:flex;gap:6px;">${chip(`💰 ${formatMoneyText(qw.impacto_euros || '—')}`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div></div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:#8a9793;margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
           </div>
         </div>
 
-        <div class="diop-section">
-          <div class="diop-section-title"><h3>08 · Transformation Blueprint + Roadmap TTL™</h3></div>
-          <div class="diop-text">${textBlock(r.roadmap_narrativo || 'Roadmap pendiente de generación.')}</div>
+        <div class="diop-section diop-page-start">
+          <div class="diop-section-title"><h3>08 · Secuencia de transformación · Roadmap TTL™</h3></div>
+          ${roadmapSteps.length ? `<div class="diop-roadmap">${roadmapSteps.map((step,i)=>`<div class="diop-roadmap-step"><strong>${String(i+1).padStart(2,'0')}</strong><span>${esc(step)}</span></div>`).join('')}</div>` : '<div class="diop-muted">Roadmap pendiente de generación.</div>'}
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>09 · Herramientas + Methodology + Next Steps</h3></div>
-          ${tools.length ? `<div class="diop-grid-3" style="margin-bottom:14px;">
-            ${tools.map(t => `<div class="diop-evidence-card">
+          <div class="diop-section-title"><h3>09 · Herramientas de referencia · Metodología · Próximo paso</h3></div>
+          ${displayTools.length ? `<div class="diop-grid-3" style="margin-bottom:8px;">
+            ${displayTools.map(t => `<div class="diop-evidence-card">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                 <strong style="margin:0;">${esc(t.nombre)}</strong>
                 ${chip(esc(t.tipo || ''), 'var(--teal)')}
               </div>
               <p style="margin-bottom:6px;">${esc(t.para_que || '')}</p>
               <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:11px;color:#0f6e56;font-weight:600;">${esc(t.precio_aproximado || '')}</span>
+                <span style="font-size:10px;color:#5a6b70;font-weight:600;">${t.precio_aproximado ? 'Precio orientativo: '+esc(t.precio_aproximado) : 'Precio por validar'}</span>
                 ${t.url ? `<a href="${esc(t.url)}" target="_blank" style="font-size:10px;color:var(--teal);text-decoration:none;">Web →</a>` : ''}
               </div>
             </div>`).join('')}
-          </div>` : ''}
+          </div><div class="diop-muted" style="margin-bottom:14px;">Referencias de mercado sujetas a validación funcional, técnica y económica antes de recomendar.</div>` : ''}
           <div class="diop-grid-2">
             <div class="diop-method">
-              <strong style="color:#16232a;">DIOP Methodology</strong><br>
+              <strong style="color:#16232a;">Metodología DIOP</strong><br>
               El diagnóstico utiliza los frameworks propietarios TECNOFAB: <strong>OFI™</strong> para fricción operacional, <strong>TTL™</strong> para secuencia de madurez, <strong>Archetypes™</strong> para narrativa ejecutiva, <strong>RIM™</strong> para priorización impacto/readiness, <strong>Confidence Layer™</strong> para nivel de evidencia y <strong>Economic Bridge™</strong> para trazabilidad financiera.
             </div>
             <div class="next-q-box" style="margin:0;"><div class="nqb-lbl">Siguiente pregunta al CEO</div><div class="nqb-text">"${esc(r.siguiente_pregunta_ceo || '—')}"</div></div>
@@ -3215,7 +3568,7 @@ async function saveNote() {
 }
 
 
-function exportPDF() {
+function exportPDFLegacy() {
   const r = window._lastReport;
   const client = currentClient;
   if(!r) { showToast('Genera el informe primero'); return; }
@@ -3804,17 +4157,132 @@ ${r.riesgos_principales && r.riesgos_principales.length ? `<div class="section n
 </div>
 </div>
 
+<script>
+window.onload=()=>{ window.focus(); window.print(); };
+<\/script>
 </body>
 </html>`;
 
   const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) {
+    showToast('El navegador bloqueó la ventana del PDF. Permite ventanas emergentes y vuelve a intentarlo.');
+    return;
+  }
   win.document.write(html);
   win.document.close();
-  setTimeout(() => {
-    win.focus();
-    win.print();
-  }, 1000);
 }
+function exportPDF() {
+  const source = document.getElementById('diop-report-v2');
+  if (!source) {
+    showToast('No encuentro el informe visible. Abre o genera el informe y vuelve a intentarlo.');
+    return;
+  }
+
+  const win = window.open('', '_blank', 'width=1050,height=800');
+  if (!win) {
+    showToast('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes y vuelve a intentarlo.');
+    return;
+  }
+
+  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    .map(node => node.outerHTML)
+    .join('\n');
+  const safeTitle = (currentClient?.name || 'Cliente').replace(/[<>]/g, '');
+  const report = source.cloneNode(true);
+  const exportActions = report.querySelectorAll('.no-print, .report-export-actions');
+  exportActions.forEach(node => node.remove());
+
+  win.document.open();
+  win.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Informe DIOP - ${safeTitle}</title>
+${styles}
+<style>
+  @page { size: A4 portrait; margin: 9mm; }
+  html, body {
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .diop-report-v2 {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+  .diop-report-card {
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+  .diop-cover-v2 { break-inside: avoid-page !important; }
+  .diop-section {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+  .diop-page-start {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+  .diop-section-title {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+  .diop-pdf-block,
+  .diop-metric,
+  .diop-evidence-card,
+  .diop-list-item,
+  .diop-signal,
+  .diop-roadmap-step,
+  .diop-section [style*="border-left:3px"] {
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+</style>
+</head>
+<body>
+${report.outerHTML}
+<script>
+  window.addEventListener('load', function () {
+    setTimeout(function () { window.print(); }, 350);
+  });
+<\/script>
+</body>
+</html>`);
+  win.document.close();
+  showToast('Se abrió la vista de impresión. Elige "Guardar como PDF".');
+}
+
+
+function getFullDiagnosticReadiness() {
+  if (!currentClient) return { ready:false, completed:0, total:8, missing:['Cliente no seleccionado'], checks:[] };
+  const prog = getProgress(currentClient);
+  const confidence = confidenceData[currentClient.id] || { findings:[] };
+  const findings = confidence.findings || [];
+  const m4 = m4Data[currentClient.id];
+  const m8 = m8Data[currentClient.id];
+  const checks = [
+    { id:'sessions', label:'6 entrevistas', done:SESSION_ORDER.every(s => prog.sessions[s] === 'done') },
+    { id:'f0', label:'F0 · Pre-engagement', done:!!f0Data[currentClient.id]?.archetype_hypothesis },
+    { id:'m2', label:'M2 · VSM y diagnóstico operativo', done:!!(vsmData[currentClient.id]?.processes?.length && m2extData[currentClient.id]) },
+    { id:'m3', label:'M3 · Diagnóstico digital', done:!!m3extData[currentClient.id] },
+    { id:'m4', label:'M4 · Diagnóstico organizacional', done:!!(m4?.dimensions && M4_DIMENSIONS.every(dim => Number(m4.dimensions[dim.k] || 0) > 0)) },
+    { id:'m5', label:'M5 · Confidence Layer', done:findings.length >= 6 && findings.every(f => !!f?.confidence) },
+    { id:'m6', label:'M6 · Portfolio priorizado', done:!!m6Data[currentClient.id]?.backlog?.length },
+    { id:'baseline', label:'Baseline económico', done:!!(m8 && Object.entries(m8).some(([k,v]) => k !== 'notes' && !!v)) }
+  ];
+  const missing = checks.filter(c => !c.done).map(c => c.label);
+  return { ready:missing.length === 0, completed:checks.length-missing.length, total:checks.length, missing, checks };
+}
+
 function getProgress(client) {
   const sessions = {};
 
@@ -3910,7 +4378,8 @@ function renderSidebarRoadmap() {
   const m5Findings = (m5Confidence && m5Confidence.findings) ? m5Confidence.findings : [];
   const m5Done = m5Findings.length >= 6 && m5Findings.every(f => !!(f && f.confidence));
   const m5HasData = m5Findings.some(f => !!(f && (f.confidence || (f.finding && f.finding.trim && f.finding.trim()))));
-  const reportState = prog && ['ceo','fab','sys'].every(s => prog.sessions[s] === 'done') ? 'rc-done' : 'rc-pending';
+  const fullReadiness = currentClient ? getFullDiagnosticReadiness() : {ready:false};
+  const reportState = fullReadiness.ready ? 'rc-done' : 'rc-pending';
   const ftHasData = currentClient && allAnswers[`${currentClient.id}_freetrial_generated`] === 'true';
 
   function ss(sid){ return prog?.sessions[sid]||'pending'; }
@@ -7184,7 +7653,7 @@ function renderFreeTrialScreen(ceoReady, fabReady) {
     </div>
     <div style="display:flex;gap:8px;">
       ${hasReport ? `<button onclick="exportFreeTrialPDF()" style="display:flex;align-items:center;gap:6px;padding:9px 18px;background:rgba(29,158,117,0.1);border:0.5px solid var(--green);border-radius:var(--r-sm);color:var(--green-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">↓ Exportar PDF</button>` : ''}
-      <button id="ft-gen-btn" onclick="startFreeTrialReview()" style="display:flex;align-items:center;gap:6px;padding:9px 20px;background:${hasReport?'rgba(0,173,181,0.08)':'var(--teal-d)'};border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">
+      <button id="ft-gen-btn" onclick="startFreeTrialReview()" style="display:flex;align-items:center;gap:6px;padding:9px 20px;background:${hasReport?'rgba(0,173,181,0.08)':'var(--teal-d)'};border:0.5px solid var(--teal);border-radius:var(--r-sm);color:${hasReport?'var(--teal-d)':'#fff'};font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">
         ${hasReport ? '↺ Recalcular y revisar' : '🔍 Calcular y revisar →'}
       </button>
     </div>
@@ -8577,7 +9046,7 @@ function renderQualityChecklistGate() {
     ${uncheckedCount > 0 ? `<div style="padding:10px 14px;background:rgba(186,117,23,0.08);border:0.5px solid var(--amber);border-radius:var(--r-sm);font-size:11.5px;color:var(--amber);margin-bottom:16px;">⚠ ${uncheckedCount} punto${uncheckedCount!==1?'s':''} sin verificar. Puedes continuar bajo tu criterio — quedará registrado.</div>` : `<div style="padding:10px 14px;background:rgba(29,158,117,0.08);border:0.5px solid var(--green);border-radius:var(--r-sm);font-size:11.5px;color:var(--green);margin-bottom:16px;">✓ Checklist completo.</div>`}
     <div style="display:flex;gap:10px;">
       <button onclick="openReport()" style="padding:9px 16px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Volver</button>
-      <button onclick="openM7ImpactReview()" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">Continuar a generación del informe →</button>
+      <button onclick="openM7ImpactReview()" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">Continuar a generación del informe →</button>
     </div>
   </div>`;
 }
@@ -8662,7 +9131,7 @@ function renderM7ImpactReview(skipScroll) {
     </div>
     <div style="display:flex;gap:10px;">
       <button onclick="cancelM7ImpactReview()" style="padding:9px 16px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Cancelar</button>
-      <button onclick="confirmM7ImpactAndGenerate()" id="m7-confirm-btn" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">✓ Confirmar y generar informe DIOP →</button>
+      <button onclick="confirmM7ImpactAndGenerate()" id="m7-confirm-btn" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">✓ Confirmar y generar informe DIOP →</button>
     </div>
   </div>`;
 
@@ -8774,4 +9243,37 @@ function calcM7RealBenchmark() {
   return items;
 }
 
+</script>
+
+<script id="diop-visual-v2-roadmap-behavior">
+/* Presentation-only enhancement: every phase remains available and its order is unchanged. */
+(function(){
+  function enhanceRoadmap(){
+    document.querySelectorAll('#sidebar-roadmap .rm-phase').forEach(function(phase){
+      var head=phase.querySelector('.rm-phase-head');
+      var body=phase.querySelector('.rm-phase-body');
+      if(!head||!body||phase.dataset.uxReady==='1') return;
+      phase.dataset.uxReady='1';
+      head.setAttribute('role','button');
+      head.setAttribute('tabindex','0');
+      head.setAttribute('aria-label','Mostrar u ocultar esta fase');
+      if(!phase.querySelector('.rm-active')) phase.classList.add('ux-collapsed');
+      function toggle(){
+        phase.classList.toggle('ux-collapsed');
+        head.setAttribute('aria-expanded',String(!phase.classList.contains('ux-collapsed')));
+      }
+      head.setAttribute('aria-expanded',String(!phase.classList.contains('ux-collapsed')));
+      head.addEventListener('click',toggle);
+      head.addEventListener('keydown',function(event){
+        if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}
+      });
+    });
+  }
+  function start(){
+    enhanceRoadmap();
+    new MutationObserver(enhanceRoadmap).observe(document.body,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
+  else start();
+})();
 </script>
