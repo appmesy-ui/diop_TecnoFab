@@ -2878,7 +2878,7 @@ function renderReport(r, reportsHistoryHtml = '') {
     return n ? n.toLocaleString('es-ES') + '€' : '—';
   };
   const textBlock = (v) => esc(v || '—').replace(/\n/g,'<br>');
-  const chip = (label, color='var(--teal)') => `<span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;background:${color}18;color:${color};border:0.5px solid ${color}55;font-size:10px;font-weight:700;white-space:nowrap;">${label}</span>`;
+  const chip = (label, color='var(--teal)') => `<span style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;background:#ffffff;color:${color};border:1px solid ${color};font-size:10px;font-weight:700;white-space:nowrap;">${label}</span>`;
 
   const today = new Date().toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' });
   const kpis = r.kpis || {};
@@ -2973,6 +2973,8 @@ function renderReport(r, reportsHistoryHtml = '') {
     .diop-title{font-size:30px;line-height:1.05;font-weight:750;color:#16232a;letter-spacing:-.03em;margin-bottom:8px;}
     .diop-subtitle{font-size:13px;color:#5a6b70;}
     .diop-cover-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;}
+    .diop-estimate-note{display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:10px 12px;border:0.5px solid #d7dedb;border-radius:10px;background:rgba(255,255,255,0.72);font-size:10px;line-height:1.45;color:#5a6b70;}
+    .diop-estimate-note strong{color:#16232a;white-space:nowrap;}
     .diop-report-body{padding:24px 30px 30px;}
     .diop-section{margin-bottom:24px;page-break-inside:avoid;}
     .diop-section:last-child{margin-bottom:0;}
@@ -3041,9 +3043,10 @@ function renderReport(r, reportsHistoryHtml = '') {
             <div class="diop-metric-note">Capa TTL: <strong style="color:#0f6e56;">${esc(ofi.ttl_capa || '—')}</strong></div>
           </div>
           <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:#5a6b70;font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
-          <div class="diop-metric"><div class="diop-metric-label">Impacto estimado</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark</div></div>
-          <div class="diop-metric"><div class="diop-metric-label">Portfolio base</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">${econ.paybackBase?'Payback '+econ.paybackBase+'m':'BNA anual'} · Conf. ${esc(econ.confidenceBand||'—')}</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Impacto anual orientativo</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark · No auditado</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Escenario base orientativo</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">Confianza ${esc(econ.confidenceBand||'—')} · ${econ.paybackBase?'Payback '+econ.paybackBase+'m':'BNA anual'}</div></div>
         </div>
+        <div class="diop-estimate-note"><strong>Estimación económica · Confianza ${esc(econ.confidenceBand||'—')}</strong><span>Importes orientativos sujetos a validación con evidencias operativas y financieras del cliente.</span></div>
       </div>
 
       <div class="diop-report-body">
