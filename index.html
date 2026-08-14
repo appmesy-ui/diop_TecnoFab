@@ -953,6 +953,49 @@ html body .q-text{font-family:var(--font) !important;}
   html body .sidebar{width:248px !important;}
 }
 </style>
+
+<style id="diop-visual-v2-focus">
+/* V2.2 — progressive disclosure and reading comfort. */
+html body #screen-home,
+html body #screen-session > #session-content,
+html body #screen-freetrial > #freetrial-content{
+  max-width:1360px;
+  margin-left:auto;
+  margin-right:auto;
+}
+html body .page-sub,
+html body .sh-sub,
+html body .qbh-obj,
+html body .sector-meta,
+html body .sidebar-client-meta{
+  font-size:12px !important;
+  line-height:1.5 !important;
+}
+html body .rm-phase-title{
+  text-transform:none !important;
+  letter-spacing:.035em !important;
+  font-size:11.5px !important;
+  line-height:1.25 !important;
+}
+html body .rm-phase-sub{font-size:10.5px !important;line-height:1.35 !important;}
+html body .rm-phase-head{cursor:pointer !important;}
+html body .rm-phase-head::after{
+  content:'⌃';
+  margin-left:7px;
+  color:#8b989d;
+  font-size:12px;
+  transition:transform .18s ease;
+}
+html body .rm-phase.ux-collapsed .rm-phase-head::after{transform:rotate(180deg);}
+html body .rm-phase.ux-collapsed .rm-phase-body{display:none !important;}
+html body .rm-phase.ux-collapsed .rm-phase-head{border-bottom:0 !important;}
+html body .rm-phase.ux-collapsed{margin-bottom:9px !important;}
+html body .q-text{font-size:14px !important;line-height:1.55 !important;}
+html body .qbh-name{font-size:13.5px !important;}
+html body .fi,
+html body .fta,
+html body .opt{font-size:13px !important;}
+</style>
 </head>
 <body onload="init()">
 
@@ -9009,4 +9052,37 @@ function calcM7RealBenchmark() {
   return items;
 }
 
+</script>
+
+<script id="diop-visual-v2-roadmap-behavior">
+/* Presentation-only enhancement: every phase remains available and its order is unchanged. */
+(function(){
+  function enhanceRoadmap(){
+    document.querySelectorAll('#sidebar-roadmap .rm-phase').forEach(function(phase){
+      var head=phase.querySelector('.rm-phase-head');
+      var body=phase.querySelector('.rm-phase-body');
+      if(!head||!body||phase.dataset.uxReady==='1') return;
+      phase.dataset.uxReady='1';
+      head.setAttribute('role','button');
+      head.setAttribute('tabindex','0');
+      head.setAttribute('aria-label','Mostrar u ocultar esta fase');
+      if(!phase.querySelector('.rm-active')) phase.classList.add('ux-collapsed');
+      function toggle(){
+        phase.classList.toggle('ux-collapsed');
+        head.setAttribute('aria-expanded',String(!phase.classList.contains('ux-collapsed')));
+      }
+      head.setAttribute('aria-expanded',String(!phase.classList.contains('ux-collapsed')));
+      head.addEventListener('click',toggle);
+      head.addEventListener('keydown',function(event){
+        if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}
+      });
+    });
+  }
+  function start(){
+    enhanceRoadmap();
+    new MutationObserver(enhanceRoadmap).observe(document.body,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
+  else start();
+})();
 </script>
