@@ -3075,7 +3075,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="diop-exec">${textBlock(r.resumen_ejecutivo)}</div>
         </div>
 
-        <div class="diop-section">
+        <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>02 · Diagnóstico operativo + Value Stream Map</h3></div>
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric"><div class="diop-metric-label">OEE estimado</div><div class="diop-metric-value" style="color:var(--red);">${esc(kpis.oee_estimado || '—')}</div></div>
@@ -3109,7 +3109,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             const maxRatio = Math.max(...procData.map(p => p.ratio), 100);
             
             // Build C/T vs Takt bar chart
-            let chartHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
+            let chartHtml = `<div class="diop-pdf-block" style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
               <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:4px;">C/T efectivo vs Takt Time</div>
               <div style="font-size:10px;color:#5a6b70;margin-bottom:12px;">Takt: ${takt.toFixed(1)} seg/ud — Cualquier barra que supere la línea roja es cuello de botella</div>
               <div style="position:relative;">`;
@@ -3134,7 +3134,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             chartHtml += `</div></div>`;
             
             // Process metrics table
-            let tableHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
+            let tableHtml = `<div class="diop-pdf-block" style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px;margin-bottom:14px;">
               <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:10px;">Detalle por proceso</div>
               <div style="display:grid;grid-template-columns:1fr repeat(5,auto);gap:0;font-size:10px;">
                 <div style="padding:6px 8px;font-weight:700;color:#5a6b70;border-bottom:1px solid #dde3e1;">Proceso</div>
@@ -3156,7 +3156,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             tableHtml += `</div></div>`;
             
             // Process flow mini-diagram
-            let flowHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow:hidden;">
+            let flowHtml = `<div class="diop-pdf-block" style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow:hidden;">
               <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:10px;">Flujo de valor — ${esc(vd.supplier?.name||'Proveedor')} → ${esc(vd.client_info?.name||'Cliente')}</div>
               <div style="display:flex;align-items:center;gap:3px;width:100%;min-width:0;">
                 <div style="flex:0 1 84px;min-width:58px;padding:6px 5px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:8px;line-height:1.25;color:var(--teal);text-align:center;overflow-wrap:anywhere;">${esc(vd.supplier?.name||'MP')}<br><span style="font-size:8px;color:#8a9793;">${esc(vd.inventories?.mp||'?')}d</span></div>`;
@@ -3181,7 +3181,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             // Planning info
             let planHtml = '';
             if (vd.planning) {
-              planHtml = `<div style="display:flex;gap:12px;margin-bottom:14px;">
+              planHtml = `<div class="diop-pdf-block" style="display:flex;gap:12px;margin-bottom:14px;">
                 <div style="flex:1;padding:10px 14px;background:rgba(245,158,11,0.06);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;">
                   <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);font-family:var(--mono);font-weight:700;margin-bottom:3px;">Sistema de planificación</div>
                   <div style="font-size:12px;color:#16232a;">${esc(vd.planning.type || '—')} — Programa ${esc(vd.planning.frequency || '—')}</div>
@@ -3227,7 +3227,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           </div>
         </div>
 
-        <div class="diop-section">
+        <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>04 · Diagnóstico organizacional</h3></div>
           ${(() => {
             const allKeys = [...humanKeys, ...osKeys, ...exKeys];
@@ -3284,7 +3284,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           })()}
         </div>
 
-        ${fiTotal > 0 ? `<div class="diop-section">
+        ${fiTotal > 0 ? `<div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>05 · Field Intelligence™ — Señales críticas de campo</h3></div>
           <div style="font-size:12px;color:#5a6b70;margin-bottom:14px;line-height:1.55;">Inteligencia extraída del cruce de entrevistas, observación directa y datos de campo. Estas señales no aparecen en ningún KPI — solo emergen cuando se comparan las perspectivas de CEO, operaciones y planta.</div>
           <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">
@@ -3334,7 +3334,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           </div>` : ''}
         </div>` : ''}
 
-        <div class="diop-section">
+        <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>06 · Evidence + Risks + Confidence</h3></div>
           <div class="diop-grid-2" style="margin-bottom:12px;">
             ${evidenceCards.map(c => `<div class="diop-evidence-card"><div class="diop-tagline">${c.tag}</div><strong>${c.title}</strong><p>${c.body}</p></div>`).join('')}
@@ -3346,7 +3346,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           }).join('')}</div>` : ''}
         </div>
 
-        <div class="diop-section">
+        <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>07 · Economic Bridge™ · Portfolio de oportunidades</h3></div>
           <div class="diop-opp-row">${opportunitySummary}</div>
           <div class="diop-grid-3" style="margin-bottom:12px;">
@@ -3379,7 +3379,7 @@ function renderReport(r, reportsHistoryHtml = '') {
           </div>
         </div>
 
-        <div class="diop-section">
+        <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>08 · Secuencia de transformación · Roadmap TTL™</h3></div>
           ${roadmapSteps.length ? `<div class="diop-roadmap">${roadmapSteps.map((step,i)=>`<div class="diop-roadmap-step"><strong>${String(i+1).padStart(2,'0')}</strong><span>${esc(step)}</span></div>`).join('')}</div>` : '<div class="diop-muted">Roadmap pendiente de generación.</div>'}
         </div>
@@ -4214,15 +4214,22 @@ async function exportPDF() {
       page-break-after: avoid !important;
       break-after: avoid-page !important;
     }
+    .diop-page-start {
+      page-break-before: always !important;
+      break-before: page !important;
+    }
     .diop-section-title + * {
       page-break-before: avoid !important;
       break-before: avoid-page !important;
     }
     .diop-report-cover,
+    .diop-pdf-block,
     .diop-metric,
     .diop-evidence-card,
     .diop-list-item,
-    .diop-roadmap-step {
+    .diop-signal,
+    .diop-roadmap-step,
+    .diop-section [style*="border-left:3px"] {
       page-break-inside: avoid !important;
       break-inside: avoid-page !important;
     }
@@ -4238,7 +4245,7 @@ async function exportPDF() {
     image: { type:'jpeg', quality:0.96 },
     html2canvas: { scale:2, useCORS:true, backgroundColor:'#ffffff', logging:false },
     jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-    pagebreak: { mode:['css','legacy'], avoid:['.diop-report-cover','.diop-section-title','.diop-metric','.diop-list-item','.diop-evidence-card','.diop-roadmap-step'] }
+    pagebreak: { mode:['css','legacy'], before:['.diop-page-start'], avoid:['.diop-report-cover','.diop-section-title','.diop-pdf-block','.diop-metric','.diop-list-item','.diop-evidence-card','.diop-signal','.diop-roadmap-step'] }
   };
 
   try {
