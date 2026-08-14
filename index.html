@@ -2891,6 +2891,13 @@ function renderReport(r, reportsHistoryHtml = '') {
   const risks = r.riesgos_principales || [];
   const tools = r.herramientas_mercado || [];
   const procesos = r.procesos || [];
+  const displayTools = tools.filter(t => !/\b(SAP|NetSuite|Oracle|Dynamics 365)\b/i.test(t?.nombre || ''));
+  const roadmapText = (r.roadmap_narrativo || '').trim();
+  const roadmapSteps = roadmapText ? (roadmapText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [roadmapText]).map(x=>x.trim()).filter(Boolean) : [];
+  const formatMoneyText = (value) => esc(value || '—').replace(/(\d[\d.,]*)\s*€/g, (_, raw) => {
+    const digits = raw.replace(/\D/g,'');
+    return digits ? Number(digits).toLocaleString('es-ES') + ' €' : raw + ' €';
+  });
 
   const m4 = currentClient && m4Data[currentClient.id] ? m4Data[currentClient.id] : null;
   const m8 = currentClient && m8Data[currentClient.id] ? m8Data[currentClient.id] : null;
@@ -3014,6 +3021,9 @@ function renderReport(r, reportsHistoryHtml = '') {
     .diop-list-desc{font-size:12px;color:#5a6b70;line-height:1.55;}
     .diop-risk{border-left:3px solid var(--amber);}
     .diop-method{background:rgba(0,173,181,0.035);border:0.5px dashed #ccd4d1;border-radius:12px;padding:15px;font-size:12px;color:#5a6b70;line-height:1.65;}
+    .diop-roadmap{display:flex;flex-direction:column;gap:8px;}
+    .diop-roadmap-step{display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start;padding:11px 13px;background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:10px;font-size:12px;color:#5a6b70;line-height:1.55;}
+    .diop-roadmap-step strong{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#ffffff;border:1px solid var(--teal);color:var(--teal);font-family:var(--mono);font-size:10px;}
     @media(max-width:900px){.diop-grid-4,.diop-grid-3,.diop-grid-2,.diop-opp-row{grid-template-columns:1fr}.diop-title{font-size:24px}.diop-report-body,.diop-cover-v2{padding:20px}}
   </style>
 
@@ -3327,7 +3337,7 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>07 · Economic Bridge™ + Opportunity Portfolio</h3></div>
+          <div class="diop-section-title"><h3>07 · Economic Bridge™ · Portfolio de oportunidades</h3></div>
           <div class="diop-opp-row">${opportunitySummary}</div>
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric" style="border-left:3px solid var(--red);border-radius:0 12px 12px 0;">
@@ -3355,33 +3365,33 @@ function renderReport(r, reportsHistoryHtml = '') {
             ${econ.riskCount?`<div style="width:1px;height:20px;background:#dde3e1;"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
           </div>
           <div class="diop-list">
-            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div><div style="display:flex;gap:6px;">${chip(`💰 ${esc(qw.impacto_euros || '—')}`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div></div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:#8a9793;margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
+            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div><div style="display:flex;gap:6px;">${chip(`💰 ${formatMoneyText(qw.impacto_euros || '—')}`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div></div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:#8a9793;margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
           </div>
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>08 · Transformation Blueprint + Roadmap TTL™</h3></div>
-          <div class="diop-text">${textBlock(r.roadmap_narrativo || 'Roadmap pendiente de generación.')}</div>
+          <div class="diop-section-title"><h3>08 · Secuencia de transformación · Roadmap TTL™</h3></div>
+          ${roadmapSteps.length ? `<div class="diop-roadmap">${roadmapSteps.map((step,i)=>`<div class="diop-roadmap-step"><strong>${String(i+1).padStart(2,'0')}</strong><span>${esc(step)}</span></div>`).join('')}</div>` : '<div class="diop-muted">Roadmap pendiente de generación.</div>'}
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>09 · Herramientas + Methodology + Next Steps</h3></div>
-          ${tools.length ? `<div class="diop-grid-3" style="margin-bottom:14px;">
-            ${tools.map(t => `<div class="diop-evidence-card">
+          <div class="diop-section-title"><h3>09 · Herramientas de referencia · Metodología · Próximo paso</h3></div>
+          ${displayTools.length ? `<div class="diop-grid-3" style="margin-bottom:8px;">
+            ${displayTools.map(t => `<div class="diop-evidence-card">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                 <strong style="margin:0;">${esc(t.nombre)}</strong>
                 ${chip(esc(t.tipo || ''), 'var(--teal)')}
               </div>
               <p style="margin-bottom:6px;">${esc(t.para_que || '')}</p>
               <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:11px;color:#0f6e56;font-weight:600;">${esc(t.precio_aproximado || '')}</span>
+                <span style="font-size:10px;color:#5a6b70;font-weight:600;">${t.precio_aproximado ? 'Precio orientativo: '+esc(t.precio_aproximado) : 'Precio por validar'}</span>
                 ${t.url ? `<a href="${esc(t.url)}" target="_blank" style="font-size:10px;color:var(--teal);text-decoration:none;">Web →</a>` : ''}
               </div>
             </div>`).join('')}
-          </div>` : ''}
+          </div><div class="diop-muted" style="margin-bottom:14px;">Referencias de mercado sujetas a validación funcional, técnica y económica antes de recomendar.</div>` : ''}
           <div class="diop-grid-2">
             <div class="diop-method">
-              <strong style="color:#16232a;">DIOP Methodology</strong><br>
+              <strong style="color:#16232a;">Metodología DIOP</strong><br>
               El diagnóstico utiliza los frameworks propietarios TECNOFAB: <strong>OFI™</strong> para fricción operacional, <strong>TTL™</strong> para secuencia de madurez, <strong>Archetypes™</strong> para narrativa ejecutiva, <strong>RIM™</strong> para priorización impacto/readiness, <strong>Confidence Layer™</strong> para nivel de evidencia y <strong>Economic Bridge™</strong> para trazabilidad financiera.
             </div>
             <div class="next-q-box" style="margin:0;"><div class="nqb-lbl">Siguiente pregunta al CEO</div><div class="nqb-text">"${esc(r.siguiente_pregunta_ceo || '—')}"</div></div>
