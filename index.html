@@ -3208,16 +3208,41 @@ function renderReport(r, reportsHistoryHtml = '') {
         </div>
 
         <div class="diop-section">
-          <div class="diop-section-title"><h3>04 · Organizational Readiness Premium</h3></div>
+          <div class="diop-section-title"><h3>04 · Diagnóstico organizacional</h3></div>
           ${(() => {
             const allKeys = [...humanKeys, ...osKeys, ...exKeys];
-            const hasM4Data = allKeys.some(([s,k]) => m4?.[s]?.[k]);
-            if (!hasM4Data) {
+            const hasPremiumData = allKeys.some(([section,k]) => m4?.[section]?.[k]);
+            const dimensionRows = M4_DIMENSIONS.map(dim => ({
+              name: dim.name,
+              value: Number(m4?.dimensions?.[dim.k] || 0)
+            })).filter(dim => dim.value > 0);
+            const hasDimensionData = dimensionRows.length > 0;
+
+            if (!hasPremiumData && !hasDimensionData) {
               return `<div style="padding:18px 20px;background:#f4f6f5;border:1px dashed #ccd4d1;border-radius:12px;text-align:center;">
-                <div style="font-size:12.5px;color:#5a6b70;margin-bottom:4px;">Sin datos de M4 · Diagnóstico organizacional todavía</div>
-                <div style="font-size:11px;color:#5a6b70;">Completa la pantalla "Readiness organizacional" en el sidebar para que esta sección se rellene en el próximo informe.</div>
+                <div style="font-size:12.5px;color:#5a6b70;margin-bottom:4px;">Diagnóstico organizacional pendiente</div>
+                <div style="font-size:11px;color:#5a6b70;">Completa M4 para incorporar readiness, gobernanza y capacidad de ejecución al informe.</div>
               </div>`;
             }
+
+            const dimensionSummary = hasDimensionData ? (() => {
+              const avg = dimensionRows.reduce((sum,dim)=>sum+dim.value,0)/dimensionRows.length;
+              const col = avg>=4?'var(--green)':avg>=3?'var(--amber)':'var(--red)';
+              return `<div class="diop-evidence-card" style="margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+                  <div><div class="diop-tagline">READINESS ORGANIZACIONAL · 7 DIMENSIONES</div><strong style="font-size:13px;color:#16232a;">Evaluación general M4</strong><p style="font-size:11px;color:#5a6b70;margin-top:5px;">${dimensionRows.length} de ${M4_DIMENSIONS.length} dimensiones evaluadas.</p></div>
+                  <div style="font-size:28px;font-weight:800;color:${col};font-family:var(--mono);white-space:nowrap;">${avg.toFixed(1)}<span style="font-size:11px;color:#8a9793;">/5</span></div>
+                </div>
+              </div>`;
+            })() : '';
+
+            if (!hasPremiumData) {
+              return `${dimensionSummary}<div style="padding:13px 16px;background:#f4f6f5;border:1px dashed #ccd4d1;border-radius:12px;">
+                <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:3px;">Desglose avanzado pendiente</div>
+                <div style="font-size:10.5px;color:#5a6b70;">La evaluación general está disponible. Completa Human Capability, Operating System y Execution Readiness para añadir el desglose premium.</div>
+              </div>`;
+            }
+
             const scoreBlock = (section, label, icon, keys) => {
               const vals = keys.map(([s,k]) => m4?.[s]?.[k]).filter(v=>v);
               const scores = vals.map(v => v==='Alto'?3:v==='Medio'?2:v==='Bajo'?1:0).filter(v=>v>0);
@@ -3226,7 +3251,7 @@ function renderReport(r, reportsHistoryHtml = '') {
               const pct = Math.round((avg/3)*100);
               return `<div style="text-align:center;padding:8px 0;"><div style="font-size:20px;margin-bottom:4px;">${icon}</div><div style="font-size:24px;font-weight:800;color:${col};font-family:var(--mono);">${avg?avg.toFixed(1):'—'}</div><div style="font-size:8px;color:#8a9793;">/3</div><div style="height:3px;background:#f4f6f5;border-radius:4px;margin:6px auto;width:80%;"><div style="height:100%;width:${pct}%;background:${col};border-radius:4px;"></div></div><div style="font-size:10px;color:#5a6b70;font-weight:600;">${label}</div></div>`;
             };
-            return `<div class="diop-grid-3" style="margin-bottom:14px;">
+            return `${dimensionSummary}<div class="diop-grid-3" style="margin-bottom:14px;">
               <div class="diop-metric">${scoreBlock('human','Human Capability™','🧠',humanKeys)}</div>
               <div class="diop-metric">${scoreBlock('operating','Operating System™','⚙️',osKeys)}</div>
               <div class="diop-metric">${scoreBlock('execution','Execution Readiness™','🚀',exKeys)}</div>
