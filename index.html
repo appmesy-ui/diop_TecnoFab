@@ -221,7 +221,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .rr-icon{font-size:40px;margin-bottom:12px;}
 .rr-title{font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;}
 .rr-sub{font-size:13px;color:var(--text2);margin-bottom:24px;}
-.gen-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:linear-gradient(135deg,var(--teal-d),var(--teal));border:none;border-radius:var(--r-sm);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:opacity .15s;}
+.gen-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:linear-gradient(135deg,var(--teal-d),var(--teal));border:none;border-radius:var(--r-sm);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:opacity .15s;}
 .gen-btn:hover{opacity:.9;}
 .gen-btn:disabled{opacity:.4;cursor:not-allowed;}
 
@@ -319,7 +319,7 @@ select.fi{cursor:pointer;}
 .btn-create:disabled{opacity:.4;cursor:not-allowed;}
 
 /* TOAST */
-.toast{position:fixed;bottom:20px;right:20px;background:var(--teal-d);border:0.5px solid var(--teal);color:var(--teal-l);padding:9px 16px;border-radius:var(--r-sm);font-size:12px;z-index:200;opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none;}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--teal-d);border:0.5px solid var(--teal);color:#fff;padding:9px 16px;border-radius:var(--r-sm);font-size:12px;z-index:200;opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none;}
 .toast.show{opacity:1;transform:translateY(0);}
 
 /* EMPTY STATE */
@@ -853,6 +853,9 @@ body{letter-spacing:-.006em;-webkit-font-smoothing:antialiased;}
 .fi,.fs,.fta{background:#fff;color:var(--text);border-color:var(--border2);}
 .save-bar{background:rgba(255,255,255,.96);border-color:var(--border);box-shadow:0 -8px 24px rgba(15,23,42,.05);}
 .btn-complete-sess,.btn-save-sess{color:#fff;background:var(--teal-d);border-color:var(--teal-d);}
+.gen-btn,#ft-confirm-btn,#m7-confirm-btn{color:#fff!important;}
+button:disabled{cursor:not-allowed;}
+.gen-btn:disabled,#ft-gen-btn:disabled,#ft-confirm-btn:disabled,#m7-confirm-btn:disabled{opacity:.58;color:#fff!important;}
 .btn-complete-sess:hover,.btn-save-sess:hover{background:#005c62;}
 .modal{background:#fff;border-color:var(--border);box-shadow:0 24px 70px rgba(15,23,42,.18);}
 .modal-ov{background:rgba(20,26,31,.38);backdrop-filter:blur(4px);}
@@ -7556,7 +7559,7 @@ function renderFreeTrialScreen(ceoReady, fabReady) {
     </div>
     <div style="display:flex;gap:8px;">
       ${hasReport ? `<button onclick="exportFreeTrialPDF()" style="display:flex;align-items:center;gap:6px;padding:9px 18px;background:rgba(29,158,117,0.1);border:0.5px solid var(--green);border-radius:var(--r-sm);color:var(--green-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">↓ Exportar PDF</button>` : ''}
-      <button id="ft-gen-btn" onclick="startFreeTrialReview()" style="display:flex;align-items:center;gap:6px;padding:9px 20px;background:${hasReport?'rgba(0,173,181,0.08)':'var(--teal-d)'};border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">
+      <button id="ft-gen-btn" onclick="startFreeTrialReview()" style="display:flex;align-items:center;gap:6px;padding:9px 20px;background:${hasReport?'rgba(0,173,181,0.08)':'var(--teal-d)'};border:0.5px solid var(--teal);border-radius:var(--r-sm);color:${hasReport?'var(--teal-d)':'#fff'};font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">
         ${hasReport ? '↺ Recalcular y revisar' : '🔍 Calcular y revisar →'}
       </button>
     </div>
@@ -8949,7 +8952,7 @@ function renderQualityChecklistGate() {
     ${uncheckedCount > 0 ? `<div style="padding:10px 14px;background:rgba(186,117,23,0.08);border:0.5px solid var(--amber);border-radius:var(--r-sm);font-size:11.5px;color:var(--amber);margin-bottom:16px;">⚠ ${uncheckedCount} punto${uncheckedCount!==1?'s':''} sin verificar. Puedes continuar bajo tu criterio — quedará registrado.</div>` : `<div style="padding:10px 14px;background:rgba(29,158,117,0.08);border:0.5px solid var(--green);border-radius:var(--r-sm);font-size:11.5px;color:var(--green);margin-bottom:16px;">✓ Checklist completo.</div>`}
     <div style="display:flex;gap:10px;">
       <button onclick="openReport()" style="padding:9px 16px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Volver</button>
-      <button onclick="openM7ImpactReview()" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">Continuar a generación del informe →</button>
+      <button onclick="openM7ImpactReview()" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">Continuar a generación del informe →</button>
     </div>
   </div>`;
 }
@@ -9034,7 +9037,7 @@ function renderM7ImpactReview(skipScroll) {
     </div>
     <div style="display:flex;gap:10px;">
       <button onclick="cancelM7ImpactReview()" style="padding:9px 16px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Cancelar</button>
-      <button onclick="confirmM7ImpactAndGenerate()" id="m7-confirm-btn" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:var(--teal-l);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">✓ Confirmar y generar informe DIOP →</button>
+      <button onclick="confirmM7ImpactAndGenerate()" id="m7-confirm-btn" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">✓ Confirmar y generar informe DIOP →</button>
     </div>
   </div>`;
 
