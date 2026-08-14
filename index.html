@@ -3136,26 +3136,26 @@ function renderReport(r, reportsHistoryHtml = '') {
             tableHtml += `</div></div>`;
             
             // Process flow mini-diagram
-            let flowHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow-x:auto;">
+            let flowHtml = `<div style="background:#f4f6f5;border:0.5px solid #dde3e1;border-radius:14px;padding:16px 12px;margin-bottom:14px;overflow:hidden;">
               <div style="font-size:11px;font-weight:700;color:#16232a;margin-bottom:10px;">Flujo de valor — ${esc(vd.supplier?.name||'Proveedor')} → ${esc(vd.client_info?.name||'Cliente')}</div>
-              <div style="display:flex;align-items:center;gap:4px;min-width:max-content;">
-                <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.supplier?.name||'MP')}<br><span style="font-size:8px;color:#8a9793;">${esc(vd.inventories?.mp||'?')}d</span></div>`;
+              <div style="display:flex;align-items:center;gap:3px;width:100%;min-width:0;">
+                <div style="flex:0 1 84px;min-width:58px;padding:6px 5px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:8px;line-height:1.25;color:var(--teal);text-align:center;overflow-wrap:anywhere;">${esc(vd.supplier?.name||'MP')}<br><span style="font-size:8px;color:#8a9793;">${esc(vd.inventories?.mp||'?')}d</span></div>`;
             procs.forEach((p, i) => {
               const pd = procData[i];
               flowHtml += `<div style="font-size:10px;color:#8a9793;">→</div>`;
               if (i > 0 && vd.inventories?.between?.[`${i-1}_${i}`]) {
                 const inv = vd.inventories.between[`${i-1}_${i}`];
-                flowHtml += `<div style="font-size:8px;color:var(--amber);font-family:var(--mono);text-align:center;min-width:30px;">▽<br>${inv}</div>
+                flowHtml += `<div style="font-size:8px;color:var(--amber);font-family:var(--mono);text-align:center;flex:0 1 28px;min-width:20px;">▽<br>${inv}</div>
                 <div style="font-size:10px;color:#8a9793;">→</div>`;
               }
-              flowHtml += `<div style="padding:8px 10px;background:${pd.isBottleneck?'rgba(226,75,74,0.1)':'#ffffff'};border:1px solid ${pd.isBottleneck?'var(--red)':'#dde3e1'};border-radius:10px;text-align:center;min-width:80px;">
+              flowHtml += `<div style="padding:8px 10px;background:${pd.isBottleneck?'rgba(226,75,74,0.1)':'#ffffff'};border:1px solid ${pd.isBottleneck?'var(--red)':'#dde3e1'};border-radius:10px;text-align:center;flex:1 1 70px;min-width:54px;padding-left:5px;padding-right:5px;">
                 <div style="font-size:10px;font-weight:700;color:${pd.isBottleneck?'var(--red)':'#16232a'};">${esc(p.name)}</div>
                 <div style="font-size:8px;color:#5a6b70;font-family:var(--mono);margin-top:3px;">C/T ${pd.ct.toFixed(1)}s · Up ${pd.uptime}%</div>
-                ${pd.isBottleneck?'<div style="font-size:7px;color:var(--red);font-weight:700;margin-top:2px;">BOTTLENECK</div>':''}
+                ${pd.isBottleneck?'<div style="font-size:7px;color:var(--red);font-weight:700;margin-top:2px;">CUELLO</div>':''}
               </div>`;
             });
             flowHtml += `<div style="font-size:10px;color:#8a9793;">→</div>
-              <div style="padding:6px 10px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:9px;color:var(--teal);text-align:center;white-space:nowrap;">${esc(vd.client_info?.name||'Cliente')}<br><span style="font-size:8px;color:#8a9793;">${demandDay} ud/día</span></div>
+              <div style="flex:0 1 84px;min-width:58px;padding:6px 5px;background:rgba(0,173,181,0.08);border:1px dashed var(--teal);border-radius:8px;font-size:8px;line-height:1.25;color:var(--teal);text-align:center;overflow-wrap:anywhere;">${esc(vd.client_info?.name||'Cliente')}<br><span style="font-size:8px;color:#8a9793;">${demandDay} ud/día</span></div>
             </div></div>`;
             
             // Planning info
