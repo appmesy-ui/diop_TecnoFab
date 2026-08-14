@@ -861,6 +861,98 @@ body{letter-spacing:-.006em;-webkit-font-smoothing:antialiased;}
   .sidebar{width:220px;}
 }
 </style>
+
+<style id="diop-visual-v2-shell-fix">
+/* V2.1 — unify application shell with the light workbench. */
+html body .topbar{
+  background:#ffffff !important;
+  color:#141a1f !important;
+  border-bottom:1px solid rgba(15,23,42,.09) !important;
+  box-shadow:0 1px 2px rgba(15,23,42,.035) !important;
+  backdrop-filter:none !important;
+}
+html body .topbar-brand{color:#141a1f !important;}
+html body .topbar-client,
+html body .topbar-back{color:#5b696f !important;font-family:var(--font) !important;}
+html body .topbar-version{
+  color:#00747b !important;
+  background:#edf8f8 !important;
+  border-color:rgba(0,170,179,.18) !important;
+}
+html body .app-body,
+html body .content{
+  background:#f3f5f4 !important;
+}
+html body .sidebar{
+  width:272px !important;
+  background:#fafcfb !important;
+  border-right:1px solid rgba(15,23,42,.09) !important;
+  box-shadow:none !important;
+}
+html body .sidebar-label{
+  color:#718087 !important;
+  font-family:var(--font) !important;
+  font-weight:650 !important;
+  letter-spacing:.10em !important;
+}
+html body .sidebar-client-name{color:#141a1f !important;}
+html body .sidebar-client-meta{color:#718087 !important;}
+html body .sidebar-divider{background:rgba(15,23,42,.09) !important;}
+html body .rm-phase{
+  background:#ffffff !important;
+  border:1px solid rgba(15,23,42,.09) !important;
+  box-shadow:none !important;
+}
+html body .rm-phase-head{
+  background:#f6f8f7 !important;
+  border-bottom:1px solid rgba(15,23,42,.08) !important;
+}
+html body .rm-phase-title{
+  color:#526168 !important;
+  font-family:var(--font) !important;
+}
+html body .rm-phase-sub,
+html body .rm-phase-pct{color:#7c898f !important;}
+html body .rm-phase-fill{background:#00aab3 !important;}
+html body .rm-item{border-color:transparent !important;}
+html body .rm-item:hover{background:#f1f5f3 !important;}
+html body .rm-item.rm-active{
+  background:#e9f7f7 !important;
+  border-color:rgba(0,170,179,.22) !important;
+}
+html body .rm-label{color:#526168 !important;}
+html body .rm-label.rld{color:#3f6658 !important;}
+html body .rm-label.rla{color:#00747b !important;}
+html body .rc-done{
+  background:#edf7f3 !important;
+  border-color:rgba(22,128,95,.38) !important;
+  color:#16805f !important;
+}
+html body .rc-active{
+  background:#e7f7f7 !important;
+  border-color:rgba(0,170,179,.42) !important;
+  color:#00747b !important;
+  box-shadow:none !important;
+}
+html body .sidebar-footer{
+  background:#fafcfb !important;
+  border-color:rgba(15,23,42,.09) !important;
+}
+html body .sidebar::-webkit-scrollbar-track{background:#f3f5f4 !important;}
+html body .sidebar::-webkit-scrollbar-thumb{background:#ccd5d1 !important;}
+html body .session-hero{
+  background:#ffffff !important;
+  border-color:rgba(15,23,42,.09) !important;
+}
+html body .sh-title{color:#141a1f !important;}
+html body .sh-sub{color:#526168 !important;}
+html body .sh-time{background:#f1f4f3 !important;color:#65747a !important;border-color:rgba(15,23,42,.08) !important;}
+html body .qbh-name,
+html body .q-text{font-family:var(--font) !important;}
+@media(max-width:1100px){
+  html body .sidebar{width:248px !important;}
+}
+</style>
 </head>
 <body onload="init()">
 
