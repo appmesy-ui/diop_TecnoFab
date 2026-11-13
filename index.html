@@ -1448,6 +1448,12 @@ async function doLogin(e) {
 }
 async function doLogout() { await sb.auth.signOut(); }
 
+// Cabeceras para /api/generate-report: envía el token de la sesión para que el servidor lo valide
+async function apiHeaders() {
+  const { data: { session } } = await sb.auth.getSession();
+  return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') };
+}
+
 async function loadClients() {
   try {
     document.getElementById('home-count').textContent = 'Cargando...';
@@ -2621,7 +2627,7 @@ Devuelve SOLO el JSON, sin texto adicional.`;
   try {
     const res = await fetch('/api/generate-report', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await apiHeaders(),
       body: JSON.stringify({ prompt })
     });
 
@@ -8635,7 +8641,7 @@ Devuelve SOLO este JSON, sin texto adicional:
   try {
     const res = await fetch('/api/generate-report', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await apiHeaders(),
       body: JSON.stringify({ prompt })
     });
     const data = await res.json();
@@ -8776,7 +8782,7 @@ ${fieldKeys.map(k => `  "${k}": "texto reescrito o vacío"`).join(',\n')}
       try {
         const res = await fetch('/api/generate-report', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await apiHeaders(),
           body: JSON.stringify({ prompt: repairPrompt })
         });
         const data = await res.json();
