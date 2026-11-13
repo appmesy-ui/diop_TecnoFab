@@ -4411,7 +4411,7 @@ function renderSidebarRoadmap() {
   const prog = currentClient ? getProgress(currentClient) : null;
   const vsmHasData = currentClient && vsmData[currentClient.id] && vsmData[currentClient.id].processes && vsmData[currentClient.id].processes.length > 0;
   const f0HasData = currentClient && f0Data[currentClient.id] && f0Data[currentClient.id].archetype_hypothesis;
-  const m4HasData = currentClient && m4Data[currentClient.id] && m4Data[currentClient.id].dimensions && Object.values(m4Data[currentClient.id].dimensions).some(v => v > 0);
+  const m4HasData = !!(currentClient && m4Data[currentClient.id] && m4Data[currentClient.id].dimensions && M4_DIMENSIONS.every(dim => Number(m4Data[currentClient.id].dimensions[dim.k] || 0) > 0));
   const m2extHasData = currentClient && m2extData[currentClient.id];
   const m3extHasData = currentClient && m3extData[currentClient.id];
   const m8HasData = currentClient && m8Data[currentClient.id] && Object.entries(m8Data[currentClient.id]).some(([k,v]) => k !== 'notes' ? !!v : !!(v&&v.trim&&v.trim()));
