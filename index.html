@@ -1003,6 +1003,19 @@ html body .opt{font-size:13px !important;}
 </head>
 <body onload="init()">
 
+<!-- ── LOGIN (Supabase Auth) ── -->
+<div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:#0f0f0f;align-items:center;justify-content:center;font-family:inherit;">
+  <form onsubmit="return doLogin(event)" style="width:320px;max-width:90vw;background:#161b1e;border:1px solid #007c82;border-radius:12px;padding:28px;color:#e8f6f7;">
+    <div style="font-size:18px;font-weight:600;color:#00adb5;margin-bottom:4px;">Tecno-Fab · DIOP</div>
+    <div style="font-size:12px;opacity:.7;margin-bottom:18px;">Acceso restringido</div>
+    <input id="login-email" type="email" placeholder="Email" autocomplete="username" required style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:10px;border-radius:8px;border:1px solid #2a3a3d;background:#0f0f0f;color:#fff;">
+    <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password" required style="width:100%;box-sizing:border-box;margin-bottom:12px;padding:10px;border-radius:8px;border:1px solid #2a3a3d;background:#0f0f0f;color:#fff;">
+    <button id="login-btn" type="submit" style="width:100%;padding:10px;border:0;border-radius:8px;background:#00adb5;color:#0f0f0f;font-weight:600;cursor:pointer;">Entrar</button>
+    <div id="login-err" style="color:#ff6b6b;font-size:12px;margin-top:10px;min-height:16px;"></div>
+  </form>
+</div>
+
+
 <!-- TOPBAR -->
 <div class="topbar">
   <svg class="topbar-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
@@ -1018,6 +1031,7 @@ html body .opt{font-size:13px !important;}
   <div class="topbar-spacer"></div>
   <div class="topbar-client" id="topbar-client"></div>
   <button class="topbar-back" id="topbar-back" onclick="goHome()">← Todos los clientes</button>
+  <button class="topbar-back" id="topbar-logout" onclick="doLogout()" style="margin-left:8px;">Salir</button>
 </div>
 
 <!-- APP BODY -->
@@ -1406,8 +1420,33 @@ document.addEventListener('wheel', function(e) {
 // ── INIT ──
 async function init() {
   sb = supabase.createClient(SB_URL, SB_KEY);
+  // Si cierra sesión (o caduca) en cualquier momento, volver al login
+  sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') showLogin(); });
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { showLogin(); return; }
+  hideLogin();
   await loadClients();
 }
+
+// ── LOGIN ──
+function showLogin() { const o = document.getElementById('login-overlay'); if (o) o.style.display = 'flex'; }
+function hideLogin() { const o = document.getElementById('login-overlay'); if (o) o.style.display = 'none'; }
+async function doLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn'), err = document.getElementById('login-err');
+  err.textContent = ''; btn.disabled = true; btn.textContent = 'Entrando...';
+  const { error } = await sb.auth.signInWithPassword({
+    email: document.getElementById('login-email').value.trim(),
+    password: document.getElementById('login-pass').value
+  });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (error) { err.textContent = 'Email o contraseña incorrectos'; return false; }
+  document.getElementById('login-pass').value = '';
+  hideLogin();
+  await loadClients();
+  return false;
+}
+async function doLogout() { await sb.auth.signOut(); }
 
 async function loadClients() {
   try {
