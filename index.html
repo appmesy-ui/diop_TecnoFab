@@ -2426,8 +2426,12 @@ async function generateReport(confirmedOperationalImpact) {
 
   let lockedNumbersCtx = '\n=== NÚMEROS YA CALCULADOS Y VALIDADOS — ÚSALOS EXACTOS, NO LOS RECALCULES NI LOS CAMBIES ===\n';
   if (opImpact && opImpact.total) {
-    lockedNumbersCtx += `Impacto operativo anual (validado por el consultor): ${opImpact.total.toLocaleString('es-ES')}€\n`;
+    lockedNumbersCtx += `Impacto operativo anual BRUTO y ORIENTATIVO (no auditado ni deduplicado): ${opImpact.total.toLocaleString('es-ES')}€\n`;
     lockedNumbersCtx += `Desglose: ${opImpact.components.map(c=>`${c.label} ${c.value.toLocaleString('es-ES')}€`).join(', ')}\n`;
+  }
+  if (opImpact) {
+    const auditFlags = auditM7EconomicIntegrity(opImpact);
+    if (auditFlags.length) lockedNumbersCtx += `\nADVERTENCIAS DE INTEGRIDAD ECONÓMICA (no afirmar que están resueltas):\n${auditFlags.map(w=>'- '+w.title+': '+w.detail).join('\n')}\n`;
   }
   if (m7QuickWins.length) {
     lockedNumbersCtx += `\nQUICK WINS YA CALCULADOS (no inventes números nuevos, solo redacta título y descripción para cada uno, en este orden):\n`;
@@ -2676,6 +2680,7 @@ Devuelve SOLO el JSON, sin texto adicional.`;
     })() : '—';
 
     r.operational_impact_breakdown = opImpact ? opImpact.components : [];
+    r.economic_integrity_flags = opImpact ? auditM7EconomicIntegrity(opImpact) : [];
 
     r.ofi_resumen = r.ofi_resumen || {};
     r.ofi_resumen.score = ofiScore;
@@ -8320,8 +8325,8 @@ function calcFreeTrialBreakdown() {
   const operatorHourCostRaw = a('fab', 'operator_hour_cost');
   const operatorHourCost = parseFloat(operatorHourCostRaw) || 22; // fallback benchmark, marcado como tal
   const operatorHourCostIsReal = !!parseFloat(operatorHourCostRaw);
-  const operatorCostAnomaly = operatorHourCostIsReal && operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE;
-  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario es muy superior al rango típico (15-40€/h, incluso con overhead). Podría ser un error de unidad (¿mensual en vez de por hora?). Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)"` : null;
+  const operatorCostAnomaly = operatorHourCostIsReal && (operatorHourCost < 8 || operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE);
+  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario está fuera del rango de contraste orientativo (8–100€/h, no un benchmark universal). Confirma unidad, cargas y alcance antes de usar el importe. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)"` : null;
 
   const economicInputs = resolveDIOPEconomicInputs(cid);
   const productiveWeeks = economicInputs.weeks.value;
@@ -8350,8 +8355,8 @@ function calcFreeTrialBreakdown() {
   const lineCostEur = economicInputs.lineCost.value;
   const lineCostIsReal = economicInputs.lineCost.isReal;
   const lineCostInputLabel = `${lineCostEur}€/h (${economicInputs.lineCost.source}${economicInputs.lineCost.input ? ': '+economicInputs.lineCost.input : ''})`;
-  const lineCostAnomaly = lineCostIsReal && lineCostEur > LINE_COST_MAX_PLAUSIBLE;
-  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada es muy superior al rango típico en pymes F&B (200-2.000€/h). Podría ser un error de unidad o de cifra. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)"` : null;
+  const lineCostAnomaly = lineCostIsReal && (lineCostEur < 50 || lineCostEur > LINE_COST_MAX_PLAUSIBLE);
+  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada está fuera del rango de contraste orientativo (50–3.000€/h, no un benchmark universal). Confirma unidad, componentes del coste y alcance. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)"` : null;
 
   const maxWeeklyHours = getMaxWeeklyOpHours(cid);
   const downtimeImpliedWeeklyHours = downtimeH * scopeFactor;
@@ -8379,7 +8384,7 @@ function calcFreeTrialBreakdown() {
   const scrapBench = ftBenchmarkCheck(scrapValue, cogsBase, 'scrap_pct_cogs', sector);
   components.push({
     key: 'scrap', label: 'Merma / desperdicio',
-    inputSummary: `merma: "${scrapRaw||'sin dato'}" → ${(scrapPctNum*100).toFixed(1)}% · coste de producto (COGS): ${cogsIsReal ? (cogsPct*100).toFixed(0)+'% real' : '40% benchmark sector (sin dato)'} sobre facturación`,
+    inputSummary: `merma: "${scrapRaw||'sin dato'}" → ${(scrapPctNum*100).toFixed(1)}% · coste de producto (COGS): ${cogsIsReal ? (cogsPct*100).toFixed(0)+'% estimado a partir de rango declarado' : '40% benchmark sector (sin dato)'} sobre facturación`,
     formula: `${(scrapPctNum*100).toFixed(1)}% × ${cogsBase.toLocaleString('es-ES')}€ (COGS)`,
     value: scrapValue,
     isEstimate: !cogsIsReal || !scrapRaw,
@@ -8391,7 +8396,7 @@ function calcFreeTrialBreakdown() {
   const reworkValue = Math.round(reworkHoursWeek * operatorHourCost * productiveWeeks);
   components.push({
     key: 'rework', label: 'Retrabajo / reproceso',
-    inputSummary: `${reworkHoursWeek}h/semana de retrabajo · coste operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h real' : '22€/h benchmark (sin dato)'}`,
+    inputSummary: `${reworkHoursWeek}h/semana de retrabajo · coste operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h declarado' : '22€/h benchmark (sin dato)'}`,
     formula: `${reworkHoursWeek}h × ${operatorHourCost}€/h × ${productiveWeeks} sem`,
     value: reworkValue,
     isEstimate: !operatorHourCostIsReal,
@@ -8429,7 +8434,7 @@ function calcFreeTrialBreakdown() {
   const rotationValue = Math.round(newOperatorsYear * onboardingWeeksNum * operatorHourCost * 20);
   const rotationComponent = {
     key: 'rotation', label: 'Coste de rotación / onboarding',
-    inputSummary: `${newOperatorsYear} operarios nuevos/año · onboarding "${onboardingRaw||'sin dato'}" (${onboardingWeeksNum} sem) · coste operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h real' : '22€/h benchmark'} · 20h/sem de dedicación a formación (supuesto)`,
+    inputSummary: `${newOperatorsYear} operarios nuevos/año · onboarding "${onboardingRaw||'sin dato'}" (${onboardingWeeksNum} sem) · coste operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h declarado' : '22€/h benchmark'} · 20h/sem de dedicación a formación (supuesto)`,
     formula: `${newOperatorsYear} × ${onboardingWeeksNum} sem × ${operatorHourCost}€/h × 20h/sem`,
     value: rotationValue,
     isEstimate: true,
@@ -9065,8 +9070,8 @@ function calcM7OperationalImpact() {
   const operatorHourCostRaw = a('fab', 'operator_hour_cost');
   const operatorHourCost = parseFloat(operatorHourCostRaw) || 22;
   const operatorHourCostIsReal = !!parseFloat(operatorHourCostRaw);
-  const operatorCostAnomaly = operatorHourCostIsReal && operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE;
-  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario es muy superior al rango típico (15-40€/h, incluso con overhead). Podría ser un error de unidad (¿mensual en vez de por hora?). Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)"` : null;
+  const operatorCostAnomaly = operatorHourCostIsReal && (operatorHourCost < 8 || operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE);
+  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario está fuera del rango de contraste orientativo (8–100€/h, no un benchmark universal). Confirma unidad, cargas y alcance antes de usar el importe. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)"` : null;
 
   const economicInputs = resolveDIOPEconomicInputs(cid);
   const productiveWeeks = economicInputs.weeks.value;
@@ -9091,8 +9096,8 @@ function calcM7OperationalImpact() {
   const lineCostEur = economicInputs.lineCost.value;
   const lineCostIsReal = economicInputs.lineCost.isReal;
   const lineCostSource = `${economicInputs.lineCost.source}${economicInputs.lineCost.input ? ': '+economicInputs.lineCost.input : ''} → ${lineCostEur}€/h`;
-  const lineCostAnomaly = lineCostIsReal && lineCostEur > LINE_COST_MAX_PLAUSIBLE;
-  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada es muy superior al rango típico en pymes F&B (200-2.000€/h). Podría ser un error de unidad o de cifra. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)"` : null;
+  const lineCostAnomaly = lineCostIsReal && (lineCostEur < 50 || lineCostEur > LINE_COST_MAX_PLAUSIBLE);
+  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada está fuera del rango de contraste orientativo (50–3.000€/h, no un benchmark universal). Confirma unidad, componentes del coste y alcance. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)"` : null;
 
   // ── COMPONENTE 1: Paradas ──
   const downtimeH = economicInputs.downtime.value;
@@ -9120,9 +9125,9 @@ function calcM7OperationalImpact() {
   const scrapValue = Math.round(scrapPctNum * cogsBase);
   components.push({
     key: 'scrap', label: 'Merma / desperdicio',
-    inputSummary: `merma "${scrapRaw||'sin dato'}" (${(scrapPctNum*100).toFixed(1)}%) · COGS: ${cogsIsReal ? (cogsPct*100).toFixed(0)+'% real' : '40% benchmark'} sobre facturación`,
+    inputSummary: `merma "${scrapRaw||'sin dato'}" (${(scrapPctNum*100).toFixed(1)}%) · COGS: ${cogsIsReal ? (cogsPct*100).toFixed(0)+'% estimado a partir de rango declarado' : '40% benchmark'} sobre facturación`,
     formula: `${(scrapPctNum*100).toFixed(1)}% × ${cogsBase.toLocaleString('es-ES')}€ (COGS)`,
-    value: scrapValue, isEstimate: !cogsIsReal || !scrapRaw
+    value: scrapValue, isEstimate: true
   });
 
   // ── COMPONENTE 3: Retrabajo ──
@@ -9130,7 +9135,7 @@ function calcM7OperationalImpact() {
   const reworkValue = Math.round(reworkHoursWeek * operatorHourCost * productiveWeeks);
   components.push({
     key: 'rework', label: 'Retrabajo / reproceso',
-    inputSummary: `${reworkHoursWeek}h/sem retrabajo · operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h real' : '22€/h benchmark'}`,
+    inputSummary: `${reworkHoursWeek}h/sem retrabajo · operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h declarado' : '22€/h benchmark'}`,
     formula: `${reworkHoursWeek}h × ${operatorHourCost}€/h × ${productiveWeeks} sem`,
     value: reworkValue, isEstimate: !operatorHourCostIsReal,
     anomaly: operatorCostAnomaly, anomalyNote: operatorCostAnomalyNote
@@ -9170,6 +9175,27 @@ function calcM7OperationalImpact() {
   const total = components.reduce((s,c) => s + c.value, 0);
 
   return { components, total, meta: { revenueNum, operatorHourCost, lineCostEur, productiveWeeks, scopeLabel } };
+}
+
+// DIOP Next 3.4 · Control de integridad: ADVERTIR, nunca reconciliar cifras automáticamente.
+// Un valor fuera del rango de contraste es una señal de revisión, no prueba de error.
+function auditM7EconomicIntegrity(impact) {
+  const warnings = [];
+  if (!currentClient || !impact) return warnings;
+  const cid = currentClient.id;
+  const a = (session,key) => allAnswers[`${cid}_${session}_${key}`] || '';
+  const ops = Number(impact.meta?.operatorHourCost);
+  const line = Number(impact.meta?.lineCostEur);
+  if (ops > 0 && (ops < 8 || ops > 100)) warnings.push({code:'UNIT_OPERATOR',title:'Validar unidad de coste de operario',detail:`Se utiliza ${ops} €/h. Confirmar que corresponde al coste horario completo y no a otra unidad; el umbral es una señal orientativa, no un estándar sectorial.`});
+  if (line > 0 && (line < 50 || line > 3000)) warnings.push({code:'UNIT_LINE',title:'Validar unidad de coste de línea',detail:`Se utiliza ${line} €/h. Confirmar si incluye mano de obra, amortización, costes indirectos y si corresponde a una línea o a toda la planta.`});
+  if (impact.components.some(c=>c.key==='scrap' && c.value>0)) warnings.push({code:'SCRAP_BASE',title:'Merma y base COGS pendientes de conciliación',detail:'El porcentaje de merma procede de un intervalo declarado; el COGS se estima a partir de otro intervalo y de la facturación estimada. Verificar si la merma mide peso, unidades o valor, y si procede aplicarla al COGS anual completo. Evitar comunicar este importe como pérdida auditada.'});
+  const stops = impact.components.find(c=>c.key==='downtime');
+  const failures = impact.components.find(c=>c.key==='maintenance');
+  if (stops?.value>0 && failures?.value>0) warnings.push({code:'OVERLAP_STOPS',title:'Posible doble cómputo: paradas y averías graves',detail:'Las averías graves pueden formar parte de las horas de parada no planificada. El total mostrado es una suma bruta de componentes; deduplicar con el registro de incidencias antes de presentar una pérdida consolidada.'});
+  if (impact.components.find(c=>c.key==='scrap' && c.value>0) && impact.components.find(c=>c.key==='rework' && c.value>0)) warnings.push({code:'OVERLAP_QUALITY',title:'Comprobar solapamiento entre merma y retrabajo',detail:'Confirmar que los costes de retrabajo no estén incluidos ya en el coste de merma/no calidad y que los costes de personal añadidos son incrementales.'});
+  const portfolio=calcPortfolioEconomics(m6Data[cid]?.backlog || []);
+  if (portfolio.totalBase>0) warnings.push({code:'M6_BRIDGE',title:'Conciliar ahorro del portfolio M6 con pérdidas M7',detail:`M6 estima ${portfolio.totalBase.toLocaleString('es-ES')} €/año en escenario base. Verificar por iniciativa la pérdida de origen, la fracción recuperable, el plazo y posibles ahorros repetidos. M6 no se resta automáticamente de M7 ni se presume que el 100% de las pérdidas sea recuperable.`});
+  return warnings;
 }
 
 // ══════════════════════════════════════════════════════
@@ -9294,6 +9320,7 @@ function m7ImpactRow(c) {
       <div style="font-size:12.5px;font-weight:600;color:var(--text);">${c.label}</div>
       ${c.isEstimate ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(186,117,23,0.12);color:var(--amber);font-weight:600;flex-shrink:0;">CON SUPUESTOS</span>` : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(29,158,117,0.12);color:var(--green);font-weight:600;flex-shrink:0;">BASE DECLARADA</span>`}
     </div>
+    ${c.anomalyNote ? `<div style="font-size:10.5px;color:var(--amber);padding:7px 9px;border-radius:6px;background:rgba(186,117,23,.08);margin-bottom:6px;line-height:1.45;">${c.anomalyNote}</div>` : ''}
     <div style="font-size:10.5px;color:var(--text3);line-height:1.45;margin-bottom:3px;">${c.inputSummary}</div>
     <div style="font-size:9.5px;color:var(--text4);font-family:var(--mono);margin-bottom:7px;">${c.formula}</div>
     <div style="display:flex;align-items:center;gap:8px;">
@@ -9323,15 +9350,20 @@ function renderM7ImpactReview(skipScroll) {
       <div style="width:36px;height:36px;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:16px;">🔍</div>
       <div>
         <div style="font-size:15px;font-weight:600;color:var(--text);">Revisar impacto operativo</div>
-        <div style="font-size:11.5px;color:var(--text3);">Este número alimenta el resumen ejecutivo y el ROI del informe. Ajústalo antes de generar.</div>
+        <div style="font-size:11.5px;color:var(--text3);">Esta suma bruta alimenta el resumen ejecutivo; el ROI de M6 se calcula por separado. Comprueba solapamientos antes de generar.</div>
       </div>
     </div>
     <div style="padding:10px 14px;background:rgba(0,173,181,0.05);border:0.5px solid rgba(0,173,181,0.15);border-radius:var(--r-sm);margin:14px 0 18px;font-size:11px;color:var(--text2);line-height:1.5;">
       El resto del informe (OFI™, VSM y portfolio M6) utiliza cálculos de otros módulos. Aquí se revisa el impacto operativo: BASE DECLARADA no significa dato verificado; CON SUPUESTOS indica uso de referencias o hipótesis. Los importes son orientativos hasta contrastar sus evidencias.
     </div>
+    ${auditM7EconomicIntegrity(m7ImpactEdited).length ? `<div style="padding:14px 16px;border:1px solid rgba(186,117,23,.38);background:rgba(186,117,23,.07);border-radius:10px;margin-bottom:15px;">
+      <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;">Control de integridad económica · ${auditM7EconomicIntegrity(m7ImpactEdited).length} puntos a contrastar</div>
+      ${auditM7EconomicIntegrity(m7ImpactEdited).map(w=>`<div style="margin-bottom:9px;font-size:11px;line-height:1.5;"><strong style="color:var(--text);">${w.title}</strong><div style="color:var(--text2);">${w.detail}</div></div>`).join('')}
+      <div style="font-size:10px;color:var(--amber);">La confirmación autoriza una estimación preliminar, no certifica ni elimina estas observaciones.</div>
+    </div>` : ''}
     ${m7ImpactEdited.components.map(c => m7ImpactRow(c)).join('')}
     <div style="padding:13px 15px;background:rgba(0,173,181,0.06);border:1px solid var(--teal);border-radius:var(--r-sm);margin:12px 0 20px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:12px;color:var(--text2);font-weight:600;">Total impacto operativo</span>
+      <span style="font-size:12px;color:var(--text2);font-weight:600;">Total bruto orientativo · sin conciliación</span>
       <span style="font-size:19px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${m7ImpactEdited.total.toLocaleString('es-ES')}€</span>
     </div>
     <div style="display:flex;gap:10px;">
