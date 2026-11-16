@@ -2042,6 +2042,37 @@ function switchReportTab(tab) {
   if (tab === 'matriz') renderMatrixTab();
 }
 
+// DIOP 3.6b — M6 autoriza prioridades; los quick wins derivados de M7 son hipótesis.
+function buildM6RoadmapSnapshot(backlog, ttl){
+  return (backlog||[]).map((b,i)=>{
+    const gate=getInitiativeExecutionGate(b,ttl);
+    const rim=(Number(b.impact)>0&&Number(b.readiness)>0)
+      ?getRIMZone(Number(b.impact),Number(b.readiness)).zone:'SIN EVALUAR';
+    return {order:i+1,name:String(b.name||`Iniciativa ${i+1}`),layer:b.layer||'L1',
+      rim,decision:gate.decision,reason:gate.reason,
+      prereq_status:b.prereq_status||'pendiente',source:'M6',launch:gate.launch};
+  });
+}
+function m6RoadmapNarrative(steps){
+  if(!steps.length)return 'Sin iniciativas aprobadas en M6. Toda propuesta adicional es exploratoria y requiere evaluación del consultor.';
+  const intro='Secuencia de iniciativas seleccionadas por el consultor en M6. La prioridad RIM expresa atractivo relativo, no autorización de ejecución. El orden conserva el backlog M6 y no implica un calendario comprometido.';
+  return intro+'\n'+steps.map(s=>`${s.order}. ${s.name} (${s.layer}): RIM ${s.rim}; ejecución ${s.decision}. ${s.reason}.`).join('\n');
+}
+function markM7ExploratoryQuickWins(quickWins,generatedNarrative){
+  return (quickWins||[]).map((qw,i)=>({
+    titulo:generatedNarrative?.[i]?.titulo||qw.accion,
+    descripcion:generatedNarrative?.[i]?.descripcion||qw.accion,
+    proceso_ref:generatedNarrative?.[i]?.proceso_ref||qw.componenteLabel,
+    ttl_capa:generatedNarrative?.[i]?.ttl_capa||'L1',prioridad:i+1,
+    fuente:'Hipótesis metodológica NO VALIDADA · no aprobada en M6',
+    estado:'PROPUESTA EXPLORATORIA',
+    impacto_euros:'No cuantificado como ahorro validado',
+    // Auditabilidad: no se elimina el cálculo anterior; queda solo en el JSON técnico.
+    simulacion_interna:{impacto_orientativo:qw.impactoLabel,calculo:qw.calculoVisible,fuente_original:qw.fuente},
+    calculoVisible:'Estimación hipotética excluida del business case hasta validar base, recuperabilidad y no duplicidad.'
+  }));
+}
+
 function normalizeReportProcesos(r) {
   if (!r) return r;
   // Los procesos narrados por IA nunca reemplazan las iniciativas evaluadas en M6.
@@ -2454,8 +2485,8 @@ async function generateReport(confirmedOperationalImpact) {
     lockedNumbersCtx += `\nCONCILIACIÓN ECONÓMICA: ${reconciliation.status}. Pérdida conciliada: ${reconciliation.consolidated===null?'NO DETERMINADA':reconciliation.consolidated.toLocaleString('es-ES')+'€'}. Beneficio potencial recuperable: ${reconciliation.recoverable===null?'NO DETERMINADO':reconciliation.recoverable.toLocaleString('es-ES')+'€'}. No equiparar beneficio potencial a flujo de caja ni ahorro realizado. No confundir con el portfolio M6.\n`;
   }
   if (m7QuickWins.length) {
-    lockedNumbersCtx += `\nQUICK WINS YA CALCULADOS (no inventes números nuevos, solo redacta título y descripción para cada uno, en este orden):\n`;
-    m7QuickWins.forEach((qw,i) => { lockedNumbersCtx += `${i+1}. Componente: ${qw.componenteLabel} · Acción: ${qw.accion} · Ahorro: ${qw.impactoLabel} · Cálculo: ${qw.calculoVisible}\n`; });
+    lockedNumbersCtx += `\nOPORTUNIDADES EXPLORATORIAS M7 — NO SON QUICK WINS APROBADOS NI AHORROS VALIDADOS:\n`;
+    m7QuickWins.forEach((qw,i) => { lockedNumbersCtx += `${i+1}. Componente: ${qw.componenteLabel} · Acción hipotética: ${qw.accion}. NO atribuir cifra de ahorro, ROI ni autorización de ejecución.\n`; });
   }
   lockedNumbersCtx += `OFI™ Score: ${ofiScore}/100 — Zona: ${ofiZone} — Capa TTL™: ${ofiTTL}\n`;
   lockedNumbersCtx += `D1 Rendimiento: ${d1}/25 · D2 Datos: ${d2}/25 · D3 Digital: ${d3}/25 · D4 Organización: ${d4}/25\n`;
@@ -2557,7 +2588,7 @@ REGLAS CRÍTICAS:
 3. Si hay datos de VSM, dedica un párrafo específico al flujo de valor: lead time, ratio VA, cuellos de botella, y qué significa económicamente.
 4. Si hay datos de OFI, usa el score y las dimensiones para estructurar el análisis. El vector de fricción principal debe ser protagonista.
 5. Conecta SIEMPRE problemas operativos con impacto en negocio: margen, capacidad, riesgo, escalabilidad.
-6. Los quick_wins YA ESTÁN CALCULADOS en "QUICK WINS YA CALCULADOS" arriba (componente, acción, ahorro). Tu único trabajo es escribir título en lenguaje CEO y descripción de cómo implementarlo. La descripción NO puede ser la explicación genérica de la acción-tipo (ej. "aplicar SMED básico separando tareas internas y externas") — debe decir cómo se aplica ESO en el proceso/línea/situación concreta de este cliente, citando el detalle real del diagnóstico. NO inventes ahorros nuevos, NO cambies el orden.
+6. Los quick_wins de M7 son OPORTUNIDADES EXPLORATORIAS, no iniciativas aprobadas en M6 ni ahorros validados. Escribe un título y descripción específicos sin adjudicar ROI, euros, autorización ni mejora porcentual típica. Tu trabajo es escribir título en lenguaje CEO y descripción de cómo implementarlo. La descripción NO puede ser la explicación genérica de la acción-tipo (ej. "aplicar SMED básico separando tareas internas y externas") — debe decir cómo se aplica ESO en el proceso/línea/situación concreta de este cliente, citando el detalle real del diagnóstico. NO inventes ahorros nuevos, NO cambies el orden.
 7. Si hay iniciativas en M6, referéncialas en las recomendaciones de implementación de los quick wins.
 8.a BENCHMARKS: las tablas sectoriales internas de DIOP NO cuentan con fuente, fecha, muestra ni comparabilidad verificadas. Está PROHIBIDO afirmar media sectorial, percentil top, desempeño mejor/peor que el sector o brechas monetarias a partir de esas tablas. Si mencionas sus rangos, identifícalos como referencia interna NO VALIDADA y sin conclusión comparativa. No inventes ninguna cifra sectorial nueva, fuente ni top performer.
 8. NO inventes datos numéricos. Los números de impacto operativo, OFI Score y portfolio M6 YA ESTÁN CALCULADOS arriba en "NÚMEROS YA CALCULADOS Y VALIDADOS"; calculado no significa auditado — úsalos literalmente en tu texto, nunca generes una cifra distinta para el mismo concepto.
@@ -2629,7 +2660,7 @@ Devuelve un JSON con este formato exacto:
   "siguiente_pregunta_ceo": "la pregunta más importante para la próxima reunión"
 }
 
-Para quick_wins: uno por cada quick win YA CALCULADO arriba (mismo orden, mismo número — normalmente 4).
+Para quick_wins: uno por cada oportunidad exploratoria identificada (mismo orden); no atribuirle ahorro validado ni aprobación de M6.
 Para herramientas_mercado incluye exactamente 3 herramientas reales para pymes.
 Para riesgos_principales incluye exactamente 3.
 
@@ -2743,17 +2774,13 @@ Devuelve SOLO el JSON, sin texto adicional.`;
       r.benchmark_sectorial.estado_referencia = 'NO_VALIDADO';
     }
 
+    // La IA no puede alterar el backlog ni declarar ejecutable una oportunidad.
+    r.roadmap_m6 = buildM6RoadmapSnapshot(m6Data[currentClient.id]?.backlog||[],ofiTTL);
+    r.roadmap_narrativo_ia_no_aprobado = r.roadmap_narrativo || '';
+    r.roadmap_narrativo = m6RoadmapNarrative(r.roadmap_m6);
+    r.roadmap_origen = 'M6 · decisión del consultor';
     if (m7QuickWins.length) {
-      r.quick_wins = m7QuickWins.map((qw, i) => ({
-        titulo: r.quick_wins?.[i]?.titulo || qw.accion,
-        descripcion: r.quick_wins?.[i]?.descripcion || qw.accion,
-        proceso_ref: r.quick_wins?.[i]?.proceso_ref || qw.componenteLabel,
-        ttl_capa: r.quick_wins?.[i]?.ttl_capa || 'L1',
-        prioridad: i + 1,
-        impacto_euros: qw.impactoLabel,
-        calculoVisible: qw.calculoVisible,
-        fuente: qw.fuente
-      }));
+      r.quick_wins = markM7ExploratoryQuickWins(m7QuickWins,r.quick_wins);
     }
 
     await sb.from('diop_reports').insert([
@@ -2990,7 +3017,7 @@ function renderReport(r, reportsHistoryHtml = '') {
   const procesos = r.procesos || [];
   const displayTools = tools.filter(t => !/\b(SAP|NetSuite|Oracle|Dynamics 365)\b/i.test(t?.nombre || ''));
   const roadmapText = (r.roadmap_narrativo || '').trim();
-  const roadmapSteps = roadmapText ? (roadmapText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [roadmapText]).map(x=>x.trim()).filter(Boolean) : [];
+  const roadmapSteps = Array.isArray(r.roadmap_m6) ? (r.roadmap_m6.length ? r.roadmap_m6.map(s=>`${s.name} (${s.layer}) · RIM ${s.rim} · Ejecución: ${s.decision}. ${s.reason}`) : ['M6 sin iniciativas seleccionadas: propuestas de transformación pendientes de aprobación del consultor']) : (roadmapText ? (roadmapText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [roadmapText]).map(x=>x.trim()).filter(Boolean) : []);
   const formatMoneyText = (value) => esc(value || '—').replace(/(\d[\d.,]*)\s*€/g, (_, raw) => {
     const digits = raw.replace(/\D/g,'');
     return digits ? Number(digits).toLocaleString('es-ES') + ' €' : raw + ' €';
@@ -3486,12 +3513,12 @@ function renderReport(r, reportsHistoryHtml = '') {
             ${econ.riskCount?`<div style="width:1px;height:20px;background:#dde3e1;"></div><div style="font-size:11px;color:var(--red);">${econ.riskCount} iniciativa${econ.riskCount>1?'s':''} Cat D (riesgo)</div>`:''}
           </div>
           <div class="diop-list">
-            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${i===0?chip('MAYOR ROI','var(--green)'):''}</div><div style="display:flex;gap:6px;">${chip(`💰 ${formatMoneyText(qw.impacto_euros || '—')}`, i===0?'var(--red)':i===1?'var(--amber)':'var(--green)')}</div></div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:#8a9793;margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
+            ${qws.map((qw, i) => `<div class="diop-list-item" style="${i===0?'border:1.5px solid var(--green);background:rgba(29,158,117,0.06);':''}"><div class="diop-list-top"><div class="diop-list-title">${i+1}. ${esc(qw.titulo)} ${qw.estado==='PROPUESTA EXPLORATORIA'?chip('NO VALIDADA','var(--amber)'):(i===0?chip('MAYOR ROI','var(--green)'):'')}</div><div style="display:flex;gap:6px;">${chip(esc(qw.impacto_euros || '—'), 'var(--amber)')}</div></div><div class="diop-list-desc">${esc(qw.descripcion)}</div>${qw.calculoVisible?`<div style="font-size:10px;color:#5a6b70;margin-top:6px;font-family:var(--mono);">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:9.5px;color:#8a9793;margin-top:2px;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div>`).join('') || '<div class="diop-muted">Sin quick wins generados.</div>'}
           </div>
         </div>
 
         <div class="diop-section diop-page-start">
-          <div class="diop-section-title"><h3>08 · Secuencia de transformación · Roadmap TTL™</h3></div>
+          <div class="diop-section-title"><h3>08 · Roadmap de M6 · Prioridad y viabilidad TTL™</h3></div>
           ${roadmapSteps.length ? `<div class="diop-roadmap">${roadmapSteps.map((step,i)=>`<div class="diop-roadmap-step"><strong>${String(i+1).padStart(2,'0')}</strong><span>${esc(step)}</span></div>`).join('')}</div>` : '<div class="diop-muted">Roadmap pendiente de generación.</div>'}
         </div>
 
@@ -4136,15 +4163,15 @@ ${confFindings.length ? `<div class="section no-break">
 </div>
 
 <div class="section no-break">
-  <h2>Quick Wins priorizados por impacto económico</h2>
-  <div style="font-size:8pt;color:#888;margin-bottom:3mm;">Ahorro mostrado = impacto anual una vez consolidado. El plazo de implementación depende de la complejidad de cada línea y se define en el diagnóstico completo.</div>
+  <h2>Oportunidades exploratorias · Pendientes de validación</h2>
+  <div style="font-size:8pt;color:#888;margin-bottom:3mm;">Las oportunidades automáticas no están aprobadas en M6. Sus simulaciones económicas no constituyen beneficios recuperables ni forman parte del business case.</div>
   ${qws.map((qw,i)=>`
   <div class="qw-item qw${i+1}" style="${i===0?'border:1.5pt solid #1D9E75;background:#f0faf7;':''}">
     <div class="qw-num qn${i+1}">${i+1}</div>
     <div>
-      <div class="qw-title">${qw.titulo||''} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div>
+      <div class="qw-title">${qw.titulo||''} ${qw.estado==='PROPUESTA EXPLORATORIA'?'<span style="font-size:7pt;color:#BA7517;">PROPUESTA NO VALIDADA</span>':(i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':'')}</div>
       <div class="qw-desc">${qw.descripcion||''}</div>
-      <div class="qw-meta" style="color:${['#E24B4A','#BA7517','#1D9E75'][i]}">💰 ${qw.impacto_euros||''}</div>
+      <div class="qw-meta" style="color:${['#E24B4A','#BA7517','#1D9E75'][i]}">${qw.impacto_euros||''}</div>
       ${qw.calculoVisible?`<div style="font-size:7pt;color:#999;margin-top:1mm;font-family:'Courier New',monospace;">Cálculo: ${qw.calculoVisible}</div>`:''}
       ${qw.fuente?`<div style="font-size:6.5pt;color:#aaa;font-style:italic;">Fuente: ${qw.fuente}</div>`:''}
     </div>
@@ -4204,7 +4231,7 @@ ${r.roadmap_narrativo || (r.riesgos_principales && r.riesgos_principales.length)
 </div>
 
 ${r.roadmap_narrativo ? `<div class="section no-break">
-  <h2>Roadmap de implementación por capas TTL™</h2>
+  <h2>Roadmap M6 · Prioridad y viabilidad de ejecución</h2>
   <div style="font-size:9pt;color:#0f1a2e;line-height:1.7;white-space:pre-wrap;text-align:justify;">${r.roadmap_narrativo}</div>
 </div>` : ''}
 
@@ -8250,7 +8277,7 @@ ${r.la_pregunta ? `<div class="section no-break">
 
 ${qws.length ? `<div class="section no-break">
   <div class="section-label">07 · Quick Wins priorizados</div>
-  <div style="font-size:8pt;color:#888;margin-bottom:3mm;">Ahorro mostrado = impacto anual una vez consolidado. El plazo de implementación depende de la complejidad de cada línea y se define en el diagnóstico completo.</div>
+  <div style="font-size:8pt;color:#888;margin-bottom:3mm;">Las oportunidades automáticas no están aprobadas en M6. Sus simulaciones económicas no constituyen beneficios recuperables ni forman parte del business case.</div>
   ${qws.map((qw,i) => `<div class="qw-item" style="${i===0?'border:1.5pt solid #1D9E75;background:#f0faf7;':''}"><div class="qw-num">${i+1}</div><div><div style="font-size:9.5pt;font-weight:bold;">${esc(qw.titulo)} ${i===0?'<span style="font-size:7pt;padding:1pt 5pt;border-radius:8pt;background:#1D9E75;color:#fff;font-weight:bold;">MAYOR ROI</span>':''}</div><div style="font-size:8.5pt;color:#666;margin:1mm 0;">${esc(qw.descripcion)}</div><div style="font-size:8pt;font-weight:bold;color:#1D9E75;">💰 ${esc(qw.impacto_euros)}</div>${qw.calculoVisible?`<div style="font-size:7pt;color:#999;margin-top:1mm;font-family:'Courier New',monospace;">Cálculo: ${esc(qw.calculoVisible)}</div>`:''}${qw.fuente?`<div style="font-size:6.5pt;color:#aaa;font-style:italic;">Fuente: ${esc(qw.fuente)}</div>`:''}</div></div>`).join('')}
 </div>` : ''}
 
