@@ -2543,7 +2543,8 @@ REGLAS CRÍTICAS:
 5. Conecta SIEMPRE problemas operativos con impacto en negocio: margen, capacidad, riesgo, escalabilidad.
 6. Los quick_wins YA ESTÁN CALCULADOS en "QUICK WINS YA CALCULADOS" arriba (componente, acción, ahorro). Tu único trabajo es escribir título en lenguaje CEO y descripción de cómo implementarlo. La descripción NO puede ser la explicación genérica de la acción-tipo (ej. "aplicar SMED básico separando tareas internas y externas") — debe decir cómo se aplica ESO en el proceso/línea/situación concreta de este cliente, citando el detalle real del diagnóstico. NO inventes ahorros nuevos, NO cambies el orden.
 7. Si hay iniciativas en M6, referéncialas en las recomendaciones de implementación de los quick wins.
-8. NO inventes datos numéricos. Los números de impacto operativo, OFI Score y portfolio M6 YA ESTÁN CALCULADOS arriba en "NÚMEROS YA CALCULADOS Y VALIDADOS" — úsalos literalmente en tu texto, nunca generes una cifra distinta para el mismo concepto.
+8.a BENCHMARKS: las tablas sectoriales internas de DIOP NO cuentan con fuente, fecha, muestra ni comparabilidad verificadas. Está PROHIBIDO afirmar media sectorial, percentil top, desempeño mejor/peor que el sector o brechas monetarias a partir de esas tablas. Si mencionas sus rangos, identifícalos como referencia interna NO VALIDADA y sin conclusión comparativa. No inventes ninguna cifra sectorial nueva, fuente ni top performer.
+8. NO inventes datos numéricos. Los números de impacto operativo, OFI Score y portfolio M6 YA ESTÁN CALCULADOS arriba en "NÚMEROS YA CALCULADOS Y VALIDADOS"; calculado no significa auditado — úsalos literalmente en tu texto, nunca generes una cifra distinta para el mismo concepto.
 9. Herramientas realistas para pymes. No SAP ni soluciones enterprise.
 10. Tono: directo, profesional, sin florituras. Como un consultor senior que lleva 20 años en esto.
 11. CRÍTICO: no devuelvas campos numéricos de score, euros o porcentajes en kpis/ofi_resumen — esos los rellenamos nosotros con los valores reales. Tu trabajo es solo narrativa y análisis cualitativo.
@@ -2578,9 +2579,9 @@ Devuelve un JSON con este formato exacto:
   },
   "benchmark_sectorial": {
     "kpi_referencia": "KPI más relevante del sector (ej: OEE, % mantenimiento reactivo)",
-    "valor_sector_medio": "media típica del sector, en texto (ej: '65-75%')",
-    "valor_sector_top": "top performers del sector, en texto",
-    "comentario": "1-2 frases sobre cómo se posiciona el cliente frente a esto, sin inventar el valor_cliente numérico exacto si no está en los datos"
+    "valor_sector_medio": "sin referencia sectorial validada",
+    "valor_sector_top": "sin fuente validada para top performers",
+    "comentario": "Explica que las referencias internas son NO VALIDADAS y que no puede afirmarse posición relativa sectorial sin fuente comparable"
   },
   "quick_wins": [
     {
@@ -2712,6 +2713,7 @@ Devuelve SOLO el JSON, sin texto adicional.`;
     }
 
     r.benchmark_items = calcM7RealBenchmark();
+    r.benchmark_referencia_trazabilidad = {...BENCHMARK_PROVENANCE};
     if (r.benchmark_items.length) {
       const first = r.benchmark_items[0];
       r.benchmark_sectorial = r.benchmark_sectorial || {};
@@ -2719,6 +2721,9 @@ Devuelve SOLO el JSON, sin texto adicional.`;
       r.benchmark_sectorial.valor_cliente = first.valor_cliente;
       r.benchmark_sectorial.valor_sector_medio = first.valor_sector;
       r.benchmark_sectorial.gap_euros = first.gap_label;
+      r.benchmark_sectorial.valor_sector_top = 'No disponible · sin fuente validada';
+      r.benchmark_sectorial.comentario = 'Referencia interna sin fuente, fecha, muestra ni comparabilidad verificadas. Sin clasificación sectorial concluyente.';
+      r.benchmark_sectorial.estado_referencia = 'NO_VALIDADO';
     }
 
     if (m7QuickWins.length) {
@@ -3149,7 +3154,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             <div class="diop-metric-note">Capa TTL: <strong style="color:#0f6e56;">${esc(ofi.ttl_capa || '—')}</strong></div>
           </div>
           <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${digitalColor};font-size:16px;">${esc(digitalHeadline)}</div><div class="diop-metric-note">${esc(digitalSubtitle)}</div></div>
-          <div class="diop-metric"><div class="diop-metric-label">Impacto anual orientativo</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark · No auditado</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Impacto anual orientativo</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + supuestos · No auditado</div></div>
           <div class="diop-metric"><div class="diop-metric-label">Escenario base orientativo</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">Confianza ${esc(econ.confidenceBand||'—')} · ${econ.paybackBase?'Payback '+econ.paybackBase+'m':'BNA anual'}</div></div>
         </div>
         <div class="diop-estimate-note"><strong>Estimación económica · Confianza ${esc(econ.confidenceBand||'—')}</strong><span>Importes orientativos sujetos a validación con evidencias operativas y financieras del cliente.</span></div>
@@ -3302,13 +3307,13 @@ function renderReport(r, reportsHistoryHtml = '') {
               <div class="diop-muted" style="margin-top:8px;">Siguiente nivel: ${esc(mad.siguiente_nivel || '—')}</div>
             </div>
             <div class="diop-evidence-card">
-              <strong>Posición vs sector — ${esc(currentClient.sector || '')}</strong>
+              <strong>Contraste exploratorio · ${esc(currentClient.sector || '')}</strong><p class="diop-muted" style="margin:6px 0 10px;line-height:1.5;">Rangos internos SIN FUENTE VALIDADA. No representan media sectorial ni permiten clasificar el rendimiento de esta planta.</p>
               ${(r.benchmark_items && r.benchmark_items.length) ? `<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
                 ${r.benchmark_items.map(it => {
-                  const col = it.esBueno ? 'var(--green)' : 'var(--red)';
+                  const col = it.referencia_estado==='NO_VALIDADO' ? '#a17a46' : (it.esBueno===true ? 'var(--green)' : it.esBueno===false ? 'var(--red)' : '#789095');
                   return `<div style="padding:8px 10px;background:#f4f6f5;border-radius:8px;border-left:3px solid ${col};">
                     <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:12px;font-weight:600;color:#16232a;">${esc(it.nombre)}</span><span style="font-size:10px;color:${col};font-weight:600;">${esc(it.gap_label)}</span></div>
-                    <div style="font-size:11px;color:#5a6b70;margin-top:2px;">Vosotros: ${esc(it.valor_cliente)} · Sector: ${esc(it.valor_sector)}</div>
+                    <div style="font-size:11px;color:#5a6b70;margin-top:2px;">Declarado: ${esc(it.valor_cliente)} · Referencia interna sin validar: ${esc(it.valor_sector)}</div>
                   </div>`;
                 }).join('')}
               </div>` : `<p class="diop-muted" style="margin-top:8px;">Sin datos suficientes en las sesiones para comparar contra el sector todavía.</p>`}
@@ -4066,16 +4071,16 @@ ${orgReadinessPDF}
   </div>
 
   <div class="section no-break">
-    <h2>Benchmark sectorial — ${esc(currentClient.sector||'')}</h2>
+    <h2>Referencias internas exploratorias — ${esc(currentClient.sector||'')}</h2><div style="font-size:8pt;color:#93601b;margin:2mm 0 4mm;">NO VALIDADO: sin fuente, año, muestra ni definición comparable. Los rangos no son medias estadísticas sectoriales y no permiten calificar el desempeño.</div>
     ${(r.benchmark_items && r.benchmark_items.length) ? `
       ${r.benchmark_items.map(it => {
-        const col = it.esBueno ? '#1D9E75' : '#E24B4A';
+        const col = it.referencia_estado==='NO_VALIDADO' ? '#a17a46' : (it.esBueno===true ? '#1D9E75' : it.esBueno===false ? '#E24B4A' : '#789095');
         return `<div style="padding:3mm 4mm;background:#f7fafa;border-left:3px solid ${col};border-radius:0 5px 5px 0;margin-bottom:2.5mm;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;">
             <span style="font-size:9.5pt;font-weight:bold;color:#0f1a2e;">${esc(it.nombre)}</span>
             <span style="font-size:8pt;font-weight:bold;color:${col};">${esc(it.gap_label)}</span>
           </div>
-          <div style="font-size:8.5pt;color:#5a6b70;margin-top:1mm;">Vosotros: ${esc(it.valor_cliente)} · Sector: ${esc(it.valor_sector)}</div>
+          <div style="font-size:8.5pt;color:#5a6b70;margin-top:1mm;">Declarado: ${esc(it.valor_cliente)} · Rango interno no validado: ${esc(it.valor_sector)}</div>
         </div>`;
       }).join('')}
     ` : `<div style="font-size:8.5pt;color:#8a9793;">Sin datos suficientes en las sesiones para comparar contra el sector todavía.</div>`}
@@ -4239,7 +4244,7 @@ ${r.riesgos_principales && r.riesgos_principales.length ? `<div class="section n
 </div>
 
 <div class="disclaimer no-break">
-  <p>Este informe ha sido elaborado por Tecno-Fab mediante la metodología DIOP (Diagnóstico de Impacto Operativo), incorporando los frameworks propietarios OFI™, TTL™ y RIM™. Los datos y estimaciones están basados en la información recogida durante las sesiones de diagnóstico, observación directa en planta (Gemba Walk), Value Stream Mapping y evaluación de madurez digital y organizacional del equipo de ${client.name}. Las cifras de ROI son estimaciones orientativas basadas en benchmarks del sector industrial y los 3 escenarios (conservador, base, optimista) con su factor de confianza asociado.</p>
+  <p>Este informe ha sido elaborado por Tecno-Fab mediante la metodología DIOP (Diagnóstico de Impacto Operativo), incorporando los frameworks propietarios OFI™, TTL™ y RIM™. Los datos y estimaciones están basados en la información recogida durante las sesiones de diagnóstico, observación directa en planta (Gemba Walk), Value Stream Mapping y evaluación de madurez digital y organizacional del equipo de ${client.name}. Las cifras de ROI son estimaciones orientativas construidas con datos declarados, supuestos identificados y tres escenarios (conservador, base, optimista) con su factor de confianza asociado. Las tablas de referencia sectorial internas no tienen fuente externa verificada y no sustentan por sí mismas el ROI.</p>
 </div>
 
 <div class="footer">
@@ -4714,6 +4719,19 @@ const SECTOR_BENCHMARKS = {
   'default': { oee:'55–75%', rechazo:'1–5%', mtbf:'300–800h', mttr:'2–5h', maint_react:'40–70%', changeover:'30–120 min', servicio:'90–97%', inv_rotation:'6–15x', stock_days:'20–60 días' }
 };
 
+// DIOP Next 3.5 · Registro de trazabilidad de referencias.
+// Ninguna cifra sectorial heredada posee fuente primaria verificable en el código.
+// Este registro NO les atribuye autor, año, muestra ni carácter estadístico.
+const BENCHMARK_PROVENANCE = Object.freeze({
+  tipo: 'Rango interno orientativo sin fuente externa verificada',
+  estado: 'NO_VALIDADO',
+  fuente: null,
+  anio: null,
+  muestra: null,
+  definicion_homogenea: false,
+  nota: 'No es una media sectorial, percentil ni estándar. No utilizar para concluir desempeño relativo o justificar un ROI.'
+});
+
 const RISK_LOG_DEFAULT = () => ([
   { risk: 'Datos históricos nivel D (inexistentes)', impact: 'Alto', mitigation: 'Activar Protocolo Sin Datos: muestreo propio 2–3 días. La ausencia de datos es en sí misma un hallazgo.', status: 'Abierto', evidence: '' },
   { risk: 'Stakeholder clave no disponible', impact: 'Alto', mitigation: 'Backup identificado en kick-off. No avanzar en el área sin el responsable.', status: 'Abierto', evidence: '' },
@@ -4777,7 +4795,7 @@ function renderF0() {
   html+=`</div>`;
 
   // SECTOR BENCHMARKS
-  html+=`<div class="vsm-section"><div class="vsm-section-title">📊 Benchmarks sectoriales — ${sector||'General'}</div><div class="vsm-section-sub">Referencia para contrastar con datos reales durante el diagnóstico</div>`;
+  html+=`<div class="vsm-section"><div class="vsm-section-title">📊 Referencias internas no validadas — ${sector||'General'}</div><div class="vsm-section-sub">Rangos internos de exploración. No son estándares ni estadísticas sectoriales validadas.</div><div style="padding:11px 13px;margin:10px 0 13px;background:#fff8ed;border:1px solid #efd6ac;border-radius:9px;font-size:11px;color:#875b22;line-height:1.6;"><strong>Referencia NO VALIDADA.</strong> Fuente, fecha, muestra y comparabilidad no documentadas. Úsala solo para formular preguntas; no califiques a la planta como mejor o peor que su sector basándote en estos rangos.</div>`;
   html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">`;
   const benchItems=[{l:'OEE global',v:bench.oee},{l:'Tasa rechazo',v:bench.rechazo},{l:'MTBF equipos',v:bench.mtbf},{l:'MTTR equipos',v:bench.mttr},{l:'% Mant. reactivo',v:bench.maint_react},{l:'Tiempo cambio',v:bench.changeover},{l:'Nivel servicio',v:bench.servicio},{l:'Rotación inv.',v:bench.inv_rotation},{l:'Días stock',v:bench.stock_days}];
   benchItems.forEach(b=>{
@@ -9480,88 +9498,80 @@ async function confirmM7ImpactAndGenerate() {
 // aparece en el benchmark, en vez de rellenarse con texto IA.
 // ══════════════════════════════════════════════════════
 
-function ftParseRangeMidpoint(rangeStr) {
-  // "55–70%" -> 62.5 ; "<0.1%" -> 0.1 ; "200–600h" -> 400
-  if (!rangeStr) return null;
-  const nums = rangeStr.match(/[\d.]+/g);
-  if (!nums || !nums.length) return null;
-  if (nums.length === 1) return parseFloat(nums[0]);
-  return (parseFloat(nums[0]) + parseFloat(nums[1])) / 2;
+// Evaluación por intervalos completos, nunca usando puntos medios ficticios.
+// La clasificación es geométrica respecto a un rango interno no validado;
+// no establece superioridad/inferioridad sectorial.
+function ftBenchmarkRange(rangeStr) {
+  const m=String(rangeStr||'').match(/(\d+(?:[.,]\d+)?)\s*[–-]\s*(\d+(?:[.,]\d+)?)/);
+  return m ? {lo:Number(m[1].replace(',','.')),hi:Number(m[2].replace(',','.'))} : null;
 }
-
-function ftPositionVsRange(clientVal, rangeStr) {
-  if (clientVal === null || !rangeStr) return null;
-  const nums = rangeStr.match(/[\d.]+/g);
-  if (!nums || nums.length < 2) return null;
-  const lo = parseFloat(nums[0]), hi = parseFloat(nums[1]);
-  if (clientVal < lo) return 'below';
-  if (clientVal > hi) return 'above';
-  return 'within';
+function ftRangeRelation(clientRange, reference) {
+  const br=ftBenchmarkRange(reference);
+  if (!clientRange || !br || !Number.isFinite(clientRange.lo) || !Number.isFinite(clientRange.hi)) return 'no_evaluable';
+  if (clientRange.hi < br.lo) return 'inferior_al_intervalo_interno';
+  if (clientRange.lo > br.hi) return 'superior_al_intervalo_interno';
+  return 'intervalos_solapados';
 }
-
+function ftBenchmarkItem(nombre, cliente, rangoCliente, rangoSector) {
+  const relacion=ftRangeRelation(rangoCliente,rangoSector);
+  const mensajes={
+    inferior_al_intervalo_interno:'Intervalo declarado por debajo de la referencia interna (no validada)',
+    superior_al_intervalo_interno:'Intervalo declarado por encima de la referencia interna (no validada)',
+    intervalos_solapados:'Intervalos solapados · sin conclusión de posición',
+    no_evaluable:'Sin comparación concluyente'
+  };
+  return {
+    nombre, valor_cliente:cliente, valor_sector:rangoSector, posicion:'no_validado',
+    esBueno:null, gap_label:mensajes[relacion], relacion_intervalos:relacion,
+    origen_cliente:'Intervalo declarado, sin medición independiente',
+    referencia_estado:BENCHMARK_PROVENANCE.estado,
+    referencia_tipo:BENCHMARK_PROVENANCE.tipo,
+    referencia_fuente:BENCHMARK_PROVENANCE.fuente,
+    referencia_anio:BENCHMARK_PROVENANCE.anio,
+    comparabilidad_validada:false
+  };
+}
 function calcM7RealBenchmark() {
   if (!currentClient) return [];
-  const cid = currentClient.id;
-  const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
-  const sector = currentClient.sector || 'default';
-  const bench = SECTOR_BENCHMARKS[sector] || SECTOR_BENCHMARKS['default'];
+  const cid=currentClient.id;
+  const a=(sess,qid)=>allAnswers[`${cid}_${sess}_${qid}`] || '';
+  const sector=currentClient.sector||'default';
+  const bench=SECTOR_BENCHMARKS[sector]||SECTOR_BENCHMARKS['default'];
+  const items=[];
+  // No convertir rangos abiertos en estimaciones de punto medio inventadas.
+  const oeeRanges={
+    'menos del 50%':{lo:0,hi:50}, '50% - 65%':{lo:50,hi:65},
+    '65% - 75%':{lo:65,hi:75}, '75% - 85%':{lo:75,hi:85},
+    'más del 85%':{lo:85,hi:100}
+  };
+  const oeeRaw=a('fab','oee_current')||a('sys','oee_current');
+  if (oeeRanges[oeeRaw]) items.push(ftBenchmarkItem('OEE global',oeeRaw,oeeRanges[oeeRaw],bench.oee));
 
-  const items = [];
+  const scrapRanges={
+    'menos del 2%':{lo:0,hi:2}, '2% - 5%':{lo:2,hi:5},
+    '5% - 10%':{lo:5,hi:10}, '10% - 20%':{lo:10,hi:20},
+    'más del 20%':{lo:20,hi:100}
+  };
+  const scrapRaw=a('fab','scrap_pct');
+  if(scrapRanges[scrapRaw]) items.push(ftBenchmarkItem('Tasa de rechazo / merma',scrapRaw,scrapRanges[scrapRaw],bench.rechazo));
 
-  // ── OEE ──
-  const oeeRaw = a('fab', 'oee_current') || a('sys', 'oee_current');
-  const oeeMap = {'menos del 50%':40,'50% - 65%':57.5,'65% - 75%':70,'75% - 85%':80,'más del 85%':90};
-  const oeeClient = oeeMap[oeeRaw];
-  if (oeeClient !== undefined) {
-    const pos = ftPositionVsRange(oeeClient, bench.oee);
-    items.push({
-      nombre: 'OEE global', valor_cliente: oeeRaw, valor_sector: bench.oee,
-      posicion: pos, // 'below' = peor que el sector (para OEE, más bajo es peor)
-      esBueno: pos !== 'below',
-      gap_label: pos === 'below' ? 'por debajo del sector' : pos === 'above' ? 'por encima del sector' : 'dentro del rango del sector'
-    });
+  const maintRanges={
+    'Casi todo reactivo (+80%)':{lo:80,hi:100},
+    'Mayoría reactivo (50-80%)':{lo:50,hi:80},
+    'Mitad y mitad':{lo:45,hi:55},
+    'Mayoría preventivo (50-80%)':{lo:20,hi:50},
+    'Casi todo preventivo (+80%)':{lo:0,hi:20}
+  };
+  const maintRaw=a('sys','maintenance_type_pct');
+  if(maintRanges[maintRaw]) items.push(ftBenchmarkItem('% Mantenimiento reactivo',maintRaw,maintRanges[maintRaw],bench.maint_react));
+
+  const changeoverRaw=a('fab','changeover_time');
+  const changeoverTimeMin=Number(changeoverRaw);
+  if(String(changeoverRaw).trim()!=='' && Number.isFinite(changeoverTimeMin) && changeoverTimeMin>0) {
+    const it=ftBenchmarkItem('Tiempo de cambio de formato',`${changeoverTimeMin} min`,{lo:changeoverTimeMin,hi:changeoverTimeMin},bench.changeover);
+    it.origen_cliente='Valor numérico declarado, sin medición independiente';
+    items.push(it);
   }
-
-  // ── Tasa de rechazo / merma ──
-  const scrapRaw = a('fab', 'scrap_pct');
-  const scrapMap = {'menos del 2%':1, '2% - 5%':3.5, '5% - 10%':7.5, '10% - 20%':15, 'más del 20%':25};
-  const scrapClient = scrapMap[scrapRaw];
-  if (scrapClient !== undefined) {
-    const pos = ftPositionVsRange(scrapClient, bench.rechazo);
-    items.push({
-      nombre: 'Tasa de rechazo / merma', valor_cliente: scrapRaw, valor_sector: bench.rechazo,
-      posicion: pos === 'above' ? 'below' : pos === 'below' ? 'above' : pos, // invertido: más merma = peor
-      esBueno: pos !== 'above',
-      gap_label: pos === 'above' ? 'por encima del sector (peor)' : pos === 'below' ? 'por debajo del sector (mejor)' : 'dentro del rango del sector'
-    });
-  }
-
-  // ── Mantenimiento reactivo ──
-  const maintRaw = a('sys', 'maintenance_type_pct');
-  const maintMap = {'Casi todo reactivo (+80%)':90,'Mayoría reactivo (50-80%)':65,'Mitad y mitad':50,'Mayoría preventivo (50-80%)':30,'Casi todo preventivo (+80%)':10};
-  const maintClient = maintMap[maintRaw];
-  if (maintClient !== undefined) {
-    const pos = ftPositionVsRange(maintClient, bench.maint_react);
-    items.push({
-      nombre: '% Mantenimiento reactivo', valor_cliente: maintRaw, valor_sector: bench.maint_react,
-      posicion: pos === 'above' ? 'below' : pos === 'below' ? 'above' : pos,
-      esBueno: pos !== 'above',
-      gap_label: pos === 'above' ? 'por encima del sector (peor)' : pos === 'below' ? 'por debajo del sector (mejor)' : 'dentro del rango del sector'
-    });
-  }
-
-  // ── Tiempo de changeover ──
-  const changeoverTimeMin = parseFloat(a('fab', 'changeover_time'));
-  if (changeoverTimeMin > 0) {
-    const pos = ftPositionVsRange(changeoverTimeMin, bench.changeover);
-    items.push({
-      nombre: 'Tiempo de cambio de formato', valor_cliente: `${changeoverTimeMin} min`, valor_sector: bench.changeover,
-      posicion: pos === 'above' ? 'below' : pos === 'below' ? 'above' : pos,
-      esBueno: pos !== 'above',
-      gap_label: pos === 'above' ? 'por encima del sector (peor)' : pos === 'below' ? 'por debajo del sector (mejor)' : 'dentro del rango del sector'
-    });
-  }
-
   return items;
 }
 
