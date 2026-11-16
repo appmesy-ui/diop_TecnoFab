@@ -2687,7 +2687,8 @@ Devuelve SOLO el JSON, sin texto adicional.`;
     r.ofi_resumen.d1 = d1; r.ofi_resumen.d2 = d2; r.ofi_resumen.d3 = d3; r.ofi_resumen.d4 = d4;
 
     r.madurez_digital = r.madurez_digital || {};
-    r.madurez_digital.puntuacion = Math.round((d3 / 25) * 10);
+    r.madurez_digital.puntuacion = Math.round((d3 / 25) * 10); // legado: mantener para compatibilidad histórica
+    r.madurez_digital_next = calculateDigitalMaturityNext(m3extData[currentClient.id]);
 
     if (econM6.list.length) {
       r.roi = {
@@ -2946,6 +2947,7 @@ function renderReport(r, reportsHistoryHtml = '') {
   const today = new Date().toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' });
   const kpis = r.kpis || {};
   const mad = r.madurez_digital || {};
+  const madNext = r.madurez_digital_next || null; // null => informe histórico sin conversión inventada
   const bench = r.benchmark_sectorial || {};
   const roi = r.roi || {};
   const ofi = r.ofi_resumen || {};
@@ -2975,6 +2977,18 @@ function renderReport(r, reportsHistoryHtml = '') {
   const madScore = Number(mad.puntuacion || 0);
   const scoreColor = madScore <= 3 ? 'var(--red)' : madScore <= 6 ? 'var(--amber)' : 'var(--green)';
   const scorePct = Math.max(0, Math.min(100, (madScore / 10) * 100));
+  const digitalHeadline = madNext
+    ? (madNext.level ? `${madNext.levelName} · ${madNext.score.toFixed(1)}/5` : 'Nivel no asignado')
+    : `${mad.puntuacion ?? '—'}/10 (escala anterior)`;
+  const digitalSubtitle = madNext
+    ? `${madNext.status} · ${madNext.evaluated}/7 dimensiones · ${madNext.evidenceCount}/${madNext.evaluated} con nota de evidencia`
+    : (mad.nivel || 'Informe anterior');
+  const digitalColor = madNext ? (madNext.level===null?'var(--amber)':madNext.level<=2?'var(--red)':madNext.level===3?'var(--amber)':'var(--green)') : scoreColor;
+  const digitalDetailsHtml = madNext ? `<div style="margin-top:12px;font-size:11px;color:#5a6b70;">Cobertura: ${madNext.evaluated}/7 (${madNext.coverage}%) · ${esc(madNext.evidenceStatus)}. La clasificación no constituye verificación independiente.</div>
+    <div style="display:grid;gap:6px;margin-top:12px;">${madNext.dimensions.map(d=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 8px;background:#f4f6f5;border-radius:6px;font-size:11px;"><span>${esc(d.name)}</span><span style="font-weight:700;">${d.score===null?'Sin evaluar':d.score+'/5'}${d.score!==null&&!d.evidence?' · sin nota':''}</span></div>`).join('')}</div>
+    ${madNext.alerts.length?`<div style="margin-top:10px;padding:10px;background:#fff6e8;border-left:3px solid #BA7517;font-size:11px;color:#694613;"><strong>Señales para revisión profesional</strong><div>${madNext.alerts.map(a=>`${esc(a.dimension)}: ${esc(a.message)}`).join('<br>')}</div></div>`:''}
+    ${madNext.status==='Insuficiente'?'<div style="margin-top:8px;color:#9b651e;font-size:11px;">Se requieren al menos 5 dimensiones evaluadas para asignar un nivel.</div>':''}` : '';
+
 
   const confFindings = (conf?.findings || []).filter(f => f.finding || f.confidence);
   const confTotal = confFindings.filter(f => f.confidence).length;
@@ -3016,7 +3030,7 @@ function renderReport(r, reportsHistoryHtml = '') {
   const impactLabel = (() => { try { return m8ImpactLevel(); } catch(e) { return {txt:'—', col:'#5a6b70', score:0}; } })();
   const evidenceCards = [
     {title:'Operación', body:vsm.lead_time ? `Lead time ${esc(vsm.lead_time)}, ratio VA ${esc(vsm.va_ratio || '—')} y constraint ${esc((vsm.cuellos_botella||[]).join(', ') || '—')}.` : `OEE ${esc(kpis.oee_estimado || '—')}, merma ${esc(kpis.merma_pct || '—')} e impacto estimado ${esc(kpis.impacto_total_estimado || '—')}.`, tag:'M2'},
-    {title:'Digital', body:`Madurez digital ${esc(mad.puntuacion || '—')}/10 (${esc(mad.nivel || '—')}). ${esc(mad.descripcion || '')}`, tag:'M3'},
+    {title:'Digital', body:`Madurez digital ${esc(digitalHeadline)}. ${esc(digitalSubtitle)}. ${esc(mad.descripcion || '')}`, tag:'M3'},
     {title:'Organización', body:`Readiness y capacidad de ejecución evaluadas en M4. Arquetipo: ${esc(ofi.arquetipo || '—')}.`, tag:'M4'},
     {title:'Economía', body:`Impacto económico baseline: ${esc(impactLabel.txt)}. Portfolio base: ${money(econ.totalBase)} / año${econ.totalInv ? ` con inversión ${money(econ.totalInv)}` : ''}.`, tag:'M1/M6'}
   ];
@@ -3115,7 +3129,7 @@ function renderReport(r, reportsHistoryHtml = '') {
             <div class="diop-metric-value" style="color:#0f6e56;font-size:14px;margin-top:4px;">${esc(ofi.zona || '—')}</div>
             <div class="diop-metric-note">Capa TTL: <strong style="color:#0f6e56;">${esc(ofi.ttl_capa || '—')}</strong></div>
           </div>
-          <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${scoreColor};">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:#5a6b70;font-weight:500;">/10</span></div><div class="diop-metric-note">${esc(mad.nivel || '')}</div></div>
+          <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${digitalColor};font-size:16px;">${esc(digitalHeadline)}</div><div class="diop-metric-note">${esc(digitalSubtitle)}</div></div>
           <div class="diop-metric"><div class="diop-metric-label">Impacto anual orientativo</div><div class="diop-metric-value" style="font-size:17px;color:var(--amber);">${esc(kpis.impacto_total_estimado || '—')}</div><div class="diop-metric-note">Baseline + benchmark · No auditado</div></div>
           <div class="diop-metric"><div class="diop-metric-label">Escenario base orientativo</div><div class="diop-metric-value" style="font-size:17px;color:var(--green);">${money(econ.totalBase)}</div><div class="diop-metric-note">Confianza ${esc(econ.confidenceBand||'—')} · ${econ.paybackBase?'Payback '+econ.paybackBase+'m':'BNA anual'}</div></div>
         </div>
@@ -3260,9 +3274,11 @@ function renderReport(r, reportsHistoryHtml = '') {
           <div class="diop-grid-2">
             <div class="diop-evidence-card">
               <strong>Digital Maturity</strong>
-              <div class="madurez-row"><div class="madurez-score" style="color:${scoreColor};font-size:26px;font-weight:750;">${esc(mad.puntuacion || '—')}<span style="font-size:12px;color:#5a6b70;font-weight:500;">/10</span></div><div style="color:${scoreColor};font-size:13px;font-weight:700;">${esc(mad.nivel || '—')}</div></div>
-              <div class="madurez-track"><div class="madurez-fill" style="width:${scorePct}%;background:${scoreColor};"></div></div>
-              <p>${esc(mad.descripcion || '')}</p>
+              <div class="madurez-row"><div class="madurez-score" style="color:${digitalColor};font-size:22px;font-weight:750;">${esc(digitalHeadline)}</div></div>
+              <div class="madurez-track"><div class="madurez-fill" style="width:${madNext ? (madNext.level ? (madNext.score/5)*100 : 0) : scorePct}%;background:${digitalColor};"></div></div>
+              <p>${esc(digitalSubtitle)}</p>
+              ${digitalDetailsHtml}
+              <div class="diop-muted" style="margin-top:8px;">Interpretación contextual: ${esc(mad.descripcion || 'Pendiente de valoración profesional')}</div>
               <div class="diop-muted" style="margin-top:8px;">Siguiente nivel: ${esc(mad.siguiente_nivel || '—')}</div>
             </div>
             <div class="diop-evidence-card">
@@ -4018,12 +4034,13 @@ ${orgReadinessPDF}
 
 <div class="grid2">
   <div class="section no-break">
-    <h2>Madurez digital</h2>
+    <h2>Madurez digital · ${r.madurez_digital_next?'Indicador nuevo + referencia anterior':'Escala histórica'}</h2>
     <div class="mad-row">
       <div class="mad-score">${mad.puntuacion||'—'}<span style="font-size:10pt;color:#7ab0b8;font-weight:normal;">/10</span></div>
       <div class="mad-nivel">${mad.nivel||'—'}</div>
     </div>
     <div class="mad-bar-bg"><div class="mad-bar-fill"></div></div>
+    ${r.madurez_digital_next ? `<div style="margin:3mm 0;padding:3mm;background:#eef8f7;border-left:3px solid #00747b;font-size:9pt;color:#16232a;"><strong>Madurez DIOP Next:</strong> ${r.madurez_digital_next.level ? r.madurez_digital_next.levelName+' · '+r.madurez_digital_next.score.toFixed(1)+'/5' : 'Nivel no asignado'} · Cobertura ${r.madurez_digital_next.evaluated}/7 (${r.madurez_digital_next.status}).<div style="font-size:8pt;margin-top:2mm;">Evidencias escritas: ${r.madurez_digital_next.evidenceCount}/${r.madurez_digital_next.evaluated}. La clasificación requiere validación profesional.</div>${r.madurez_digital_next.alerts.length?`<div style="font-size:8pt;color:#9b651e;margin-top:2mm;">Revisar: ${r.madurez_digital_next.alerts.map(a=>a.dimension).join(', ')}</div>`:''}</div>`:''}
     <div class="mad-desc">${mad.descripcion||''}</div>
     <div class="mad-next">Siguiente nivel: ${mad.siguiente_nivel||''}</div>
   </div>
@@ -5090,6 +5107,49 @@ function calculateOFIScore(d1, d2, d3, d4) {
 }
 function getCurrentOFIScore() {
   return calculateOFIScore(calcOFI_D1(), calcOFI_D2(), calcOFI_D3(), calcOFI_D4());
+}
+
+
+// DIOP Next 3.2 — Indicador ejecutivo independiente de OFI D3.
+// No sustituye el cálculo existente 0–25 ni modifica TTL/ROI.
+const DIOP_MATURITY_DIMS = [
+  ['produccion','Producción'], ['mantenimiento','Mantenimiento'],
+  ['calidad','Calidad'], ['gestion','Gestión operativa'],
+  ['analytics','Análisis de datos'], ['arquitectura','Arquitectura de datos'],
+  ['ciberseguridad','Ciberseguridad OT']
+];
+const DIOP_MATURITY_LEVELS = ['Inicial','Básico','Estructurado','Integrado','Optimizado'];
+function calculateDigitalMaturityNext(m3) {
+  const dims = m3?.digital_dims || {};
+  const evidence = m3?.digital_evidence || {};
+  const entries = DIOP_MATURITY_DIMS.map(([key,name]) => {
+    const raw = dims[key];
+    const score = raw === '' || raw === null || raw === undefined ? null : Number(raw);
+    const valid = Number.isInteger(score) && score >= 1 && score <= 5;
+    return {key, name, score:valid ? score : null, evidence:String(evidence[key] || '').trim()};
+  });
+  const completed = entries.filter(x=>x.score!==null);
+  const count = completed.length;
+  const enough = count >= 5;
+  const average = count ? completed.reduce((a,x)=>a+x.score,0)/count : null;
+  const level = enough ? Math.max(1,Math.min(5,Math.floor(average+0.5))) : null;
+  const evidenceCount = completed.filter(x=>x.evidence).length;
+  const alerts = [];
+  // Señales de revisión, NO dictámenes automáticos de seguridad ni bloqueos del nivel.
+  for (const item of completed) {
+    if (['ciberseguridad','arquitectura'].includes(item.key) && item.score<=2) {
+      alerts.push({dimension:item.name, message:'Nivel bajo: revisar evidencias y riesgos antes de recomendar inversión.'});
+    }
+  }
+  return {
+    version:'3.2', source:'M3 · siete dimensiones', score:enough ? Number(average.toFixed(2)) : null,
+    level, levelName:level ? DIOP_MATURITY_LEVELS[level-1] : null,
+    evaluated:count, total:7, coverage:Math.round(count/7*100),
+    status:count===7?'Completa':enough?'Provisional':'Insuficiente',
+    evidenceCount, evidenceStatus:evidenceCount===count && count===7?'Documentada':'Evidencia pendiente de revisión',
+    dimensions:entries, alerts,
+    methodology:'Media simple de las dimensiones respondidas; nivel por umbrales 1,50/2,50/3,50/4,50 sin redondeo previo. Mínimo 5/7 para asignar nivel. No equivale a validación profesional.'
+  };
 }
 
 function renderM5(){
