@@ -2410,7 +2410,7 @@ async function generateReport(confirmedOperationalImpact) {
   // ── Números ya calculados y validados — la IA los usa, nunca los inventa ──
   const opImpact = confirmedOperationalImpact || calcM7OperationalImpact();
   const d1=calcOFI_D1(),d2=calcOFI_D2(),d3=calcOFI_D3(),d4=calcOFI_D4();
-  const ofiScore = Math.round((d1/25)*30 + (d2/25)*25 + (d3/25)*25 + (d4/25)*20); // FIX: antes 'd1*0.30+...' crushaba el máximo teórico a 25/100 (D1-D4 ya vienen en escala 0-25, no 0-100)
+  const ofiScore = calculateOFIScore(d1, d2, d3, d4);
   const ofiZone = ofiScore>=75?'Optimización avanzada':ofiScore>=50?'Mejora estructurada':ofiScore>=25?'Estabilización necesaria':'Intervención urgente';
   const ofiTTL = ofiScore<15?'L1':ofiScore<30?'L2':ofiScore<45?'L3':ofiScore<60?'L4':ofiScore<75?'L5':'L6';
   const econM6 = calcPortfolioEconomics(m6Data[currentClient.id]?.backlog || []);
@@ -5074,6 +5074,15 @@ function calcOFI_D4(){
   return Math.round((avg/5)*25);
 }
 
+// DIOP Next · OFI™: única fórmula compartida (dimensiones D1–D4 en 0–25).
+// Pesos y escala existentes; no cambia la asignación TTL ni sus umbrales.
+function calculateOFIScore(d1, d2, d3, d4) {
+  return Math.round((d1 / 25) * 30 + (d2 / 25) * 25 + (d3 / 25) * 25 + (d4 / 25) * 20);
+}
+function getCurrentOFIScore() {
+  return calculateOFIScore(calcOFI_D1(), calcOFI_D2(), calcOFI_D3(), calcOFI_D4());
+}
+
 function renderM5(){
   // Auto-detect archetype signals from all sessions
   function detectArchetypeSignals(){
@@ -5172,7 +5181,7 @@ function renderM5(){
     return sigs;
   }
   const d1=calcOFI_D1(),d2=calcOFI_D2(),d3=calcOFI_D3(),d4=calcOFI_D4();
-  const ofi = Math.round((d1/25)*30 + (d2/25)*25 + (d3/25)*25 + (d4/25)*20); // FIX: antes 'd1*0.30+...' crushaba el máximo teórico a 25/100 (D1-D4 ya vienen en escala 0-25, no 0-100)
+  const ofi = calculateOFIScore(d1, d2, d3, d4);
   
   const zone=ofi>=75?{name:'Optimización avanzada',col:'var(--green)',desc:'Operación sólida. Foco en optimización y predicción.'}:ofi>=50?{name:'Mejora estructurada',col:'var(--teal)',desc:'Bases presentes. Priorizar governance y conectividad.'}:ofi>=25?{name:'Estabilización necesaria',col:'var(--amber)',desc:'Gaps significativos. Priorizar estabilidad y medición.'}:{name:'Intervención urgente',col:'var(--red)',desc:'Fricción operativa alta. Empezar por L1 Stabilize.'};
   
@@ -5736,7 +5745,7 @@ function getRIMZone(impact,readiness){if(impact>=7&&readiness>=7)return{zone:'LA
 
 function renderM6(){
   const m=getM6();const backlog=m.backlog||[];
-  const ofi=Math.round(calcOFI_D1()*0.30+calcOFI_D2()*0.25+calcOFI_D3()*0.25+calcOFI_D4()*0.20);
+  const ofi=getCurrentOFIScore();
   const clientTTL=ofi<15?'L1':ofi<30?'L2':ofi<45?'L3':ofi<60?'L4':ofi<75?'L5':'L6';
   
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🎯</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M6 · Initiative Backlog + RIM™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Selección, priorización y ROI de iniciativas · Capa TTL actual: ${clientTTL}</div></div></div>`;
@@ -6016,7 +6025,7 @@ function filterCatalogue(layer){
   const el=document.getElementById('catalogue-list');
   if(!el)return;
   
-  const ofi=Math.round(calcOFI_D1()*0.30+calcOFI_D2()*0.25+calcOFI_D3()*0.25+calcOFI_D4()*0.20);
+  const ofi=getCurrentOFIScore();
   const clientTTL=ofi<15?'L1':ofi<30?'L2':ofi<45?'L3':ofi<60?'L4':ofi<75?'L5':'L6';
   
   el.innerHTML=filtered.map(c=>{
@@ -7419,7 +7428,7 @@ function getM6ReportContext() {
 function getOFIReportContext() {
   if(!currentClient)return '';
   const d1=calcOFI_D1(),d2=calcOFI_D2(),d3=calcOFI_D3(),d4=calcOFI_D4();
-  const ofi = Math.round((d1/25)*30 + (d2/25)*25 + (d3/25)*25 + (d4/25)*20); // FIX: antes 'd1*0.30+...' crushaba el máximo teórico a 25/100 (D1-D4 ya vienen en escala 0-25, no 0-100)
+  const ofi = calculateOFIScore(d1, d2, d3, d4);
   if(ofi===0)return '';
   
   const zone=ofi>=75?'Optimización avanzada':ofi>=50?'Mejora estructurada':ofi>=25?'Estabilización necesaria':'Intervención urgente';
