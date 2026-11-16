@@ -2986,7 +2986,17 @@ function renderReport(r, reportsHistoryHtml = '') {
   const digitalColor = madNext ? (madNext.level===null?'var(--amber)':madNext.level<=2?'var(--red)':madNext.level===3?'var(--amber)':'var(--green)') : scoreColor;
   const digitalDetailsHtml = madNext ? `<div style="margin-top:12px;font-size:11px;color:#5a6b70;">Cobertura: ${madNext.evaluated}/7 (${madNext.coverage}%) · ${esc(madNext.evidenceStatus)}. La clasificación no constituye verificación independiente.</div>
     <div style="display:grid;gap:6px;margin-top:12px;">${madNext.dimensions.map(d=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 8px;background:#f4f6f5;border-radius:6px;font-size:11px;"><span>${esc(d.name)}</span><span style="font-weight:700;">${d.score===null?'Sin evaluar':d.score+'/5'}${d.score!==null&&!d.evidence?' · sin nota':''}</span></div>`).join('')}</div>
-    ${madNext.alerts.length?`<div style="margin-top:10px;padding:10px;background:#fff6e8;border-left:3px solid #BA7517;font-size:11px;color:#694613;"><strong>Señales para revisión profesional</strong><div>${madNext.alerts.map(a=>`${esc(a.dimension)}: ${esc(a.message)}`).join('<br>')}</div></div>`:''}
+    ${madNext.alerts.length?`<div style="margin-top:12px;padding:12px;background:#fff6e8;border-left:3px solid #BA7517;color:#694613;border-radius:0 8px 8px 0;">
+      <strong style="display:block;margin-bottom:8px;font-size:12px;">Hallazgos prioritarios para validación profesional</strong>
+      ${madNext.alerts.map(a=>`<div style="padding:10px 0;border-top:1px solid #ecd9b9;font-size:11px;line-height:1.6;overflow-wrap:anywhere;">
+        <div style="font-weight:750;margin-bottom:5px;">${esc(a.dimension)} · ${esc(a.message)}</div>
+        <div><strong>Base declarada:</strong> ${esc(a.evidence || 'Sin nota de evidencia; completar observación específica.')}</div>
+        <div><strong>Riesgo potencial:</strong> ${esc(a.risk || 'Por determinar durante la validación.')}</div>
+        <div><strong>Verificación necesaria:</strong> ${esc(a.verification || 'Contrastar con responsable y documentación del proceso.')}</div>
+        <div><strong>Acción condicionada:</strong> ${esc(a.action || 'Priorizar medidas una vez comprobados los hallazgos.')}</div>
+        <div style="font-size:10px;opacity:.82;margin-top:3px;">${esc(a.source || 'Valoración no auditada')}</div>
+      </div>`).join('')}
+    </div>`:''}
     ${madNext.status==='Insuficiente'?'<div style="margin-top:8px;color:#9b651e;font-size:11px;">Se requieren al menos 5 dimensiones evaluadas para asignar un nivel.</div>':''}` : '';
 
 
@@ -3121,12 +3131,10 @@ function renderReport(r, reportsHistoryHtml = '') {
           <svg class="rh-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="44" height="44"><rect width="128" height="128" rx="28" fill="#0B1220"/><g transform="translate(15,36)" stroke="#2ED3C9" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M26 6 L4 28 L26 50"/><path d="M42 50 L56 6"/><path d="M72 6 L94 28 L72 50"/></g></svg>
         </div>
         <div class="diop-grid-4">
-          <div class="diop-metric" style="position:relative;overflow:hidden;">
-            <div style="position:absolute;top:8px;right:12px;width:56px;height:56px;border-radius:50%;border:4px solid ${ofi.score>=50?'var(--green)':ofi.score>=25?'var(--amber)':'var(--red)'}44;display:flex;align-items:center;justify-content:center;">
-              <div style="font-size:18px;font-weight:800;color:${ofi.score>=50?'var(--green)':ofi.score>=25?'var(--amber)':'var(--red)'};">${esc(ofi.score || '—')}</div>
-            </div>
+          <div class="diop-metric" style="min-width:0;overflow-wrap:anywhere;">
             <div class="diop-metric-label">OFI™</div>
-            <div class="diop-metric-value" style="color:#0f6e56;font-size:14px;margin-top:4px;">${esc(ofi.zona || '—')}</div>
+            <div style="font-size:24px;font-weight:800;line-height:1.1;color:${ofi.score>=50?'var(--green)':ofi.score>=25?'var(--amber)':'var(--red)'};">${esc(ofi.score ?? '—')}<span style="font-size:11px;color:#5a6b70;font-weight:500;">/100</span></div>
+            <div style="font-size:12px;font-weight:650;color:#0f6e56;line-height:1.3;margin-top:6px;">${esc(ofi.zona || '—')}</div>
             <div class="diop-metric-note">Capa TTL: <strong style="color:#0f6e56;">${esc(ofi.ttl_capa || '—')}</strong></div>
           </div>
           <div class="diop-metric"><div class="diop-metric-label">Madurez digital</div><div class="diop-metric-value" style="color:${digitalColor};font-size:16px;">${esc(digitalHeadline)}</div><div class="diop-metric-note">${esc(digitalSubtitle)}</div></div>
@@ -5135,11 +5143,41 @@ function calculateDigitalMaturityNext(m3) {
   const level = enough ? Math.max(1,Math.min(5,Math.floor(average+0.5))) : null;
   const evidenceCount = completed.filter(x=>x.evidence).length;
   const alerts = [];
-  // Señales de revisión, NO dictámenes automáticos de seguridad ni bloqueos del nivel.
+  // Revisión técnica trazable: la nota es una declaración, no una auditoría.
+  // No inferir controles ausentes solo por una puntuación baja.
   for (const item of completed) {
-    if (['ciberseguridad','arquitectura'].includes(item.key) && item.score<=2) {
-      alerts.push({dimension:item.name, message:'Nivel bajo: revisar evidencias y riesgos antes de recomendar inversión.'});
+    if (!['ciberseguridad','arquitectura'].includes(item.key) || item.score>2) continue;
+    const note=item.evidence;
+    const normalized=note.toLocaleLowerCase('es');
+    const signals=[];
+    if (item.key==='ciberseguridad') {
+      if (/misma red|red compartida|sin segmentaci[oó]n|no (?:hay|existe) segmentaci[oó]n/.test(normalized))
+        signals.push('Posible ausencia de segmentación entre IT y OT');
+      if (/sin mfa|sin doble factor|sin segundo factor|sin autenticaci[oó]n multifactor/.test(normalized))
+        signals.push('Acceso remoto sin MFA declarado');
+      if (/passwords? por defecto|contraseñas? por defecto|credenciales? por defecto/.test(normalized))
+        signals.push('Credenciales predeterminadas declaradas en equipos OT');
+    } else {
+      if (/no hay master data|sin master data|no existe (?:un )?dato maestro|sin datos maestros/.test(normalized))
+        signals.push('Ausencia declarada de gestión común de datos maestros');
+      if (/cada departamento|propio excel|excel por (?:área|departamento)|silos/.test(normalized))
+        signals.push('Fuentes de información fragmentadas entre áreas');
     }
+    alerts.push({
+      dimension:item.name,
+      message:'Nivel '+item.score+'/5 · '+(signals.length?signals.join('; '):'Brecha de madurez que requiere revisión específica')+'.',
+      evidence:note,
+      risk:item.key==='ciberseguridad'
+        ? 'Exposición potencial de activos OT y continuidad operacional; el alcance real no está verificado.'
+        : 'Riesgo potencial de inconsistencias en indicadores y decisiones entre áreas; cuantificación pendiente.',
+      verification:item.key==='ciberseguridad'
+        ? 'Contrastar diagrama de red IT/OT, configuración de accesos remotos/MFA e inventario de credenciales con el responsable OT.'
+        : 'Contrastar el recorrido de un mismo dato entre planta, ERP y reportes; identificar dueño, definiciones y conciliaciones.',
+      action:item.key==='ciberseguridad'
+        ? 'Priorizar una revisión técnica OT y acordar medidas de contención según hallazgos antes de ampliar conexiones.'
+        : 'Definir responsables del dato maestro y un plan de gobernanza e integración tras comprobar inconsistencias.',
+      source:'M3 · Nota declarada por el consultor; no verificada de forma independiente'
+    });
   }
   return {
     version:'3.2', source:'M3 · siete dimensiones', score:enough ? Number(average.toFixed(2)) : null,
