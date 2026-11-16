@@ -3476,6 +3476,7 @@ function renderReport(r, reportsHistoryHtml = '') {
 
 // ── NAV ──
 function showScreen(name) {
+  if(name!=='m5') flushConfidenceSave();
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   document.getElementById(`screen-${name}`).classList.add('on');
 }
@@ -5313,6 +5314,8 @@ function renderM5(){
 
 let confidenceData={};
 let confidenceSaveTimer=null;
+let confidenceSaveQueue=Promise.resolve();
+let confidenceSaveError=false;
 
 function defaultConfidence(){return{findings:[
   {module:'M1',label:'Evidencia / KPI baseline',finding:'',confidence:''},
@@ -5323,23 +5326,71 @@ function defaultConfidence(){return{findings:[
   {module:'M4',label:'Arquetipo / patrón dominante',finding:'',confidence:''}
 ]};}
 function getConfidence(){if(!currentClient)return defaultConfidence();if(!confidenceData[currentClient.id])confidenceData[currentClient.id]=defaultConfidence();return confidenceData[currentClient.id];}
-async function loadConfidenceData(clientId){try{const key=`${clientId}_confidence_config`;if(allAnswers[key]){confidenceData[clientId]=JSON.parse(allAnswers[key]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','confidence').eq('question_id','config').single();if(data?.answer){confidenceData[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}}}catch(e){}}
-async function saveConfidence(){
-  if(!currentClient)return;
-  const j=JSON.stringify(getConfidence());
-  const now=new Date().toISOString();
-  allAnswers[`${currentClient.id}_confidence_config`]=j;
-  // Keep currentClient.answers in sync so progress/report outdated logic does not wait for a full reload.
-  currentClient.answers=currentClient.answers||[];
-  const idx=currentClient.answers.findIndex(a=>a.session==='confidence'&&a.question_id==='config');
-  const row={client_id:currentClient.id,session:'confidence',question_id:'config',answer:j,updated_at:now};
-  if(idx>=0) currentClient.answers[idx]={...currentClient.answers[idx],...row};
-  else currentClient.answers.push(row);
-  try{await sb.from('diop_answers').upsert(row);}catch(e){console.warn('saveConfidence failed',e);}
-  renderSidebarRoadmap();
+async function loadConfidenceData(clientId){
+  // No sobrescribir cambios locales mientras un guardado está pendiente.
+  if(confidenceSaveTimer && currentClient && String(currentClient.id)===String(clientId)) return;
+  const key=`${clientId}_confidence_config`;
+  try{
+    if(allAnswers[key]){
+      confidenceData[clientId]=JSON.parse(allAnswers[key]);
+      return;
+    }
+    const {data,error}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','confidence').eq('question_id','config').maybeSingle();
+    if(error) throw error;
+    confidenceData[clientId]=data?.answer ? JSON.parse(data.answer) : defaultConfidence();
+    if(data?.answer) allAnswers[key]=data.answer;
+  }catch(e){
+    console.error('Error cargando Confidence Layer:',e);
+    showToast('No se pudo recuperar Confidence Layer');
+  }
 }
-function scheduleConfidenceSave(){clearTimeout(confidenceSaveTimer);confidenceSaveTimer=setTimeout(saveConfidence,800);}
+async function saveConfidence(){
+  clearTimeout(confidenceSaveTimer);
+  confidenceSaveTimer=null;
+  if(!currentClient)return false;
+  // Snapshot: evita que guardados concurrentes escriban una versión anterior al final.
+  const client=currentClient;
+  const clientId=client.id;
+  const j=JSON.stringify(getConfidence());
+  const row={client_id:clientId,session:'confidence',question_id:'config',answer:j,updated_at:new Date().toISOString()};
+  const key=`${clientId}_confidence_config`;
+  allAnswers[key]=j;
+  client.answers=client.answers||[];
+  const idx=client.answers.findIndex(a=>a.session==='confidence'&&a.question_id==='config');
+  if(idx>=0)client.answers[idx]={...client.answers[idx],...row};
+  else client.answers.push(row);
+  const globalClient=clients.find(c=>String(c.id)===String(clientId));
+  if(globalClient && globalClient!==client){
+    globalClient.answers=globalClient.answers||[];
+    const i=globalClient.answers.findIndex(a=>a.session==='confidence'&&a.question_id==='config');
+    if(i>=0)globalClient.answers[i]={...globalClient.answers[i],...row};
+    else globalClient.answers.push(row);
+  }
+  const operation=async()=>{
+    try{
+      const {error}=await sb.from('diop_answers').upsert(row,{onConflict:'client_id,session,question_id'});
+      if(error)throw error;
+      confidenceSaveError=false;
+      return true;
+    }catch(e){
+      confidenceSaveError=true;
+      console.error('Error guardando Confidence Layer:',e);
+      showToast('Error al guardar Confidence Layer. Reintenta antes de salir.');
+      return false;
+    }
+  };
+  confidenceSaveQueue=confidenceSaveQueue.then(operation,operation);
+  renderSidebarRoadmap();
+  return confidenceSaveQueue;
+}
+function scheduleConfidenceSave(){
+  clearTimeout(confidenceSaveTimer);
+  confidenceSaveTimer=setTimeout(()=>{void saveConfidence();},800);
+}
 function confidenceChanged(){scheduleConfidenceSave();renderSidebarRoadmap();}
+function flushConfidenceSave(){
+  if(confidenceSaveTimer){clearTimeout(confidenceSaveTimer);confidenceSaveTimer=null;void saveConfidence();}
+}
 function confidenceColor(v){return v==='Confirmado'?'var(--green)':v==='Hipótesis fuerte'?'var(--amber)':v==='Investigación requerida'?'var(--red)':'var(--text3)';}
 function confidenceNarrative(v){return v==='Confirmado'?'Lenguaje: la evidencia confirma / se ha verificado':v==='Hipótesis fuerte'?'Lenguaje: la evidencia sugiere / el patrón observado indica':v==='Investigación requerida'?'Lenguaje: la visibilidad actual no permite confirmar / se recomienda investigar':'Pendiente de clasificar';}
 function confidenceSummary(){const c=getConfidence();const filled=(c.findings||[]).filter(f=>f.finding||f.confidence);const total=filled.filter(f=>f.confidence).length;const count=(v)=>filled.filter(f=>f.confidence===v).length;return{total,confirmed:count('Confirmado'),hypothesis:count('Hipótesis fuerte'),research:count('Investigación requerida'),filled};}
@@ -5352,8 +5403,8 @@ function renderConfidenceLayer(){const c=getConfidence(); if(!c.findings)c.findi
   c.findings.forEach((f,i)=>{const col=confidenceColor(f.confidence);html+=`<div style="padding:12px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-sm);">
     <div style="display:grid;grid-template-columns:54px 1fr 190px;gap:8px;align-items:center;">
       <div style="font-size:10px;font-weight:800;color:var(--teal);font-family:var(--mono);">${f.module}</div>
-      <div><div style="font-size:12px;font-weight:600;color:#16232a;">${f.label}</div><input class="vsm-input" style="font-size:11px;padding:6px;margin-top:5px;" placeholder="Hallazgo clave observado..." value="${(f.finding||'').replace(/"/g,'&quot;')}" oninput="getConfidence().findings[${i}].finding=this.value;confidenceChanged()"></div>
-      <div><select class="vsm-select" style="font-size:11px;padding:6px;border-color:${col};color:${col};" onchange="getConfidence().findings[${i}].confidence=this.value;saveConfidence();renderM5();confidenceChanged()"><option value="">Confidence...</option><option ${f.confidence==='Confirmado'?'selected':''}>Confirmado</option><option ${f.confidence==='Hipótesis fuerte'?'selected':''}>Hipótesis fuerte</option><option ${f.confidence==='Investigación requerida'?'selected':''}>Investigación requerida</option></select><div style="font-size:9px;color:#8a9793;margin-top:4px;line-height:1.3;">${confidenceNarrative(f.confidence)}</div></div>
+      <div><div style="font-size:12px;font-weight:600;color:#16232a;">${f.label}</div><input class="vsm-input" style="font-size:11px;padding:6px;margin-top:5px;" placeholder="Hallazgo clave observado..." value="${(f.finding||'').replace(/"/g,'&quot;')}" oninput="getConfidence().findings[${i}].finding=this.value;confidenceChanged()" onblur="flushConfidenceSave()"></div>
+      <div><select class="vsm-select" style="font-size:11px;padding:6px;border-color:${col};color:${col};" onchange="getConfidence().findings[${i}].confidence=this.value;flushConfidenceSave();saveConfidence();renderM5()"><option value="">Confidence...</option><option ${f.confidence==='Confirmado'?'selected':''}>Confirmado</option><option ${f.confidence==='Hipótesis fuerte'?'selected':''}>Hipótesis fuerte</option><option ${f.confidence==='Investigación requerida'?'selected':''}>Investigación requerida</option></select><div style="font-size:9px;color:#8a9793;margin-top:4px;line-height:1.3;">${confidenceNarrative(f.confidence)}</div></div>
     </div>
   </div>`;});
   html+=`</div><div style="font-size:10px;color:#8a9793;margin-top:10px;line-height:1.45;">Regla TECNOFAB: Confirmado = ≥2 fuentes sólidas; Hipótesis = señales consistentes sin cierre completo; Investigación = visibilidad insuficiente.</div></div>`;
