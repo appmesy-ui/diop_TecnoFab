@@ -5410,17 +5410,41 @@ function m1v2SetNum(key,val){
   saveTimers[tkey]=setTimeout(()=>{persistAnswer('fab',key,val);},500);
   m1v2UpdatePanel();
 }
+// DIOP Next 2.1 — selector económico compartido. No modifica los datos almacenados.
+const DIOP_ECONOMIC_RANGES = Object.freeze({
+  downtime: {'menos de 2h':1.5,'2h - 5h':3.5,'5h - 10h':7.5,'10h - 20h':15,'más de 20h':22,'<5h':3,'5–10h':7.5,'10–20h':15,'>20h':25},
+  lineCost: {'menos de 200€':150,'200€ - 400€':300,'400€ - 800€':600,'más de 800€':1000,'No lo sabemos':300,'<250€':200,'250–500€':350,'500–1.000€':700,'>1.000€':1200,'Desconocido':300}
+});
+function resolveDIOPEconomicInputs(cid) {
+  const readFab = key => allAnswers[`${cid}_fab_${key}`] || '';
+  const m8 = m8Data[cid] || {};
+  function resolve(kind, exactKey, fabRangeKey, m8RangeKey, defaultValue) {
+    const raw = readFab(exactKey);
+    const exact = Number(raw);
+    if (String(raw).trim() !== '' && Number.isFinite(exact) && exact > 0)
+      return {value:exact, isReal:true, source:'Fábrica · valor numérico declarado', input:raw};
+    const map = DIOP_ECONOMIC_RANGES[kind];
+    for (const [source, range] of [['Fábrica · rango',readFab(fabRangeKey)],['M1 Economic Baseline · rango',m8[m8RangeKey]]]) {
+      if (range && Object.prototype.hasOwnProperty.call(map, range))
+        return {value:map[range], isReal:false, source, input:range};
+    }
+    return {value:defaultValue, isReal:false, source:defaultValue ? 'Benchmark por defecto' : 'Sin dato', input:''};
+  }
+  const weeksRaw = readFab('productive_weeks_year');
+  const weeksNumber = Number(weeksRaw);
+  const weeks = String(weeksRaw).trim() !== '' && Number.isFinite(weeksNumber) && weeksNumber >= 1 && weeksNumber <= 52
+    ? {value:weeksNumber,isReal:true,source:'Fábrica · semanas declaradas',input:weeksRaw}
+    : {value:48,isReal:false,source:'Supuesto por defecto · 48 semanas',input:''};
+  return {
+    downtime:resolve('downtime','downtime_hours_week_num','downtime_hours_week','downtime_week',0),
+    lineCost:resolve('lineCost','line_hour_cost_num','line_hour_cost','line_hour_cost',300),
+    weeks
+  };
+}
 function m1v2Exposure(){
-  const lineCostRangeMap={'<250€':200,'250–500€':350,'500–1.000€':700,'>1.000€':1200,'Desconocido':300};
-  const downtimeRangeMap={'<5h':3,'5–10h':7.5,'10–20h':15,'>20h':25};
-  const m=getM8();
-  const costNum=parseFloat(m1v2Val('line_hour_cost_num'));
-  const costIsReal=costNum>0;
-  const cost=costIsReal?costNum:(lineCostRangeMap[m.line_hour_cost]||0);
-  const hoursNum=parseFloat(m1v2Val('downtime_hours_week_num'));
-  const hoursIsReal=hoursNum>0;
-  const hours=hoursIsReal?hoursNum:(downtimeRangeMap[m.downtime_week]||0);
-  return {cost,hours,annual:cost*hours*52,costIsReal,hoursIsReal};
+  const e=resolveDIOPEconomicInputs(currentClient.id);
+  return {cost:e.lineCost.value,hours:e.downtime.value,annual:e.lineCost.value*e.downtime.value*e.weeks.value,
+    costIsReal:e.lineCost.isReal,hoursIsReal:e.downtime.isReal,weeks:e.weeks.value};
 }
 function m1v2UpdatePanel(){
   const exp=m1v2Exposure();
@@ -5473,10 +5497,16 @@ function renderM8(){
 function getM8ReportContext(){
   const m=m8Data[currentClient?.id]; if(!m)return '';
   const keys=['downtime_week','scrap_rework','urgency_overtime','line_hour_cost','shifts','perceived_impact'];
-  if(!keys.some(k=>m[k])&&!m.notes)return '';
+  const hasExactEconomicInputs = ['downtime_hours_week_num','line_hour_cost_num','productive_weeks_year'].some(k => String(allAnswers[`${currentClient.id}_fab_${k}`]||'').trim() !== '');
+  if(!keys.some(k=>m[k])&&!m.notes&&!hasExactEconomicInputs)return '';
   const impact=m8ImpactLevel();
   let ctx='\n=== M1 · ECONOMIC BASELINE™ ===\n';
   ctx+=`Nivel de impacto económico estimado: ${impact.txt}${impact.score?` (${impact.score.toFixed(1)}/4)`:''}\n`;
+  const econ=resolveDIOPEconomicInputs(currentClient.id);
+  ctx+=`Horas parada utilizadas: ${econ.downtime.value} h/sem · fuente: ${econ.downtime.source} (${econ.downtime.input||'sin entrada'})\n`;
+  ctx+=`Coste línea utilizado: ${econ.lineCost.value} €/h · fuente: ${econ.lineCost.source} (${econ.lineCost.input||'sin entrada'})\n`;
+  ctx+=`Semanas productivas utilizadas: ${econ.weeks.value} · fuente: ${econ.weeks.source}\n`;
+
   if(m.downtime_week)ctx+=`Horas paro no planificado/semana: ${m.downtime_week}\n`;
   if(m.scrap_rework)ctx+=`Scrap/retrabajo: ${m.scrap_rework}\n`;
   if(m.urgency_overtime)ctx+=`Urgencias/overtime/cambios de plan: ${m.urgency_overtime}\n`;
@@ -8136,9 +8166,9 @@ function calcFreeTrialBreakdown() {
   const operatorCostAnomaly = operatorHourCostIsReal && operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE;
   const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario es muy superior al rango típico (15-40€/h, incluso con overhead). Podría ser un error de unidad (¿mensual en vez de por hora?). Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)"` : null;
 
-  const productiveWeeksRaw = a('fab', 'productive_weeks_year');
-  const productiveWeeks = parseFloat(productiveWeeksRaw) || 48;
-  const productiveWeeksIsReal = !!parseFloat(productiveWeeksRaw);
+  const economicInputs = resolveDIOPEconomicInputs(cid);
+  const productiveWeeks = economicInputs.weeks.value;
+  const productiveWeeksIsReal = economicInputs.weeks.isReal;
 
   const revenueRaw = a('ceo', 'revenue');
   const revenueMap = {'menos de 2M€':1500000,'2M€ - 5M€':3500000,'5M€ - 10M€':7500000,'10M€ - 25M€':17500000,'25M€ - 50M€':37500000,'más de 50M€':60000000};
@@ -8157,29 +8187,12 @@ function calcFreeTrialBreakdown() {
   else if (downtimeScopeRaw === 'Toda la fábrica') { scopeFactor = linesTotal || 1; scopeLabel = 'toda la fábrica'; }
 
   // ── COMPONENTE 1: Paradas ──
-  const downtimeNumRaw = a('fab', 'downtime_hours_week_num');
-  const downtimeRangeRaw = a('fab', 'downtime_hours_week');
-  const downtimeMap = {'menos de 2h':1.5,'2h - 5h':3.5,'5h - 10h':7.5,'10h - 20h':15,'más de 20h':22};
-  let downtimeH, downtimeIsReal, downtimeInputLabel;
-  if (parseFloat(downtimeNumRaw) > 0) {
-    downtimeH = parseFloat(downtimeNumRaw); downtimeIsReal = true;
-    downtimeInputLabel = `${downtimeH}h/semana (dato real aportado)`;
-  } else {
-    downtimeH = downtimeMap[downtimeRangeRaw] || 0; downtimeIsReal = false;
-    downtimeInputLabel = downtimeRangeRaw ? `rango "${downtimeRangeRaw}" → punto medio ${downtimeH}h` : 'sin dato';
-  }
-
-  const lineCostNumRaw = a('fab', 'line_hour_cost_num');
-  const lineCostRangeRaw = a('fab', 'line_hour_cost');
-  const lineCostMap = {'menos de 200€':150,'200€ - 400€':300,'400€ - 800€':600,'más de 800€':1000,'No lo sabemos':300};
-  let lineCostEur, lineCostIsReal, lineCostInputLabel;
-  if (parseFloat(lineCostNumRaw) > 0) {
-    lineCostEur = parseFloat(lineCostNumRaw); lineCostIsReal = true;
-    lineCostInputLabel = `${lineCostEur}€/h (dato real aportado)`;
-  } else {
-    lineCostEur = lineCostMap[lineCostRangeRaw] || 300; lineCostIsReal = false;
-    lineCostInputLabel = lineCostRangeRaw ? `rango "${lineCostRangeRaw}" → punto medio ${lineCostEur}€/h` : 'sin dato → benchmark 300€/h';
-  }
+  const downtimeH = economicInputs.downtime.value;
+  const downtimeIsReal = economicInputs.downtime.isReal;
+  const downtimeInputLabel = `${downtimeH}h/semana (${economicInputs.downtime.source}${economicInputs.downtime.input ? ': '+economicInputs.downtime.input : ''})`;
+  const lineCostEur = economicInputs.lineCost.value;
+  const lineCostIsReal = economicInputs.lineCost.isReal;
+  const lineCostInputLabel = `${lineCostEur}€/h (${economicInputs.lineCost.source}${economicInputs.lineCost.input ? ': '+economicInputs.lineCost.input : ''})`;
   const lineCostAnomaly = lineCostIsReal && lineCostEur > LINE_COST_MAX_PLAUSIBLE;
   const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada es muy superior al rango típico en pymes F&B (200-2.000€/h). Podría ser un error de unidad o de cifra. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)"` : null;
 
@@ -8898,8 +8911,8 @@ function calcM7OperationalImpact() {
   const operatorCostAnomaly = operatorHourCostIsReal && operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE;
   const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario es muy superior al rango típico (15-40€/h, incluso con overhead). Podría ser un error de unidad (¿mensual en vez de por hora?). Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)"` : null;
 
-  const productiveWeeksRaw = a('fab', 'productive_weeks_year');
-  const productiveWeeks = parseFloat(productiveWeeksRaw) || 48;
+  const economicInputs = resolveDIOPEconomicInputs(cid);
+  const productiveWeeks = economicInputs.weeks.value;
 
   const revenueRaw = a('ceo', 'revenue');
   const revenueMap = {'menos de 2M€':1500000,'2M€ - 5M€':3500000,'5M€ - 10M€':7500000,'10M€ - 25M€':17500000,'25M€ - 50M€':37500000,'más de 50M€':60000000};
@@ -8917,36 +8930,17 @@ function calcM7OperationalImpact() {
   else if (downtimeScopeRaw === 'Varias líneas a la vez') { scopeFactor = Math.max(2, Math.round(linesTotal/2)); scopeLabel = 'las líneas afectadas'; }
   else if (downtimeScopeRaw === 'Toda la fábrica') { scopeFactor = linesTotal || 1; scopeLabel = 'toda la fábrica'; }
 
-  // ── Coste de línea: prioriza M8 (Economic Baseline) si existe, luego Fábrica ──
-  const lineCostNumRaw = a('fab', 'line_hour_cost_num');
-  const lineCostRangeRaw = a('fab', 'line_hour_cost');
-  const m8LineCost = m8Data[cid]?.line_hour_cost;
-  const lineCostMap = {'menos de 200€':150,'200€ - 400€':300,'400€ - 800€':600,'más de 800€':1000,'No lo sabemos':300,'<250€':200,'250–500€':350,'500–1.000€':700,'>1.000€':1200,'Desconocido':300};
-  let lineCostEur, lineCostIsReal, lineCostSource;
-  if (parseFloat(lineCostNumRaw) > 0) {
-    lineCostEur = parseFloat(lineCostNumRaw); lineCostIsReal = true; lineCostSource = `${lineCostEur}€/h (dato real, sesión Fábrica)`;
-  } else if (lineCostRangeRaw && lineCostMap[lineCostRangeRaw]) {
-    lineCostEur = lineCostMap[lineCostRangeRaw]; lineCostIsReal = false; lineCostSource = `rango "${lineCostRangeRaw}" → punto medio ${lineCostEur}€/h`;
-  } else if (m8LineCost && lineCostMap[m8LineCost]) {
-    lineCostEur = lineCostMap[m8LineCost]; lineCostIsReal = false; lineCostSource = `M8 Economic Baseline: "${m8LineCost}" → ${lineCostEur}€/h`;
-  } else {
-    lineCostEur = 300; lineCostIsReal = false; lineCostSource = 'sin dato → benchmark 300€/h';
-  }
+  // Coste horario resuelto por el mismo selector que M1 y el Impact Assessment.
+  const lineCostEur = economicInputs.lineCost.value;
+  const lineCostIsReal = economicInputs.lineCost.isReal;
+  const lineCostSource = `${economicInputs.lineCost.source}${economicInputs.lineCost.input ? ': '+economicInputs.lineCost.input : ''} → ${lineCostEur}€/h`;
   const lineCostAnomaly = lineCostIsReal && lineCostEur > LINE_COST_MAX_PLAUSIBLE;
   const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada es muy superior al rango típico en pymes F&B (200-2.000€/h). Podría ser un error de unidad o de cifra. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)"` : null;
 
   // ── COMPONENTE 1: Paradas ──
-  const downtimeNumRaw = a('fab', 'downtime_hours_week_num');
-  const downtimeRangeRaw = a('fab', 'downtime_hours_week');
-  const downtimeMap = {'menos de 2h':1.5,'2h - 5h':3.5,'5h - 10h':7.5,'10h - 20h':15,'más de 20h':22};
-  let downtimeH, downtimeIsReal, downtimeInputLabel;
-  if (parseFloat(downtimeNumRaw) > 0) {
-    downtimeH = parseFloat(downtimeNumRaw); downtimeIsReal = true;
-    downtimeInputLabel = `${downtimeH}h/semana (dato real)`;
-  } else {
-    downtimeH = downtimeMap[downtimeRangeRaw] || 0; downtimeIsReal = false;
-    downtimeInputLabel = downtimeRangeRaw ? `rango "${downtimeRangeRaw}" → ${downtimeH}h` : 'sin dato';
-  }
+  const downtimeH = economicInputs.downtime.value;
+  const downtimeIsReal = economicInputs.downtime.isReal;
+  const downtimeInputLabel = `${downtimeH}h/semana (${economicInputs.downtime.source}${economicInputs.downtime.input ? ': '+economicInputs.downtime.input : ''})`;
   const maxWeeklyHoursM7 = getMaxWeeklyOpHours(cid);
   const downtimeImpliedWeeklyHoursM7 = downtimeH * scopeFactor;
   const downtimeAnomalyM7 = downtimeImpliedWeeklyHoursM7 > maxWeeklyHoursM7;
