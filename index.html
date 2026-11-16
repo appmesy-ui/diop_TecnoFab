@@ -2049,7 +2049,7 @@ function buildM6RoadmapSnapshot(backlog, ttl){
     const rim=(Number(b.impact)>0&&Number(b.readiness)>0)
       ?getRIMZone(Number(b.impact),Number(b.readiness)).zone:'SIN EVALUAR';
     return {order:i+1,name:String(b.name||`Iniciativa ${i+1}`),layer:b.layer||'L1',
-      rim,decision:gate.decision,reason:gate.reason,
+      rim,decision:gate.decision,reason:gate.reason,prereq_checks:getInitiativePrerequisites(b),
       prereq_status:b.prereq_status||'pendiente',source:'M6',launch:gate.launch};
   });
 }
@@ -6007,6 +6007,53 @@ function getRIMZone(impact,readiness){if(impact>=7&&readiness>=7)return{zone:'LA
 // DIOP 3.6 — RIM puntúa impacto/readiness; la autorización de ejecución es un control separado.
 // No infiere que una capa TTL esté consolidada a partir del OFI: el nivel TTL es orientativo.
 function getTTLFromOFI(ofi){return ofi<15?'L1':ofi<30?'L2':ofi<45?'L3':ofi<60?'L4':ofi<75?'L5':'L6';}
+// DIOP 3.6c — Prerrequisitos contextuales, basados en el tipo y objetivo de la iniciativa.
+// Son verificaciones a documentar por el consultor, nunca evidencia comprobada por el sistema.
+function getInitiativePrerequisites(b){
+  const n=String(b?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const has=(...terms)=>terms.some(term=>n.includes(term));
+  if(has('segmentacion','ot/it','ciberseguridad','firewall','seguridad ot')) return [
+    'Inventario de activos y flujos IT/OT, responsables y dependencias críticas',
+    'Evaluación de riesgos, segmentación prevista y mecanismo de reversión',
+    'Ventana de intervención, pruebas de conectividad y aprobación del responsable OT'];
+  if(has('5s','layout','limpieza','gestion visual','estandares de calidad visual')) return [
+    'Responsable de área, equipo participante y recursos disponibles',
+    'Condiciones de seguridad, estándares y situación de partida definidos',
+    'Rutina de auditoría visual, seguimiento y sostenimiento acordada'];
+  if(has('smed','changeover','cambio de formato')) return [
+    'Cambio prioritario seleccionado y tiempos de referencia observados',
+    'Participación de producción, mantenimiento y seguridad en las pruebas',
+    'Plan de ensayos, validación de calidad y estandarización del nuevo método'];
+  if(has('pm basico','mantenimiento preventivo','gmao','mantenimiento predictivo','registro digital de mantenimiento')) return [
+    'Activos críticos identificados y datos mínimos de fallos/órdenes disponibles',
+    'Responsables, capacidad de mantenimiento y ventanas de intervención confirmados',
+    'Procedimientos seguros, formación y seguimiento de cumplimiento acordados'];
+  if(has('oee','captura de paros','registro digital de produccion','dashboard','medicion de consumo','spc','control estadistico')) return [
+    'Definiciones, unidades, línea base y propietario de cada indicador aprobados',
+    'Fuentes de datos, calidad, frecuencia y acceso comprobados',
+    'Piloto de captura y validación con usuarios de planta planificado'];
+  if(has('scada','erp','mes ','manufacturing execution','wms','integracion','bom','trazabilidad')) return [
+    'Arquitectura y flujos de datos maestros acordados entre sistemas',
+    'Interfaces, permisos y evaluación de ciberseguridad IT/OT revisados',
+    'Pruebas de integración, responsables y plan de contingencia definidos'];
+  if(has('ia ','iot','machine learning','ml)','digital twin','vision artificial','aps','optimizacion de recetas','formulaciones')) return [
+    'Datos históricos suficientes, calidad y titularidad verificadas',
+    'Caso de uso, métricas de éxito y validación técnica del piloto definidos',
+    'Riesgos de seguridad, calidad de proceso y escalabilidad evaluados'];
+  if(has('ownership','kpi','reuniones tier','mejora continua','gestion del cambio','formacion','5 whys','causa raiz')) return [
+    'Patrocinador y responsables de ejecución y seguimiento asignados',
+    'Objetivos, recursos, formación y rutina de seguimiento definidos',
+    'Criterios de aceptación y evidencias de adopción acordados'];
+  if(has('calidad','procedimiento','checklist','proceso critico')) return [
+    'Requisitos de calidad y proceso crítico documentados',
+    'Responsables, formación y recursos de implantación asignados',
+    'Plan de verificación de resultados y control de cambios acordado'];
+  return [
+    'Responsable y alcance de la iniciativa definidos',
+    'Recursos, dependencias y riesgos operativos comprobados',
+    'Indicadores de éxito y evidencia de preparación documentados'];
+}
+function getInitiativePrereqSummary(b){return getInitiativePrerequisites(b).join('; ');}
 function getInitiativeExecutionGate(b, ttl){
   const layerNum=Number(String(b?.layer||'L1').replace('L',''));
   const ttlNum=Number(String(ttl||'L1').replace('L',''));
@@ -6016,9 +6063,9 @@ function getInitiativeExecutionGate(b, ttl){
   const higher=layerNum>ttlNum;
   // Verificar prerrequisitos no convierte una capa superior en ejecutable.
   if(higher) return {rim:rawZone,decision:'BLOQUEADA POR TTL',launch:false,reason:'Capa superior a la posición TTL orientativa; consolidar capas previas'};
-  if(evidence==='bloqueado') return {rim:rawZone,decision:'BLOQUEADA POR PRERREQUISITOS',launch:false,reason:'El consultor ha identificado condiciones críticas no resueltas'};
-  if(evidence!=='verificado') return {rim:rawZone,decision:'PENDIENTE DE VERIFICACIÓN',launch:false,reason:'Prerequisitos técnicos, de datos, seguridad OT y capacidad de ejecución sin documentar'};
-  if(rawZone==='LANZAR AHORA') return {rim:rawZone,decision:'LANZAR AHORA',launch:true,reason:'RIM favorable y prerrequisitos verificados por el consultor'};
+  if(evidence==='bloqueado') return {rim:rawZone,decision:'BLOQUEADA POR PRERREQUISITOS',launch:false,reason:'Condiciones críticas pendientes: '+getInitiativePrereqSummary(b)};
+  if(evidence!=='verificado') return {rim:rawZone,decision:'PENDIENTE DE VERIFICACIÓN',launch:false,reason:'Pendiente de verificar: '+getInitiativePrereqSummary(b)};
+  if(rawZone==='LANZAR AHORA') return {rim:rawZone,decision:'LANZAR AHORA',launch:true,reason:'El consultor declara verificados los prerrequisitos específicos; sujeto a evidencia documental'};
   return {rim:rawZone,decision:rawZone,launch:false,reason:'La matriz RIM no recomienda un lanzamiento inmediato'};
 }
 function setInitiativePrerequisites(idx,status){
@@ -6157,15 +6204,16 @@ function renderM6(){
             <span>RIM™: <strong>${gate.rim}</strong></span>
             <span style="font-weight:700;color:${gate.launch?'var(--green)':'var(--amber)'};">Decisión: ${gate.decision}</span>
           </div>
-          <div style="font-size:10px;color:#5a6b70;margin:5px 0;">${gate.reason}</div>
-          <label style="font-size:10px;color:#5a6b70;">Prerrequisitos verificados por consultor:
+          <div style="font-size:10px;color:#5a6b70;margin:5px 0;">${gate.decision==='BLOQUEADA POR TTL'?gate.reason:'Lista de verificación específica de esta iniciativa:'}</div>
+          <ul style="font-size:10px;color:#435963;padding-left:17px;margin:6px 0 9px;line-height:1.55;">${getInitiativePrerequisites(b).map(req=>`<li>${req}</li>`).join('')}</ul>
+          <label style="font-size:10px;color:#5a6b70;">Estado declarado por el consultor:
             <select aria-label="Estado de prerrequisitos" onchange="setInitiativePrerequisites(${i},this.value)" style="margin-left:6px;padding:4px;border:1px solid #dde3e1;border-radius:5px;">
               <option value="pendiente" ${(b.prereq_status||'pendiente')==='pendiente'?'selected':''}>Pendientes</option>
               <option value="verificado" ${b.prereq_status==='verificado'?'selected':''}>Verificados</option>
               <option value="bloqueado" ${b.prereq_status==='bloqueado'?'selected':''}>Bloqueo identificado</option>
             </select>
           </label>
-          <div style="font-size:9px;color:#8a9793;margin-top:4px;">Declaración del consultor, no auditoría independiente. Contrastar seguridad OT, datos, operación y dependencias antes de iniciar.</div>
+          <div style="font-size:9px;color:#8a9793;margin-top:4px;">Declaración del consultor, no auditoría independiente. Seleccionar «Verificados» solo tras contrastar todos los puntos aplicables y conservar la evidencia.</div>
         </div>
       </div>`;
     });
@@ -7715,7 +7763,7 @@ function getM6ReportContext() {
   backlog.forEach((b,i)=>{
     const zone=b.impact&&b.readiness?getRIMZone(b.impact,b.readiness).zone:'Sin evaluar';
     const gate=getInitiativeExecutionGate(b,getTTLFromOFI(getCurrentOFIScore()));
-    ctx+=`  ${i+1}. [${b.layer}] [${tipoIniciativaLabel(b.tipo)}] ${b.name} — Impacto: ${b.impact||'?'}/10, Readiness: ${b.readiness||'?'}/10, RIM: ${zone}; Decisión de ejecución: ${gate.decision}; Prerrequisitos: ${b.prereq_status||'pendiente'}`;
+    ctx+=`  ${i+1}. [${b.layer}] [${tipoIniciativaLabel(b.tipo)}] ${b.name} — Impacto: ${b.impact||'?'}/10, Readiness: ${b.readiness||'?'}/10, RIM: ${zone}; Decisión de ejecución: ${gate.decision}; Prerrequisitos: ${b.prereq_status||'pendiente'}. Comprobaciones específicas: ${getInitiativePrereqSummary(b)}`;
     if(b.investment)ctx+=` · Inv: ${b.investment}€`;
     if(b.savings_low||b.savings||b.savings_high)ctx+=` · Ahorro: ${b.savings_low||'?'}€(conserv) / ${b.savings||'?'}€(base) / ${b.savings_high||'?'}€(optim)/año`;
     if(b.confidence)ctx+=` · Confianza: ${b.confidence}/5`;
