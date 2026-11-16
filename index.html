@@ -8506,7 +8506,7 @@ function ftReviewComponentRow(c, idx, group) {
   return `<div style="padding:14px 16px;background:#ffffff;border:0.5px solid ${c.anomaly ? 'rgba(226,75,74,0.5)' : c.isEstimate ? 'rgba(186,117,23,0.3)' : '#dde3e1'};border-radius:var(--r-sm);margin-bottom:8px;">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;">
       <div style="font-size:13px;font-weight:600;color:#16232a;">${c.label}</div>
-      ${c.isEstimate ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(186,117,23,0.12);color:var(--amber);font-weight:600;flex-shrink:0;">CON SUPUESTOS</span>` : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(29,158,117,0.12);color:var(--green);font-weight:600;flex-shrink:0;">DATO REAL</span>`}
+      ${c.isEstimate ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(186,117,23,0.12);color:var(--amber);font-weight:600;flex-shrink:0;">CON SUPUESTOS</span>` : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(29,158,117,0.12);color:var(--green);font-weight:600;flex-shrink:0;">BASE DECLARADA</span>`}
     </div>
     ${c.anomalyNote ? `<div style="font-size:11px;color:var(--red);background:rgba(226,75,74,0.08);border-radius:var(--r-xs);padding:6px 9px;margin-bottom:8px;line-height:1.5;">${c.anomalyNote}</div>` : ''}
     <div style="font-size:11px;color:#5a6b70;line-height:1.5;margin-bottom:4px;">${c.inputSummary}</div>
@@ -8558,7 +8558,7 @@ function renderFreeTrialReview(skipScroll) {
   <div class="m1v2-sessionwrap">
 
   <div style="padding:12px 16px;background:rgba(0,173,181,0.05);border:0.5px solid rgba(0,173,181,0.15);border-radius:var(--r-sm);margin-bottom:18px;font-size:11.5px;color:#5a6b70;line-height:1.5;">
-    Las tarjetas marcadas <strong style="color:var(--amber);">CON SUPUESTOS</strong> usan un benchmark porque no había dato exacto. Las marcadas <strong style="color:var(--green);">DATO REAL</strong> vienen directamente de lo que respondió el cliente. Ajusta cualquier valor antes de confirmar — el informe final usará exactamente lo que dejes aquí.
+    Las tarjetas <strong style="color:var(--amber);">CON SUPUESTOS</strong> incorporan referencias o hipótesis de cálculo. <strong style="color:var(--green);">BASE DECLARADA</strong> indica que los datos principales proceden de respuestas del cliente, no que estén auditados. Todos los importes son estimaciones hasta verificar sus evidencias. Revisa las cifras antes de confirmar.
   </div>
 
   ${ftDraftRestored ? `<div style="padding:10px 16px;background:rgba(29,158,117,0.08);border:0.5px solid var(--green);border-radius:var(--r-sm);margin-bottom:18px;font-size:11.5px;color:var(--green-l);line-height:1.5;">↺ Recuperamos tu revisión anterior (las respuestas se recalcularon con los datos actuales; tus ediciones manuales se mantienen donde el dato de origen no cambió).</div>` : ''}
@@ -9194,7 +9194,7 @@ function m7ImpactRow(c) {
   return `<div style="padding:13px 15px;background:var(--s2);border:0.5px solid ${c.isEstimate ? 'rgba(186,117,23,0.3)' : 'var(--border)'};border-radius:var(--r-sm);margin-bottom:8px;">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:5px;">
       <div style="font-size:12.5px;font-weight:600;color:var(--text);">${c.label}</div>
-      ${c.isEstimate ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(186,117,23,0.12);color:var(--amber);font-weight:600;flex-shrink:0;">CON SUPUESTOS</span>` : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(29,158,117,0.12);color:var(--green);font-weight:600;flex-shrink:0;">DATO REAL</span>`}
+      ${c.isEstimate ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(186,117,23,0.12);color:var(--amber);font-weight:600;flex-shrink:0;">CON SUPUESTOS</span>` : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(29,158,117,0.12);color:var(--green);font-weight:600;flex-shrink:0;">BASE DECLARADA</span>`}
     </div>
     <div style="font-size:10.5px;color:var(--text3);line-height:1.45;margin-bottom:3px;">${c.inputSummary}</div>
     <div style="font-size:9.5px;color:var(--text4);font-family:var(--mono);margin-bottom:7px;">${c.formula}</div>
@@ -9229,7 +9229,7 @@ function renderM7ImpactReview(skipScroll) {
       </div>
     </div>
     <div style="padding:10px 14px;background:rgba(0,173,181,0.05);border:0.5px solid rgba(0,173,181,0.15);border-radius:var(--r-sm);margin:14px 0 18px;font-size:11px;color:var(--text2);line-height:1.5;">
-      El resto del informe (OFI™, VSM, portfolio M6, benchmark) ya usa cálculos validados en otros módulos. Esta es la única cifra que se construye aquí desde cero.
+      El resto del informe (OFI™, VSM y portfolio M6) utiliza cálculos de otros módulos. Aquí se revisa el impacto operativo: BASE DECLARADA no significa dato verificado; CON SUPUESTOS indica uso de referencias o hipótesis. Los importes son orientativos hasta contrastar sus evidencias.
     </div>
     ${m7ImpactEdited.components.map(c => m7ImpactRow(c)).join('')}
     <div style="padding:13px 15px;background:rgba(0,173,181,0.06);border:1px solid var(--teal);border-radius:var(--r-sm);margin:12px 0 20px;display:flex;justify-content:space-between;align-items:center;">
