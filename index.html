@@ -2324,6 +2324,14 @@ document.getElementById('report-content').innerHTML = `
       ? 'Las entrevistas y los módulos esenciales están completos. La IA analizará toda la evidencia y generará el informe DIOP completo.'
       : `Faltan ${readiness.missing.length} bloque${readiness.missing.length!==1?'s':''} esencial${readiness.missing.length!==1?'es':''}: ${readiness.missing.join(' · ')}.`}
 </div>
+      ${!allDone ? `
+        <div id="report-readiness-details" role="status" style="text-align:left;max-width:650px;margin:16px auto 0;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--s2);">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px;">Informe pendiente de actualización · ${readiness.completed}/${readiness.total} requisitos completos</div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:9px;">La generación permanecerá deshabilitada hasta completar los requisitos pendientes. El informe anterior se conserva.</div>
+          <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text);line-height:1.8;">
+            ${readiness.checks.filter(c => !c.done).map(c => `<li>${c.label}</li>`).join('')}
+          </ul>
+        </div>` : ''}
       ${
   allDone
     ? `<button
