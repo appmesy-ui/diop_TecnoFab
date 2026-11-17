@@ -2992,7 +2992,7 @@ function buildFieldIntelligence(){
   const opsChange=a('ops','one_thing_change');
   const opHardest=a('operario','hardest_daily');
   if(opsChange&&opHardest&&opsChange.length>5&&opHardest.length>5)
-    disc.push({signal:`Quick Win real — Dir.Ops cambiaría: "${opsChange.substring(0,80)}..." · Operario sufre: "${opHardest.substring(0,80)}..."`,profiles:'Dir.Ops + Operario',severity:'insight'});
+    disc.push({signal:`Dir.Ops cambiaría: «${m7Clip(opsChange,140)}» · Operario sufre: «${m7Clip(opHardest,140)}»`,profiles:'Dir.Ops + Operario',severity:'insight'});
 
   // ── 2. FRICCIONES INVISIBLES ──
   const fric=[];
@@ -3568,6 +3568,7 @@ function m7ApprovedFillPage5(root,r,c){
 }
 
 // ── Step 6 · Pages 6-7 built from client data ──
+function m7Clip(t,n){t=String(t||'').trim().replace(/^["'«“]+|["'»”]+$/g,'').trim();if(t.length<=n)return t;const k=t.slice(0,n),i=k.lastIndexOf(' ');return (i>n*0.6?k.slice(0,i):k).replace(/[\s,;:.\-—]+$/,'')+'…';}
 function m7ShortLabel(l){return String(l||'').split('/')[0].trim();}
 function m7ApprovedFillPage6(root,r,c){
  const E=m7ApprovedEsc,q=s=>root.querySelector(s),name=m7ApprovedClientName(),F=m7P1Facts(r,c);
@@ -3639,7 +3640,7 @@ function m7ApprovedFillPage7(root,r,c){
  if(pf[1]){pf[1].querySelector('b').textContent=(ec.confidenceBand||'Pendiente')+' · requiere validación';}
  if(pf[0]&&bk&&F.base>0&&!root.querySelector('.portfolio-footer .bk')){const x=pf[0].cloneNode(true);x.classList.add('bk');x.style.gridColumn='1 / -1';x.querySelector('small').textContent='Base respaldada por pérdida validada';x.querySelector('b').textContent=m7P1Eur(bk.supported.base)+' de '+m7P1Eur(F.base);pf[0].parentElement.appendChild(x);}
  const an=root.querySelectorAll('.analysis article');
- if(an[0])an[0].querySelector('p').innerHTML='El bruto combina registros declarados y supuestos'+(top&&top.inputSummary?'; '+E(topL)+': '+E(top.inputSummary)+'. ':'. ')+'<b>No se presenta como ahorro.</b>';
+ if(an[0])an[0].querySelector('p').innerHTML='El bruto combina registros declarados y supuestos'+(top&&top.inputSummary?'; '+E(topL)+': '+E(String(top.inputSummary).replace(/^merma[:\s]+/i,'').replace(/(\d)\.(\d)/g,'$1,$2'))+'. ':'. ')+'<b>No se presenta como ahorro.</b>';
  if(an[2])an[2].querySelector('p').textContent='Conciliar primero las '+(cnt||'')+' partidas y verificar, iniciativa por iniciativa, el respaldo de cada ahorro declarado en M6.';
  const ac=q('.action span');if(ac)ac.innerHTML='<b>Priorizar la conciliación de '+E(topL||'las partidas')+' y el coste real de los eventos de pérdida</b> antes de defender retornos económicos. Mantener M6 como escenario separado.';
  m7FooterTexts(root,['Baseline y revisión M7 de '+name+'; cartera de '+nBack+' iniciativas y escenarios M6.','Estimaciones declaradas y con supuestos. Sin auditoría financiera ni conciliación completa salvo indicación expresa.','COGS, unidades de coste horario, registros de parada, balances de materiales y duplicidades entre partidas.']);
@@ -3712,7 +3713,7 @@ function m7ApprovedFillPage9(root,r,c){
  const sw=q('.software');
  if(sw){const t=sw.querySelector('.software-card');
   if(tools.length&&t){const tpl=t.cloneNode(true);sw.innerHTML='';tools.forEach(tl=>{const n=tpl.cloneNode(true);n.querySelector('.class').textContent=tl.tipo||'Herramienta';n.querySelector('h3').textContent=tl.nombre;n.querySelector('.source').textContent='Precio: cotización';
-   n.querySelector(':scope > p').innerHTML='Alternativa a evaluar para <strong>'+E(tl.para_que||'una necesidad documentada')+'</strong>. No implica recomendar una nueva plataforma sin evaluar antes lo que ya existe.';
+   n.querySelector(':scope > p').innerHTML='Alternativa a evaluar para <strong>'+E(String(tl.para_que||'una necesidad documentada').trim().replace(/[.\s]+$/,'').replace(/^([A-ZÁÉÍÓÚ])(?=[a-záéíóúñ])/,m=>m.toLowerCase()))+'</strong>. No implica recomendar una nueva plataforma sin evaluar antes lo que ya existe.';
    const sp=n.querySelectorAll('.lines span');sp[0].textContent=tl.para_que||'Necesidad documentada en el diagnóstico.';sp[1].textContent='Compatibilidad técnica, ciberseguridad OT, licencias, soporte y alternativa de aprovechar sistemas existentes.';
    const a=sp[2].querySelector('a');if(a){let host='';try{host=new URL(tl.url).hostname.replace(/^www\./,'');}catch(e){}if(host&&/^https?:/.test(tl.url||'')){a.textContent=host;a.href=tl.url;}else sp[2].textContent='Sin enlace verificado';}
    sw.appendChild(n);});}
@@ -3800,7 +3801,7 @@ const M7_APPROVED_EXTRA_CSS=`
   .ap-report.ap-report { width:100%!important; max-width:none!important; margin:0!important; padding:0!important; }
   .ap-report.ap-report .ap-page { display:flex!important; align-items:flex-start!important; justify-content:center!important; width:400mm!important; height:398mm!important; min-height:0!important; margin:0!important; padding:0!important; border:0!important; box-shadow:none!important; overflow:hidden!important; break-after:page!important; page-break-after:always!important; }
   .ap-report.ap-report .ap-page:last-child { break-after:auto!important; page-break-after:auto!important; }
-  .ap-report.ap-report .ap-page .sheet { position:static!important; inset:auto!important; width:1440px!important; max-width:none!important; height:auto!important; transform:none!important; zoom:1!important; margin:25px 0 0!important; padding:0!important; overflow:visible!important; box-shadow:none!important; flex:0 0 1440px!important; }
+  .ap-report.ap-report .ap-page .sheet { position:static!important; inset:auto!important; width:1440px!important; max-width:none!important; height:auto!important; transform:none!important; zoom:var(--ap-fit,1)!important; margin:25px 0 0!important; padding:0!important; overflow:visible!important; box-shadow:none!important; flex:0 0 1440px!important; }
   .ap-report.ap-report .ap-page .sheet, .ap-report.ap-report .ap-page .sheet * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
 }
 `;
@@ -3812,6 +3813,7 @@ function m7ApprovedScalePages(){
   page.style.setProperty('--ap-scale',String(scale));
   page.style.height=Math.ceil(sheet.scrollHeight*scale+3)+'px';
   const printScale=Math.min(1.02,1045/Math.max(1,sheet.scrollHeight));
+  page.style.setProperty('--ap-fit',String(Math.min(1,1465/Math.max(1,sheet.scrollHeight))));
   const leftPx=Math.max(0,(1587-1440*printScale)/2);
   page.style.setProperty('--ap-print-scale',String(printScale));
   page.style.setProperty('--ap-print-left',leftPx+'px');
