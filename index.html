@@ -2490,7 +2490,8 @@ async function generateReport(confirmedOperationalImpact) {
   const d1=calcOFI_D1(),d2=calcOFI_D2(),d3=calcOFI_D3(),d4=calcOFI_D4();
   const ofiScore = calculateOFIScore(d1, d2, d3, d4);
   const ofiZone = ofiScore>=75?'Optimización avanzada':ofiScore>=50?'Mejora estructurada':ofiScore>=25?'Estabilización necesaria':'Intervención urgente';
-  const ofiTTL = ofiScore<15?'L1':ofiScore<30?'L2':ofiScore<45?'L3':ofiScore<60?'L4':ofiScore<75?'L5':'L6';
+  const ttlPos = getTTLPosition();
+  const ofiTTL = ttlPos.layer;
   const econM6 = calcPortfolioEconomics(m6Data[currentClient.id]?.backlog || []);
   const m7QuickWins = (opImpact && opImpact.components) ? calcDeterministicQuickWins(opImpact.components, 4) : [];
 
@@ -2498,6 +2499,12 @@ async function generateReport(confirmedOperationalImpact) {
   if (opImpact && opImpact.total) {
     lockedNumbersCtx += `Impacto operativo anual BRUTO y ORIENTATIVO (no auditado ni deduplicado): ${opImpact.total.toLocaleString('es-ES')}€\n`;
     lockedNumbersCtx += `Desglose: ${opImpact.components.map(c=>`${c.label} ${c.value.toLocaleString('es-ES')}€`).join(', ')}\n`;
+    if (Array.isArray(opImpact.pendingKeys) && opImpact.pendingKeys.length) {
+      const pend = opImpact.components.filter(c => opImpact.pendingKeys.includes(c.key));
+      lockedNumbersCtx += `Partidas con dato anómalo PENDIENTES DE CONFIRMAR (no presentarlas como validadas): ${pend.map(c=>`${c.label} ${c.value.toLocaleString('es-ES')}€`).join(', ')} — total pendiente ${opImpact.pendingTotal.toLocaleString('es-ES')}€; importe de las partidas sin anomalía pendiente ${opImpact.validatedTotal.toLocaleString('es-ES')}€.\n`;
+    }
+    const scrapCompCtx = opImpact.components.find(c => c.key === 'scrap');
+    if (scrapCompCtx && scrapCompCtx.range && scrapCompCtx.range.low !== null) lockedNumbersCtx += `Rango de la merma según los tramos declarados: ${scrapCompCtx.range.low.toLocaleString('es-ES')}€ a ${scrapCompCtx.range.high === null ? 'sin tope superior' : scrapCompCtx.range.high.toLocaleString('es-ES')+'€'}; el valor central de ${scrapCompCtx.range.central.toLocaleString('es-ES')}€ es solo una referencia, no una medición.\n`;
   }
   if (opImpact) {
     const auditFlags = auditM7EconomicIntegrity(opImpact);
@@ -2510,7 +2517,14 @@ async function generateReport(confirmedOperationalImpact) {
     lockedNumbersCtx += `\nOPORTUNIDADES EXPLORATORIAS M7 — NO SON QUICK WINS APROBADOS NI AHORROS VALIDADOS:\n`;
     m7QuickWins.forEach((qw,i) => { lockedNumbersCtx += `${i+1}. Componente: ${qw.componenteLabel} · Acción hipotética: ${qw.accion}. NO atribuir cifra de ahorro, ROI ni autorización de ejecución.\n`; });
   }
-  lockedNumbersCtx += `OFI™ Score: ${ofiScore}/100 — Zona: ${ofiZone} — Capa TTL™: ${ofiTTL}\n`;
+  lockedNumbersCtx += `OFI™ Score: ${ofiScore}/100 — Zona: ${ofiZone} — Capa TTL™: ${ofiTTL} (criterio: ${ttlPos.reason}${ttlPos.provisional ? '; POSICIÓN PROVISIONAL' : ''})\n`;
+  try {
+    const bkCtx = calcPortfolioBacking(m6Data[currentClient.id]?.backlog || [], opImpact, reconciliation);
+    const f = n => (n || 0).toLocaleString('es-ES') + '€';
+    if (bkCtx.totals.declared.base > 0) lockedNumbersCtx += `Ahorro base M6 declarado: ${f(bkCtx.totals.declared.base)}/año. De ellos, respaldado por pérdidas validadas: ${f(bkCtx.totals.supported.base)}; pendiente de confirmar la pérdida: ${f(bkCtx.totals.pending.base)}; no atribuible (iniciativas habilitadoras o de riesgo): ${f(bkCtx.totals.unattributable.base)}; sin pérdida medida: ${f(bkCtx.totals.noLoss.base)}. NO presentes como ahorro validado nada que no esté en la parte respaldada.\n`;
+  } catch (e) { /* sin respaldo M6 */ }
+  lockedNumbersCtx += `Lectura del OFI™: aunque se llame índice de fricción, la escala es INVERSA: a mayor puntuación, MENOR fricción operativa (100 = mínima fricción). No describas una puntuación alta como mucha fricción.\n`;
+  if (ttlPos.ofiProvisional) lockedNumbersCtx += `OFI™ PROVISIONAL: dimensiones sin evidencia suficiente: ${ttlPos.coverage.missing.map(m => `${m.label} (${m.note})`).join('; ')}. Su puntuación 0 NO significa mal desempeño sino dato pendiente; no la interpretes como debilidad.\n`;
   lockedNumbersCtx += `D1 Rendimiento: ${d1}/25 · D2 Datos: ${d2}/25 · D3 Digital: ${d3}/25 · D4 Organización: ${d4}/25\n`;
   if (econM6.list.length) {
     lockedNumbersCtx += `Portfolio M6 — Inversión: ${econM6.totalInv.toLocaleString('es-ES')}€ · BNA base: ${econM6.totalBase.toLocaleString('es-ES')}€/año · Payback: ${econM6.paybackBase||'—'} meses\n`;
@@ -2778,11 +2792,34 @@ Devuelve SOLO el JSON, sin texto adicional.`;
     r.operational_impact_breakdown = opImpact ? opImpact.components : [];
     r.economic_integrity_flags = opImpact ? auditM7EconomicIntegrity(opImpact) : [];
     r.economic_reconciliation = reconciliation || {status:'SIN CONCILIAR',consolidated:null,recoverable:null};
+    try {
+      const vsmCalc = (typeof vsmData !== 'undefined' && currentClient) ? vsmData[currentClient.id] : null;
+      if (vsmCalc && vsmCalc.processes && vsmCalc.processes.length) {
+        const VM = calcVSMMetrics(vsmCalc);
+        r.vsm_resumen = Object.assign({}, r.vsm_resumen || {}, {
+          lead_time: VM.leadTime > 0 ? vsmFormatLeadTime(VM.leadTime) : (r.vsm_resumen && r.vsm_resumen.lead_time) || '',
+          va_ratio: VM.leadTime > 0 ? VM.vaRatio.toFixed(2) + '%' : (r.vsm_resumen && r.vsm_resumen.va_ratio) || '',
+          cuellos_botella: VM.bottlenecks.length ? VM.bottlenecks.map(b => `${b.name || 'Sin nombre'} (${vsmBottleneckCauseLabel(b.cause)})`) : ((r.vsm_resumen && r.vsm_resumen.cuellos_botella) || []),
+          lead_time_origen: 'calculado',
+          lead_time_desglose: { va_seg: Math.round(VM.totalVA), mp_seg: Math.round(VM.mpSec), wip_seg: Math.round(VM.wipSec), pt_seg: Math.round(VM.ptSec), total_seg: Math.round(VM.leadTime), items: VM.nva.map(n => ({ name: n.name, seg: Math.round(n.seconds) })) },
+          cambio_formato_validacion: vsmChangeoverCrossCheck(vsmCalc, currentClient.id)
+        });
+      }
+    } catch (e) { console.warn('VSM calculado no aplicado:', e); }
+    try {
+      const bk = calcPortfolioBacking(m6Data[currentClient.id]?.backlog || [], opImpact, reconciliation);
+      r.economic_backing = {totals: bk.totals, items: bk.items.map(i => ({name: i.name, kind: i.kind, keys: i.keys, status: i.status, declared_base: i.declared.base, supported_base: i.supported.base}))};
+    } catch (e) { console.warn('Respaldo M6 no calculado:', e); }
+    r.economic_validation = opImpact ? { gross: opImpact.total, validated: opImpact.validatedTotal ?? null, pending: opImpact.pendingTotal ?? null, pendingKeys: opImpact.pendingKeys || [], scrapRange: ((opImpact.components.find(c => c.key === 'scrap')) || {}).range || null } : null;
 
     r.ofi_resumen = r.ofi_resumen || {};
     r.ofi_resumen.score = ofiScore;
     r.ofi_resumen.zona = ofiZone;
     r.ofi_resumen.ttl_capa = ofiTTL;
+    r.ofi_resumen.ttl_provisional = ttlPos.provisional;
+    r.ofi_resumen.ttl_criterio = ttlPos.reason;
+    r.ofi_resumen.ofi_provisional = ttlPos.ofiProvisional;
+    r.ofi_resumen.dimensiones_no_evaluadas = ttlPos.coverage.missing.map(m => ({ dimension: m.label, motivo: m.note }));
     r.ofi_resumen.vector_friccion = r.vector_friccion || r.ofi_resumen.vector_friccion || '';
     r.ofi_resumen.ttl_recomendacion = r.ttl_recomendacion || r.ofi_resumen.ttl_recomendacion || '';
     r.ofi_resumen.arquetipo = r.arquetipo || r.ofi_resumen.arquetipo || '';
@@ -3070,7 +3107,7 @@ function diopVsmMachineIcon(processName) {
       <path d="M18 63v17m88-17v17M42 26v10m40-10v10M29 13h66" ${ink}/>
       <path d="M49 44h26" stroke="#0c999a" stroke-width="3"/>
     </g>`;
-  }else if(/horne|cocci|secad|pasteuri|tratamiento term|calent/.test(v)){
+  }else if(/horn|cocci|secad|pasteuri|tratamiento term|procesado term|calent/.test(v)){
     kind='oven';drawing=`<g ${palette}><rect x="13" y="11" width="99" height="59" rx="3" ${solid}/>
       <path d="M13 23h99" ${ink}/><rect x="21" y="28" width="24" height="29" rx="2" fill="#71898c"/>
       <rect x="50" y="28" width="24" height="29" rx="2" fill="#71898c"/><rect x="79" y="28" width="24" height="29" rx="2" fill="#71898c"/>
@@ -3085,7 +3122,7 @@ function diopVsmMachineIcon(processName) {
       <path d="M20 65v16m84-16v16M9 25h106M12 71h99" ${ink}/>
       <path d="M16 16h10v9m72-9h10v9" ${ink}/>
     </g>`;
-  }else if(/envas|embotell|llenad|etiquet|empaquet|packag|sellad/.test(v)){
+  }else if(/envas|embotell|llenad|etiquet|empaquet|embalaj|packag|sellad/.test(v)){
     kind='packaging';drawing=`<g ${palette}><path d="M8 63h110v9H8z" ${solid}/>
       <path d="M17 72v9m94-9v9M16 36h92" ${ink}/>
       <rect x="34" y="12" width="54" height="24" rx="2" ${solid}/>
@@ -3200,6 +3237,491 @@ function m7ApprovedGenericSection(n,r,c){
  if(n===9)return head('Recomendaciones y plan de decisión','Qué debe aprobar dirección, qué verificar y qué soluciones evaluar')+table(['Solución','Aplicación prevista','Precio / validación'],(r.herramientas_mercado||[]).map(t=>[t.nombre||'—',t.para_que||'—','Pendiente de cotización']))+section('Decisión recomendada',r.ttl_recomendacion||'Definir plan técnico y validar dependencias antes de seleccionar software.')+section('Pregunta para dirección',r.siguiente_pregunta_ceo||'¿Qué evidencia falta para autorizar el siguiente paso?')+section('Siguiente fase','Contrastar → Diseñar → Pilotar → Decidir. El plan requiere responsables, hitos y criterios de éxito acordados.');
  return section('Sin información','No se dispone del contenido de esta sección.');
 }
+// ── Step 6 · Page 1 of the approved M7 report, built from the client's data ──
+function m7P1Int(v){return Math.round(Number(v)||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+function m7P1Eur(v){return m7P1Int(v)+' €';}
+function m7P1Dec(v,d){return Number(v).toFixed(d==null?2:d).replace('.',',');}
+function m7P1Pct(v){return m7P1Dec(v,1)+' %';}
+function m7P1Facts(r,c){
+ const ofi=r.ofi_resumen||{}, dig=r.madurez_digital_next||{}, ev=r.economic_validation||null;
+ const bk=(r.economic_backing&&r.economic_backing.totals)||null;
+ const comps=(r.operational_impact_breakdown||[]).filter(x=>Number(x.value)>0).sort((a,b)=>b.value-a.value);
+ const compSum=comps.reduce((s,x)=>s+Number(x.value),0);
+ const gross=ev&&Number.isFinite(Number(ev.gross))&&Number(ev.gross)>0?Number(ev.gross):compSum;
+ const top=comps[0]||null;
+ const topShare=top&&gross>0?Number(top.value)/gross*100:null;
+ let vsm=null;
+ try{const v=c.vsmCurrent;if(v&&v.processes&&v.processes.length&&typeof calcVSMMetrics==='function'){const M=calcVSMMetrics(v);const bn=(M.bottlenecks||[]).slice().sort((a,b)=>b.ctEff-a.ctEff)[0]||null;vsm={takt:M.takt||null,bn,count:v.processes.length,lead:M.leadTime>0?vsmFormatLeadTime(M.leadTime):null,hasTakt:!!M.takt};}}catch(e){}
+ const dims=Array.isArray(dig.dimensions)?dig.dimensions:[];
+ const weak=dims.filter(d=>d.score!=null&&d.score<=2).map(d=>d.name);
+ const missing=Array.isArray(ofi.dimensiones_no_evaluadas)?ofi.dimensiones_no_evaluadas.map(x=>x.dimension):[];
+ return {ofi,dig,ev,bk,comps,gross,top,topShare,vsm,weak,missing,
+  pendingLabels:(ev&&ev.pendingKeys||[]).map(k=>{const f=comps.find(x=>x.key===k);return f?String(f.label).toLowerCase():k;}),
+  base:Number(c.econ&&c.econ.totalBase)||0};
+}
+function m7P1Verify(key){
+ return {scrap:'base COGS, definiciones y posibles solapamientos',downtime:'horas de parada y coste real de línea parada',rework:'horas de retrabajo y coste operario',changeover:'cambios por semana, duración y coste de línea'}[key]||'supuestos de entrada, unidades y duplicidades';
+}
+function m7P1Texts(F){
+ const E=m7ApprovedEsc, name=m7ApprovedClientName();
+ const zone=String(F.ofi.zona||'').toLowerCase();
+ const score=F.ofi.score!=null?Math.round(Number(F.ofi.score)):null;
+ const strongMap={'intervención urgente':'actuar sobre la estabilidad operativa antes de cualquier inversión','estabilización necesaria':'verificar el desempeño real antes de ampliar la digitalización','mejora estructurada':'consolidar las bases de proceso y dato antes de integrar sistemas','optimización avanzada':'dirigir la inversión a las pérdidas ya medidas'};
+ const strong=strongMap[zone]||'verificar el desempeño real antes de ampliar la digitalización';
+ const bn=F.vsm&&F.vsm.bn;
+ let s2;
+ if(bn)s2=E(bn.name||'Una estación')+' aparece como posible restricción del flujo';
+ else if(F.vsm&&F.vsm.hasTakt)s2='El VSM declarado no muestra estaciones por encima del takt';
+ else s2='El VSM no tiene datos suficientes para señalar restricciones';
+ let s3;
+ if(F.top&&F.topShare!=null)s3=F.topShare>=60?'la estimación económica está dominada por '+E(String(F.top.label.split('/')[0]).trim().toLowerCase())+' ('+m7P1Pct(F.topShare)+') todavía sin conciliar':'la estimación económica se reparte entre varios conceptos, todavía sin conciliar';
+ else s3='no hay una cifra económica calculada: faltan datos de Fábrica';
+ const conclusion=E(name)+' presenta un OFI™ de '+(score!=null?score+'/100':'no calculado')+(F.ofi.ofi_provisional?' (provisional)':'')+' que aconseja <strong>'+E(strong)+'</strong>. '+s2+' y '+s3+'.';
+ // findings
+ const f=[];
+ if(bn){const eff=bn.ctEff,tk=F.vsm.takt;f.push([E(bn.name||'Estación')+' y capacidad','Ciclo efectivo '+m7P1Dec(eff)+' s/ud frente a un takt de '+m7P1Dec(tk)+' s/ud ('+(bn.cause==='ritmo'?'por ritmo nominal':'por disponibilidad')+'); confirmar la restricción en condiciones representativas.']);}
+ else if(F.vsm&&F.vsm.hasTakt)f.push(['Flujo y capacidad','Ninguna estación supera el takt de '+m7P1Dec(F.vsm.takt)+' s/ud con los datos declarados; contrastar con la demanda real.']);
+ else f.push(['Flujo y capacidad','El VSM carece de takt o de ciclos completos; no puede afirmarse dónde está la restricción.']);
+ if(F.dig.score!=null)f.push([F.weak.length?'Integridad del dato':'Madurez digital','Madurez '+m7P1Dec(F.dig.score,1)+'/5 ('+F.dig.evaluated+'/7 dimensiones)'+(F.weak.length?'; nivel 1–2 en '+F.weak.join(', ').toLowerCase()+'.':'; sin dimensiones en nivel 1–2.')]);
+ else f.push(['Madurez digital','Evaluación insuficiente ('+(F.dig.evaluated||0)+'/7 dimensiones); no se asigna nivel.']);
+ if(F.top)f.push([F.top.label.split('/')[0].trim()+' y coste real',m7P1Eur(F.top.value)+' de '+m7P1Eur(F.gross)+' brutos'+(F.ev&&F.ev.validated!=null?'; validado '+m7P1Eur(F.ev.validated)+', pendiente '+m7P1Eur(F.ev.pending||0):'')+'; no acredita aún una pérdida física recuperable.']);
+ else f.push(['Exposición económica','Sin cifra calculada; completar la sesión de Fábrica.']);
+ return {conclusion,findings:f};
+}
+function m7ApprovedFillPage1(root,r,c){
+ const E=m7ApprovedEsc,F=m7P1Facts(r,c),T=m7P1Texts(F),name=m7ApprovedClientName();
+ const q=s=>root.querySelector(s);
+ const pg=q('header .page');if(pg)pg.textContent='01 / RESUMEN';
+ const conc=q('.conclusion p');if(conc)conc.innerHTML=T.conclusion;
+ root.querySelectorAll('.finding').forEach((el,i)=>{const t=T.findings[i];if(!t)return;el.querySelector('strong').textContent=t[0];el.querySelector('p').textContent=t[1];});
+ // OFI
+ const sc=q('.ofi .score');if(sc&&sc.firstChild)sc.firstChild.nodeValue=F.ofi.score!=null?String(Math.round(Number(F.ofi.score))):'—';
+ const dial=q('.ofi .dial');if(dial){const deg=F.ofi.score!=null?Math.max(0,Math.min(100,Number(F.ofi.score)))*3.6:0;dial.style.background='conic-gradient(var(--teal) 0deg '+deg.toFixed(1)+'deg,#e0e7e6 '+deg.toFixed(1)+'deg 360deg)';}
+ const zone=q('.ofi .zone');if(zone)zone.textContent=String(F.ofi.zona||'Sin calcular').toUpperCase()+(F.ofi.ofi_provisional?' · PROVISIONAL':'');
+ const zdesc={'intervención urgente':'prioridad: contener la inestabilidad y asegurar registros básicos antes de cualquier solución tecnológica.','estabilización necesaria':'la prioridad es estabilizar procesos, registros y rutinas antes de escalar soluciones.','mejora estructurada':'las bases existen; la prioridad es consolidar el dato y las rutinas para sostener la integración.','optimización avanzada':'la base operativa permite priorizar integración y optimización donde la pérdida esté medida.'}[String(F.ofi.zona||'').toLowerCase()]||'zona no clasificada.';
+ const dp=q('.ofi-desc p');if(dp)dp.textContent='El índice integra señales de fricción operativa y sitúa a '+name+' en una zona donde '+zdesc+(F.ofi.ofi_provisional&&F.missing.length?' Dimensiones sin evaluar: '+F.missing.join(', ')+'.':'');
+ // metrics
+ const ms=root.querySelectorAll('.metrics .metric');
+ if(ms[0]){const v=ms[0].querySelector('.value'),m=ms[0].querySelector('.meaning');
+  if(F.dig.score!=null){v.innerHTML=E(m7P1Dec(F.dig.score,1))+'<span style="font-size:18px;color:#40575a"> / 5</span>';m.innerHTML='<strong>Nivel '+E(String(F.dig.levelName||'').toLowerCase())+'.</strong> '+E(F.dig.evaluated)+' dimensiones evaluadas'+(F.weak.length?'; nivel 1–2 en '+E(F.weak.join(', ').toLowerCase())+'.':'.');}
+  else{v.innerHTML='—';m.innerHTML='<strong>Evaluación insuficiente.</strong> '+E(F.dig.evaluated||0)+'/7 dimensiones; el mínimo para asignar nivel es 5.';}}
+ if(ms[1]){const v=ms[1].querySelector('.value'),m=ms[1].querySelector('.meaning');v.textContent=F.ofi.ttl_capa||'—';
+  m.innerHTML=(F.ofi.ttl_provisional?'<strong>Provisional.</strong> '+E(F.ofi.ttl_criterio||'')+' ':'Capa asociada al diagnóstico. ')+'<strong>No autoriza</strong> por sí sola las iniciativas.';}
+ // economics
+ const ec=root.querySelectorAll('.econ');
+ if(ec[0]){ec[0].querySelector('.amount').textContent=F.gross>0?m7P1Eur(F.gross):'Sin calcular';
+  ec[0].querySelector('.sub').textContent=F.ev&&F.ev.validated!=null&&F.gross>0?'Validado '+m7P1Eur(F.ev.validated)+' · Pendiente de validar '+m7P1Eur(F.ev.pending||0)+' · Sin conciliar':'Con supuestos · Sin conciliar · No auditada';}
+ if(ec[1]){const am=ec[1].querySelector('.amount'),sub=ec[1].querySelector('.sub'),t=F.bk;
+  if(F.base>0){am.innerHTML=E(m7P1Eur(F.base))+'<span style="font-size:15px;color:#51666a"> / año</span>';
+   sub.textContent=t?'Declarado por el consultor · respaldado por pérdida validada '+m7P1Eur(t.supported.base)+' · pendiente '+m7P1Eur(t.pending.base)+' · no atribuible '+m7P1Eur(t.unattributable.base):'Caso de cartera independiente · no validado';}
+  else{am.textContent='Sin ahorro declarado';sub.textContent='M6 no tiene iniciativas con ahorro y coste cargados.';}}
+ // composition bars
+ const rows=root.querySelectorAll('.chart-row');
+ if(F.top&&F.gross>0&&rows.length>=2){const rest=Math.max(0,F.gross-F.top.value),p1=F.topShare,p2=100-p1;
+  rows[0].querySelector('span').textContent=F.top.label.split('/')[0].trim();rows[0].querySelector('.fill').style.width=p1.toFixed(1)+'%';rows[0].querySelector('strong').textContent=m7P1Eur(F.top.value);
+  const f2=rows[1].querySelector('.fill');f2.style.width=Math.max(p2,0.6).toFixed(1)+'%';rows[1].querySelector('strong').textContent=m7P1Eur(rest);
+  rows[1].querySelector('span').textContent='Otros conceptos';}
+ else rows.forEach(x=>x.remove());
+ const ca=q('.caution');if(ca){
+  if(F.top&&F.topShare!=null){const rg=F.top.range&&F.top.range.low!=null&&F.top.range.high!=null?' (rango declarado '+m7P1Eur(F.top.range.low)+' – '+m7P1Eur(F.top.range.high)+')':'';
+   ca.innerHTML='<strong>Interpretación.</strong> '+E(F.top.label.split('/')[0].trim())+' representa aproximadamente el '+E(m7P1Pct(F.topShare))+' del total bruto calculado'+E(rg)+'. Debemos comprobar '+E(m7P1Verify(F.top.key))+' antes de hablar de pérdida consolidada o ahorro recuperable.'+(F.pendingLabels.length&&F.ev.pending>0?' '+E(m7P1Eur(F.ev.pending))+' quedan pendientes de validar ('+E(F.pendingLabels.join(', '))+') por datos de entrada anómalos.':'');}
+  else ca.innerHTML='<strong>Interpretación.</strong> No hay base económica calculada; completar la sesión de Fábrica antes de hablar de exposición.';}
+ // evidence table
+ const tds=[...root.querySelectorAll('.table .td')];
+ const bn=F.vsm&&F.vsm.bn;
+ const tr=[
+  [bn?(bn.name||'Estación'):'Flujo',bn?'M2: ciclo efectivo ≈'+m7P1Dec(bn.ctEff)+' s/ud; takt ≈'+m7P1Dec(F.vsm.takt)+' s/ud.':(F.vsm&&F.vsm.hasTakt?'M2: ninguna estación supera el takt de '+m7P1Dec(F.vsm.takt)+' s/ud.':'M2: VSM incompleto.'),bn?'Señal de posible limitación de capacidad bajo la demanda declarada.':'Sin restricción visible con los datos actuales.','Medir ciclo, disponibilidad, mezcla y demanda representativa.'],
+  ['Datos industriales',F.dig.score!=null?'M3: madurez '+m7P1Dec(F.dig.score,1)+'/5'+(F.weak.length?'; nivel 1–2 en '+F.weak.join(', ').toLowerCase()+'.':'.'):'M3: evaluación insuficiente.','Riesgo de decisiones basadas en indicadores no conciliados entre áreas.','Seguir el recorrido de un mismo dato entre planta, ERP y reportes.'],
+  ['Exposición económica',F.top?'M7: '+F.top.label.split('/')[0].trim().toLowerCase()+' '+m7P1Eur(F.top.value)+' dentro de '+m7P1Eur(F.gross)+' brutos orientativos.':'M7: sin cifra calculada.','El importe no equivale a ahorro ni acredita pérdida física.','Conciliar '+(F.top?m7P1Verify(F.top.key):'datos de entrada')+'.']];
+ tds.forEach((el,i)=>{const row=Math.floor(i/4),col=i%4;const v=tr[row]&&tr[row][col];if(v==null)return;const s=el.querySelector('strong');if(s)s.textContent=v;else el.textContent=v;});
+}
+
+// ── Step 6 · Page 2 (VSM) built from the client's VSM data ──
+const M7_ICON_PATHS={
+ mixer:'<path d="M20 22h68l-8 49H29Z"/><path d="M33 22V11h45v11M54 12v-8M42 72v10m28-10v10M16 33h-6m82 0h7"/><path d="M43 42l11 9 11-9M54 26v24"/>',
+ former:'<rect height="43" rx="4" width="85" x="14" y="26"/><path d="M17 23h78v-8H17zM25 69v12m63-12v12M22 54h70M40 55v13m30-13v13"/><circle cx="30" cy="66" r="5"/><circle cx="83" cy="66" r="5"/><path d="M42 44h31"/>',
+ oven:'<rect height="59" rx="4" width="90" x="12" y="17"/><path d="M12 30h90M27 43h19v21H27zM51 43h20v21H51zM77 43h17v21H77zM22 79v7m72-7v7"/><circle cx="88" cy="24" r="2"/>',
+ cooler:'<rect height="48" rx="3" width="95" x="10" y="29"/><path d="M14 22h86m-82 55v8m78-8v8"/><circle cx="31" cy="52" r="16"/><circle cx="62" cy="52" r="16"/><circle cx="92" cy="52" r="12"/><path d="M31 36v32m-16-16h32m15-16v32m-16-16h32m14-12v24m-12-12h24"/>',
+ packer:'<path d="M9 66h101M18 42h84v25H18zM24 69v13m72-13v13M38 42V25h44v17M52 25V13h18v12"/><rect height="15" width="11" x="28" y="48"/><rect height="15" width="11" x="46" y="48"/><rect height="15" width="11" x="64" y="48"/><rect height="15" width="11" x="82" y="48"/><path d="M81 16h22v16H81zM85 20h13"/>',
+ pallet:'<path d="M13 28h92v47H13zM13 45h92M31 28v47m28-47v47m29-47v47M8 77h102M16 78v9m84-9v9"/>',
+ cnc:'<rect height="56" rx="4" width="92" x="14" y="18"/><path d="M14 32h92M60 32v14M54 46h12l-3 14h-6zM26 74v10m68-10v10"/><rect height="22" width="24" x="24" y="40"/><path d="M82 42h14M82 50h14"/>',
+ weld:'<path d="M14 82h92M26 82V64h16v18M34 64l24-32 22 12M80 44l8 14"/><circle cx="58" cy="32" r="5"/><path d="M88 58l-5 8M95 62l6-4M92 68l8 2M82 70l-4 7"/>',
+ assembly:'<path d="M8 70h104M8 78h104M18 78v8m84-8v8"/><rect height="16" width="22" x="24" y="54"/><rect height="16" width="22" x="74" y="54"/><path d="M60 14v22M48 14h24M60 36l-8 10m8-10l8 10"/><circle cx="60" cy="58" r="6"/>',
+ paint:'<rect height="62" rx="4" width="88" x="26" y="14"/><path d="M26 26h88M6 40h16v12H6zM22 46l32 0M22 46l30-14M22 46l30 14M34 76v10m60-10v10"/>',
+ reactor:'<path d="M32 22h48v50c0 6-11 10-24 10s-24-4-24-10zM56 22v-12M44 40h24M56 40v26M44 66h24M80 50h18M98 50v22"/><path d="M28 22h56"/>',
+ print:'<rect height="30" rx="3" width="80" x="20" y="40"/><path d="M34 40V20h52v20M34 70v16h52V70M42 56h36"/><circle cx="90" cy="48" r="2"/>',
+ textile:'<rect height="52" rx="3" width="86" x="17" y="22"/><path d="M17 38h86M17 54h86M38 22v52M60 22v52M82 22v52M26 80v6m68-6v6"/>',
+ test:'<circle cx="60" cy="44" r="30"/><path d="M60 44l18-15M60 14v6M30 44h6M90 44h-6M38 24l4 4M82 24l-4 4M38 82h44M60 74v8"/>',
+ generic:'<rect height="48" rx="4" width="88" x="16" y="26"/><path d="M16 42h88M28 74v10m64-10v10"/><circle cx="40" cy="58" r="6"/><path d="M58 54h34M58 62h24"/>'
+};
+function m7IconKind(name){
+ const t=String(name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+ const R=[['packer',/envas|llen|embotell|etiquet|tapon|sellad|dosificad/],['pallet',/empac|palet|paletiz|embal|expedi|almac/],['mixer',/amas|mezcl|mixer|batid|dosific|homogene/],['oven',/horn|cocc|cocin|secad|curad|estufa|tratamiento termico/],['cooler',/enfri|refriger|congel|tunel/],['weld',/solda/],['cnc',/mecaniz|cnc|torn|fres|taladr|rectific|corte|cortar|troquel|punzon|plegad|mandrin/],['paint',/pintur|lacad|recub|galvan|anodiz|barniz/],['assembly',/ensambl|montaj|monta|atornill|sub-?conj/],['reactor',/reactor|tanque|depur|filtr|destil|fermenta|cuba|digest|evapor|mezclador de liquid/],['print',/impres|serigraf|marcad|grabad/],['textile',/text|costur|tejid|telar|confec|tintur/],['test',/inspec|control|ensayo|test|calidad|verific|medic|prueba/],['former',/form|molde|moldeo|conform|prens|inyec|extru|laminad|estamp/]];
+ for(const [k,re] of R)if(re.test(t))return k;
+ return 'generic';
+}
+function m7IconSvg(name){
+ const k=m7IconKind(name);
+ return '<svg aria-label="Silueta esquemática '+m7ApprovedEsc(k)+'" role="img" viewBox="0 0 120 100"><g fill="#e5eeec" stroke="#35575c" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5">'+M7_ICON_PATHS[k]+'</g></svg>';
+}
+function m7ApprovedFillPage2(root,r,c){
+ const E=m7ApprovedEsc,name=m7ApprovedClientName();
+ const vsm=c.vsmCurrent,procs=(vsm&&vsm.processes)||[];
+ const q=s=>root.querySelector(s);
+ const pg=q('header .page');if(pg)pg.textContent='02 / VSM';
+ const M=procs.length?calcVSMMetrics(vsm):null;
+ const takt=M&&M.takt;
+ const st=procs.map((p,i)=>({i,name:p.name||('Proceso '+(i+1)),ct:normalizeCT(p),eff:effectiveCT(p),co:parseFloat(p.co),up:parseFloat(p.uptime),
+   inv:i===0?(parseFloat(vsm.inventories&&vsm.inventories.mp)>0?'MP '+vsm.inventories.mp+' d':'Inicio de flujo'):(parseFloat(vsm.inventories&&vsm.inventories.between&&vsm.inventories.between[(i-1)+'_'+i])>0?m7P1Int(vsm.inventories.between[(i-1)+'_'+i])+' · inv. anterior':'Sin inventario declarado')}));
+ const over=st.filter(s=>takt&&s.eff&&s.eff>takt).sort((a,b)=>b.eff-a.eff);
+ const bn=over[0]||null;
+ const fmt=v=>v==null||!isFinite(v)?'—':m7P1Dec(v);
+ // header texts
+ const sh=q('.section-heading span');if(sh)sh.textContent='M2 · '+procs.length+' estaciones declaradas · Siluetas de proceso esquemáticas';
+ const thesis=q('.thesis');
+ if(thesis){const cause=bn?(bn.ct>takt?'por ritmo nominal (el ciclo nominal ya supera el takt)':'por disponibilidad (el ciclo nominal cabe en el takt, el efectivo no)'):'';
+  thesis.innerHTML='<strong>LECTURA PRINCIPAL</strong>'+(bn?E(bn.name)+' presenta un ciclo efectivo de '+fmt(bn.eff)+' s/ud frente a un takt calculado de '+fmt(takt)+' s/ud, '+E(cause)+'. Es una señal de posible restricción, pendiente de contraste en planta.'
+   :takt?'Ninguna estación supera el takt calculado de '+fmt(takt)+' s/ud con los datos declarados. No descarta restricciones por mezcla, turnos o paradas no registradas.'
+   :'El VSM no permite calcular el takt (faltan minutos disponibles o demanda diaria). No puede afirmarse dónde está la restricción.');}
+ const kp=root.querySelectorAll('.kpi');
+ const vr=r.vsm_resumen||{};
+ if(kp[0]){kp[0].querySelector('strong').textContent=(r.kpis&&r.kpis.oee_estimado)||'No medido';kp[0].querySelector('em').textContent='Valor declarado, no medición validada';}
+ if(kp[1]){kp[1].querySelector('strong').textContent=String(vr.lead_time||'—').replace('.',',');kp[1].querySelector('em').textContent=vr.lead_time_origen==='calculado'?'Calculado: valor añadido + inventarios'+(vr.va_ratio?' · VA '+String(vr.va_ratio).replace('.',','):''):'Valor declarado en M2';}
+ if(kp[2]){const d=vsm&&vsm.demand&&parseFloat(vsm.demand.units_per_day);kp[2].querySelector('strong').textContent=d?m7P1Int(d):'—';kp[2].querySelector('em').textContent='Unidades/día'+(takt?' · takt '+fmt(takt)+' s/ud':' · takt no calculable');}
+ // stations
+ const flow=q('.flow');
+ if(flow){
+  if(!st.length){flow.innerHTML='<div style="padding:30px;color:#657073;font-size:15px">M2 no tiene procesos cargados; no se representa el flujo.</div>';}
+  else{
+   const tpl=flow.querySelector('.station').cloneNode(true);flow.innerHTML='';
+   flow.style.gridTemplateColumns='repeat('+Math.min(st.length,8)+',minmax(0,1fr))';
+   st.forEach((s,i)=>{const a=tpl.cloneNode(true);const isOver=takt&&s.eff&&s.eff>takt;
+    a.className='station'+(isOver?' focus':'');
+    a.querySelector('.number').textContent=String(i+1).padStart(2,'0');
+    a.querySelector('.machine').innerHTML=m7IconSvg(s.name);
+    a.querySelector('.station-name').textContent=s.name;
+    const dd=a.querySelectorAll('dd');dd[0].textContent=s.ct?fmt(s.ct)+' s/ud':'—';dd[1].textContent=s.eff?fmt(s.eff)+' s/ud':'—';dd[2].textContent=isFinite(s.co)?s.co+' min':'—';dd[3].textContent=isFinite(s.up)?s.up+' %':'—';
+    a.querySelector('.inventory').textContent=s.inv;
+    const cons=a.querySelector('.constraint');if(cons)cons.remove();
+    if(isOver){const d=document.createElement('div');d.className='constraint';d.textContent='Ciclo superior al takt';a.appendChild(d);}
+    flow.appendChild(a);});
+  }
+ }
+ // bars
+ const an=q('.analytical');
+ if(an){
+  const rows=an.querySelectorAll('.bar-row');
+  if(!st.length||!takt){rows.forEach(x=>x.remove());const fl=an.querySelector('.footline');if(fl)fl.textContent=takt?'Sin procesos con ciclo calculable.':'Sin takt calculable: faltan minutos disponibles o demanda diaria en M2.';}
+  else{
+   const tpl=rows[0].cloneNode(true);rows.forEach(x=>x.remove());
+   const fl=an.querySelector('.footline');
+   const maxEff=Math.max.apply(null,st.map(s=>s.eff||0));
+   const scaleMax=Math.max(takt/0.724,maxEff*1.09);
+   st.forEach(s=>{if(!s.eff)return;const row=tpl.cloneNode(true);const ratio=s.eff/takt;
+    const cls=ratio>1?'high':ratio>=0.9?'near':'safe';
+    const lab=row.querySelector('.process-label');lab.textContent=s.name;lab.className='process-label'+(ratio>1?' risk':'');
+    const fill=row.querySelector('.bar-fill');fill.className='bar-fill '+cls;fill.style.width=(s.eff/scaleMax*100).toFixed(1)+'%';
+    row.querySelector('.takt-line').style.left=(takt/scaleMax*100).toFixed(1)+'%';
+    const v=row.querySelector('strong');v.textContent=fmt(s.eff)+' s';v.removeAttribute('style');if(ratio>1)v.style.color='#007c82';
+    an.insertBefore(row,fl);});
+   if(fl)fl.textContent='Línea discontinua negra: takt = '+fmt(takt)+' s/ud. '+(over.length?(over.length===1?'La estación que supera la línea se destaca en turquesa oscuro':'Las estaciones que superan la línea se destacan en turquesa oscuro')+'; el resto se representa en una escala neutra. ':'Ninguna barra supera la línea. ')+'Una barra que supera la línea señala una posible restricción bajo la demanda declarada; no demuestra por sí sola el cuello de botella.';
+  }
+ }
+ // decision findings
+ const fi=root.querySelectorAll('.decision .finding p');
+ const lowUp=st.filter(s=>isFinite(s.up)).sort((a,b)=>a.up-b.up)[0];
+ const des=vr.lead_time_desglose;
+ const topNva=des&&Array.isArray(des.items)&&des.items.length?des.items.slice().sort((a,b)=>b.seg-a.seg)[0]:null;
+ let obs;
+ if(bn)obs=E(bn.name)+' supera el takt por aproximadamente '+fmt(bn.eff-takt)+' s/ud (+'+Math.round((bn.eff/takt-1)*100)+' %).';
+ else if(takt)obs='Ninguna estación supera el takt de '+fmt(takt)+' s/ud con los ciclos efectivos declarados.';
+ else obs='No hay takt calculable con los datos de M2.';
+ if(over.length>1)obs+=' También superan el takt: '+over.slice(1).map(x=>E(x.name)).join(', ')+'.';
+ if(lowUp)obs+=' '+E(lowUp.name)+' presenta la menor disponibilidad declarada ('+lowUp.up+' %).';
+ if(topNva&&des.total_seg>0)obs+=' El mayor bloque sin valor añadido del lead time es '+E(topNva.name)+' (≈'+(topNva.seg/86400>=1?m7P1Dec(topNva.seg/86400,1)+' días':m7P1Dec(topNva.seg/3600,1)+' h')+').';
+ const why=bn&&bn.ct<=takt?'El ciclo nominal cabe en el takt: lo que lo supera es la disponibilidad. Las paradas y los cambios de formato reducen la capacidad efectiva y acumulan inventario intermedio.':'Una etapa más lenta puede acumular inventario intermedio y limitar el flujo; los cambios de formato y las paradas reducen la capacidad efectiva.';
+ const cc=vr.cambio_formato_validacion&&vr.cambio_formato_validacion.message;
+ const vals=[obs,why,'Contrastar tiempos por producto y turno, disponibilidad, microparadas, criterios de cálculo, mezcla y demanda representativa.'+(cc?' '+cc:''),(bn?'Medir primero la restricción y sus causas. ':'Completar y contrastar los datos de M2. ')+'Priorizar ajustes operativos antes de justificar una ampliación de capacidad o integración tecnológica.'];
+ fi.forEach((p,i)=>{if(vals[i]!=null){if(i===0)p.innerHTML=vals[i];else p.textContent=vals[i];}});
+ const ft=root.querySelector('footer div');if(ft)ft.innerHTML='<strong>Fuente:</strong> datos declarados de '+E(name)+' en M2 y cálculos DIOP; tiempos, disponibilidad e inventarios sujetos a validación operativa. No se atribuye un modelo de maquinaria específico.';
+ const fs=root.querySelector('footer span');if(fs)fs.textContent='DOCUMENTO CONFIDENCIAL · PÁG. 02';
+}
+
+// ── Step 6 · Pages 3-5 built from client data ──
+function m7Rows(container,tpl,items,fill){if(!container)return;container.innerHTML='';items.forEach(it=>{const n=tpl.cloneNode(true);fill(n,it);container.appendChild(n);});}
+function m7FooterTexts(root,texts){const ps=root.querySelectorAll('footer p');texts.forEach((t,i)=>{if(ps[i]&&t!=null)ps[i].textContent=t;});}
+function m7Ans(sess,key){const id=typeof currentClient!=='undefined'&&currentClient?currentClient.id:null;try{return String(allAnswers[id+'_'+sess+'_'+key]||'').trim();}catch(e){return '';}}
+function m7ApprovedFillPage3(root,r,c){
+ const E=m7ApprovedEsc,dig=r.madurez_digital_next||{},dims=Array.isArray(dig.dimensions)?dig.dimensions:[];
+ const q=s=>root.querySelector(s),name=m7ApprovedClientName();
+ const pg=q('header .page');if(pg)pg.textContent='03 / MADUREZ DIGITAL';
+ const ev=dig.score!=null,scored=dims.filter(d=>d.score!=null);
+ q('.bigscore').innerHTML=(ev?E(m7P1Dec(dig.score,1)):'—')+'<small>/5</small>';
+ q('.level').textContent=ev?dig.levelName:'Sin nivel asignado';
+ q('.score-sub').innerHTML=E(dig.evaluated||0)+'/7 dimensiones evaluadas<br/>'+E(dig.evidenceCount||0)+'/7 con nota de evidencia<br/>'+(dig.evidenceStatus==='Documentada'?'Clasificación documentada, no auditada':'Evidencia pendiente de revisión');
+ const minS=scored.length?Math.min.apply(null,scored.map(d=>d.score)):null;
+ const weakest=scored.filter(d=>d.score===minS);
+ const meaning={1:'Predominan herramientas aisladas y registros manuales; la información no está integrada para sostener una visión operativa compartida.',2:'Existen herramientas por área con integración limitada; el dato se concilia a mano entre producción, mantenimiento y gestión.',3:'Los procesos y sistemas están definidos por área, con integración parcial y datos reutilizables en parte de las decisiones.',4:'Los sistemas comparten datos entre áreas de forma sistemática; las decisiones se apoyan en indicadores integrados.',5:'El dato está integrado y se explota de forma analítica y sostenida en la gestión.'};
+ const ints=root.querySelectorAll('.interpret');
+ if(ints[0])ints[0].querySelector('p').textContent=ev?meaning[dig.level]:'Con menos de 5 de 7 dimensiones evaluadas no se asigna nivel; completar M3 antes de interpretar la madurez.';
+ if(ints[1])ints[1].querySelector('p').textContent=weakest.length?(weakest.length===scored.length?'Con todas las dimensiones evaluadas en nivel '+minS+'/5':'Con '+weakest.map(d=>d.name.toLowerCase()).join(', ')+' en nivel '+minS+'/5')+', la inversión en nuevas plataformas puede trasladar los mismos problemas a otro sistema.':'Sin dimensiones evaluadas no puede afirmarse dónde está el límite para integrar.';
+ const alerts=dig.alerts||[];
+ const dec=q('.decision');
+ if(dec)dec.innerHTML='<strong>DECISIÓN RECOMENDADA</strong>'+(alerts.length?'Verificar primero '+E(alerts.map(a=>a.dimension.toLowerCase()).join(' y '))+' con el responsable correspondiente; definir responsables y reglas de registro antes de ampliar integraciones.':weakest.length?'Verificar primero la evidencia de '+E(weakest.length===scored.length?'las dimensiones evaluadas':weakest.map(d=>d.name.toLowerCase()).join(', '))+'; definir responsables y reglas de registro antes de ampliar integraciones.':'Completar la evaluación M3 antes de decidir sobre integraciones.');
+ // dimensions
+ const panel=q('.dimensions'),rows=panel.querySelectorAll('.dimension'),split=panel.querySelector('.splitline');
+ if(rows.length){const tpl=rows[0].cloneNode(true);rows.forEach(x=>x.remove());
+  dims.forEach(d=>{const n=tpl.cloneNode(true);n.querySelector('.dim-name').textContent=d.name;
+   n.querySelector('.segments').innerHTML=[1,2,3,4,5].map(i=>'<i class="'+(d.score!=null&&i<=d.score?'on':'')+'"></i>').join('');
+   n.querySelector('strong').textContent=d.score!=null?d.score+'/5':'Sin evaluar';panel.insertBefore(n,split);});}
+ if(split){const sp=split.querySelectorAll('span');const sum=scored.reduce((a,d)=>a+d.score,0);
+  if(sp[0])sp[0].innerHTML=scored.length?'<b>Lectura conjunta:</b> '+weakest.length+' dimensión'+(weakest.length>1?'es':'')+' con nivel '+minS+'/5':'<b>Lectura conjunta:</b> sin dimensiones evaluadas';
+  if(sp[1])sp[1].innerHTML=scored.length?'Promedio: '+sum+'/'+scored.length+' ≈ <b>'+E(m7P1Dec(sum/scored.length,1))+'/5</b>':'Promedio: —';}
+ // benchmark
+ const sector=(typeof currentClient!=='undefined'&&currentClient&&currentClient.sector)||'';
+ const B=(typeof SECTOR_BENCHMARKS!=='undefined'&&(SECTOR_BENCHMARKS[sector]||SECTOR_BENCHMARKS['default']))||{};
+ const defs=[['OEE global',m7Ans('fab','oee_current')||m7Ans('sys','oee_current'),B.oee],['Rechazo / merma',m7Ans('fab','scrap_pct'),B.rechazo],['Mantenimiento reactivo',m7Ans('fab','maintenance_type_pct'),B.maint_react],['Cambio de formato',m7Ans('fab','changeover_time'),B.changeover]].filter(x=>x[1]);
+ const bt=q('.bench-top h2');if(bt)bt.textContent='Contraste exploratorio · '+(sector||'sector no indicado');
+ const dis=q('.disclaimer');if(dis)dis.innerHTML='<strong>Referencias internas sin fuente validada.</strong> No representan promedios del sector ni permiten clasificar el rendimiento de '+E(name)+'.';
+ const grid=q('.bench-grid');
+ if(grid){const t=grid.querySelector('.bench-row');
+  if(defs.length&&t){const tpl=t.cloneNode(true);grid.innerHTML='';defs.forEach(d=>{const n=tpl.cloneNode(true);n.querySelector('.bench-name').textContent=d[0];const b=n.querySelectorAll('.bench-vals b');b[0].textContent=d[1];b[1].textContent=d[2]||'Sin referencia';n.querySelector('p').textContent='Contraste exploratorio; verificar definiciones y base antes de interpretar';grid.appendChild(n);});}
+  else grid.innerHTML='<div style="padding:14px;color:#657073;font-size:14px">No hay KPI declarados en M2 para contrastar.</div>';}
+ // findings
+ const items=alerts.map(a=>({title:a.dimension,lvl:(dims.find(d=>d.name===a.dimension)||{}).score,base:a.evidence||a.message,risk:a.risk,ver:a.verification,act:a.action}));
+ const alertNames=alerts.map(a=>a.dimension);
+ dims.filter(d=>d.score!=null&&d.score<=2&&!alertNames.includes(d.name)).forEach(d=>items.push({title:d.name,lvl:d.score,base:d.evidence||'Sin nota de evidencia registrada.',risk:'Brecha de madurez declarada; el impacto no está cuantificado.',ver:'Contrastar la nota con registros y práctica real en planta.',act:'Definir responsable y reglas de registro tras comprobar el estado real.'}));
+ const fg=q('.finding-grid');
+ if(fg){const t=fg.querySelector('.finding');
+  if(items.length&&t){const tpl=t.cloneNode(true);fg.innerHTML='';items.slice(0,4).forEach(it=>{const n=tpl.cloneNode(true);n.querySelector('.finding-title strong').textContent=it.title;n.querySelector('.finding-title span').textContent=it.lvl!=null?'Nivel '+it.lvl+'/5':'Sin nivel';const ps=n.querySelectorAll('.finding-inner p');[it.base,it.risk,it.ver,it.act].forEach((v,i)=>{if(ps[i])ps[i].textContent=v||'—';});fg.appendChild(n);});}
+  else fg.innerHTML='<div style="padding:14px;color:#657073;font-size:14px">Ninguna dimensión evaluada está en nivel 1–2; no hay hallazgos prioritarios de madurez.</div>';}
+ m7FooterTexts(root,['M3, entrevistas y notas de evidencia del diagnóstico. Información declarada; '+(dig.evidenceCount||0)+'/7 dimensiones con nota.',ev?'El nivel '+m7P1Dec(dig.score,1)+'/5 ordena la discusión sobre madurez; no demuestra por sí solo la causa de las pérdidas ni sustituye una auditoría.':'Sin nivel asignado; la lectura es provisional.','Validar recorridos de datos y controles OT para convertir los hallazgos en acciones verificables.']);
+}
+function m7ApprovedFillPage4(root,r,c){
+ const E=m7ApprovedEsc,q=s=>root.querySelector(s),m4=c.m4||{},dm=m4.dimensions||{};
+ const pg=q('header .page');if(pg)pg.textContent='pág. 04';
+ const D=(typeof M4_DIMENSIONS!=='undefined'?M4_DIMENSIONS:[]).map(d=>({name:d.name,k:d.k,s:Number(dm[d.k])||0}));
+ const ok=D.filter(d=>d.s>0),avg=ok.length?ok.reduce((a,d)=>a+d.s,0)/ok.length:null;
+ const sn=q('.score-num');if(sn)sn.innerHTML=(avg!=null?E(m7P1Dec(avg,1)):'—')+'<span>/5</span>';
+ const sc=q('.score-copy');if(sc)sc.innerHTML='<strong>Evaluación general M4</strong>'+ok.length+' de '+D.length+' dimensiones evaluadas.'+'<br>Resultado orientativo del diagnóstico.';
+ const low=ok.slice().sort((a,b)=>a.s-b.s).slice(0,2).filter(d=>d.s<=2);
+ const band=avg==null?'No hay evaluación suficiente para estimar la preparación organizativa.':avg<2.5?'La evaluación señala una preparación organizativa limitada para absorber y sostener cambios':avg<3.5?'La evaluación señala una preparación organizativa media; la ejecución dependerá de los puntos débiles':'La evaluación señala una preparación organizativa sólida para sostener cambios';
+ const lp=q('.summary > p');if(lp)lp.innerHTML='<strong>Lectura ejecutiva.</strong> '+E(band)+(low.length?'; los puntos más débiles son '+E(low.map(d=>d.name.toLowerCase()).join(' y '))+' ('+low.map(d=>d.s+'/5').join(' y ')+').':'.');
+ const dsum=q('.d-head span');if(dsum)dsum.textContent=ok.length+'/'+D.length+' evaluadas · puntuación declarada por dimensión';
+ const dw=q('.dimensions'),dd=dw?dw.querySelectorAll('.dim'):[];
+ if(dd.length){const tpl=dd[0].cloneNode(true);dd.forEach(x=>x.remove());D.forEach((d,i)=>{const n=tpl.cloneNode(true);n.querySelector('.n').textContent=String(i+1).padStart(2,'0');n.querySelector('.label').textContent=d.name;n.querySelector('.src').textContent=d.s>0?d.s+'/5':'Sin evaluar';dw.appendChild(n);});}
+ const lb=q('.levelbar');if(lb)[...lb.querySelectorAll('i')].forEach((el,i)=>{el.className=avg!=null&&i<Math.round(avg)?'active':'';});
+ const df=q('.dims-footer');if(df)df.textContent='Puntuaciones declaradas en M4; no equivalen a una auditoría organizativa ni miden la preparación de cada iniciativa.';
+ const pillars=[m4.human,m4.operating,m4.execution];
+ root.querySelectorAll('.pillar').forEach((p,i)=>{const o=pillars[i]||{};const filled=Object.values(o).some(v=>String(v||'').trim());const b=p.querySelector('.pillar-head span');if(b){b.textContent=filled?'Con notas':'Pendiente';b.className='pending';}});
+ const bt=root.querySelectorAll('.band-title span');if(bt[0])bt[0].textContent='Desglose avanzado de M4 · '+(pillars.some(o=>o&&Object.values(o).some(v=>String(v||'').trim()))?'con notas registradas':'todavía sin evaluación publicada');
+ const risk=(r.riesgos_principales||[])[0];const fr=(c.fi&&c.fi.fricciones||[])[0];
+ const evr=root.querySelectorAll('.ev-row');
+ const rows=[['Arquetipo orientativo',(r.arquetipo||(r.ofi_resumen&&r.ofi_resumen.arquetipo)||m4.archetype_signals||'Sin arquetipo registrado')],['Riesgo consignado',risk?risk.riesgo+(risk.probabilidad?' (probabilidad '+risk.probabilidad+')':''):'Sin riesgos registrados'],['Señal transversal M3',fr?fr.signal:'Sin fricciones de datos registradas']];
+ evr.forEach((el,i)=>{if(rows[i]){el.querySelector('strong').textContent=rows[i][0];el.querySelector('span').textContent=rows[i][1];}});
+ const cp=q('.callout p');if(cp)cp.textContent=low.length?'La baja puntuación en '+low.map(d=>d.name.toLowerCase()).join(' y ')+' puede condicionar la capacidad de sostener iniciativas aunque su retorno sea atractivo; es una hipótesis por contrastar.':'Con los datos de M4 no se aprecia una barrera organizativa clara; contrastar en planta.';
+ m7FooterTexts(root,['M4: evaluación general '+(avg!=null?m7P1Dec(avg,1)+'/5':'sin calcular')+' y '+ok.length+'/'+D.length+' dimensiones; registro de riesgos y señales del diagnóstico.','Las puntuaciones son declaradas; el desglose avanzado solo se publica si hay notas registradas.','Verificar responsables, recursos y rutinas como prerrequisitos de M6, antes de ampliar el alcance.']);
+}
+function m7ApprovedFillPage5(root,r,c){
+ const E=m7ApprovedEsc,q=s=>root.querySelector(s),name=m7ApprovedClientName(),fi=c.fi||{};
+ const pg=q('header .page');if(pg)pg.textContent='pág. 05';
+ const cats=[['discrepancias','DISCREPANCIA ENTRE PERFILES','DISCREPANCIAS ENTRE PERFILES'],['fricciones','FRICCIÓN INVISIBLE','FRICCIONES INVISIBLES'],['dataTrust','SEÑAL DE DATO NO CONFIABLE','SEÑALES DE DATO NO CONFIABLE'],['dependencias','DEPENDENCIA HUMANA','DEPENDENCIAS HUMANAS'],['adopcion','SEÑAL DE ADOPCIÓN','SEÑALES DE ADOPCIÓN']];
+ const cnt=cats.map(x=>(fi[x[0]]||[]).length),total=cnt.reduce((a,b)=>a+b,0);
+ root.querySelectorAll('.signal-counts article').forEach((a,i)=>{a.querySelector('strong').textContent=cnt[i];a.querySelector('span').textContent=cnt[i]===1?cats[i][1]:cats[i][2];});
+ const top=cats.map((x,i)=>[x,cnt[i]]).sort((a,b)=>b[1]-a[1])[0];
+ const lm=q('.lead-main p');if(lm)lm.innerHTML=total?'El diagnóstico de '+E(name)+' reúne '+total+' señales de campo al cruzar M1–M4; <b>predominan las '+E(top[0][2].toLowerCase())+' ('+top[1]+')</b>. Son hallazgos declarados que piden contraste en planta.':'No hay señales de campo registradas para cruzar M1–M4.';
+ // discrepancies
+ const pf=q('.profiles'),dc=(fi.discrepancias||[]).slice(0,2);
+ if(pf){const t=pf.querySelector('.quote');
+  if(dc.length&&t){const tpl=t.cloneNode(true);pf.innerHTML='';dc.forEach(d=>{const n=tpl.cloneNode(true);n.querySelector('.role').textContent=String(d.profiles||'Perfiles').toUpperCase();n.querySelector('p').textContent=d.signal;pf.appendChild(n);});}
+  else pf.innerHTML='<div style="padding:14px;color:#657073;font-size:14px">No hay discrepancias registradas entre perfiles.</div>';}
+ const rd=q('.reading');if(rd){if(dc.length)rd.querySelector('span').innerHTML='Las discrepancias son brechas entre lo que cada perfil declara y lo que ocurre, no contradicciones demostradas. <b>Verificación:</b> observar la operación real, medir tiempos y causas, y contrastar cada declaración con registros.';else rd.style.display='none';}
+ const sh5=q('.section-head small');if(sh5)sh5.textContent=dc.length?(fi.discrepancias.length+(fi.discrepancias.length===1?' discrepancia registrada':' discrepancias registradas')+' entre perfiles'):'Sin discrepancias registradas entre perfiles';
+ // frictions
+ const lab={transfer:'Transferencias manuales',gap:'Flujos ausentes',avoided:'Sistema evitado',underused:'Infrautilización',handover:'Traspaso de turno'};
+ const panels=root.querySelectorAll('.mid .panel');
+ const fr=(fi.fricciones||[]).filter(f=>f.type!=='underused').slice(0,4);
+ const p1=panels[0];
+ if(p1){const rows=p1.querySelectorAll('.flowrow');
+  if(rows.length){const tpl=rows[0].cloneNode(true);const anchor=rows[rows.length-1].nextSibling;rows.forEach(x=>x.remove());
+   (fr.length?fr:[{type:'-',signal:'Sin fricciones de flujo de información registradas en M3.'}]).forEach(f=>{const n=tpl.cloneNode(true);n.querySelector('strong').textContent=f.type==='-'?'Sin señales':(lab[f.type]||'Fricción')+(f.count>1?' ('+f.count+')':'');n.querySelector('span').textContent=f.signal;p1.insertBefore(n,p1.querySelector('.systems'));});}
+  const sys=((typeof m3extData!=='undefined'&&currentClient&&m3extData[currentClient.id])||{}).systems||[];
+  const withUse=sys.filter(s=>s.name&&s.use_pct);const sw=p1.querySelector('.systems');
+  if(sw){if(withUse.length){const t=sw.querySelector('.system');const tpl=t.cloneNode(true);sw.innerHTML='';withUse.slice(0,4).forEach(s=>{const n=tpl.cloneNode(true);n.querySelector('.name').textContent=s.name+' · uso declarado';n.querySelector('strong').textContent=s.use_pct+' %';n.querySelector('small').textContent='Aprovechamiento por verificar';sw.appendChild(n);});}else sw.remove();}}
+ // trust
+ const p2=panels[1];
+ if(p2){const kb=((typeof m2extData!=='undefined'&&currentClient&&m2extData[currentClient.id])||{}).kpiBaseline||[];
+  const by={A:[],B:[],C:[],D:[]};kb.forEach(k=>{if(k.obs&&by[k.obs])by[k.obs].push(k.name);});const n=kb.filter(k=>k.obs&&by[k.obs]).length;
+  if(n){const mic=p2.querySelector('.micro');if(mic)mic.textContent='Perfil de confianza declarado: '+n+' KPI clasificados en cuatro niveles.';
+   ['a','b','c','d'].forEach((l,i)=>{const el=p2.querySelector('.trust .'+l);const k=['A','B','C','D'][i];if(el){el.style.flex=by[k].length+' 1 0';el.style.display=by[k].length?'':'none';}});
+   const tl=p2.querySelectorAll('.trustlabels b');['A','B','C','D'].forEach((k,i)=>{if(tl[i])tl[i].textContent=by[k].length;});
+   const te=p2.querySelector('.trust-explain');if(te)te.innerHTML=(by.D.length?'<strong>Sin dato (nivel D):</strong> '+E(by.D.join(', '))+'. ':'')+(by.C.length?'<strong>Manual/inconsistente (nivel C):</strong> '+E(by.C.join(', '))+'. ':'')+'<b>Qué verificar:</b> definiciones, captura por turno y conciliación entre fuente física y registro.';}
+  else{p2.innerHTML='<h2>03 · Fiabilidad de los indicadores</h2><p class="micro">No hay baseline de KPI clasificado en M2.</p>';}}
+ // dependencies / adoption
+ const lowers=root.querySelectorAll('.lower .panel');
+ const fill=(panel,arr,empty)=>{if(!panel)return;const o=panel.querySelectorAll('.observation');if(!o.length)return;const tpl=o[0].cloneNode(true);const items=arr.slice(0,3);o.forEach(x=>x.remove());(items.length?items:[{signal:empty,source:'Sin señales'}]).forEach(it=>{const n=tpl.cloneNode(true);n.querySelector('strong').textContent=it.source||'Señal registrada';n.querySelector('p').textContent=it.signal;panel.appendChild(n);});};
+ fill(lowers[0],fi.dependencias||[],'No se registraron dependencias de personas clave.');
+ fill(lowers[1],fi.adopcion||[],'No se registraron señales de adopción o resistencia.');
+ const conf=(c.conf&&c.conf.findings)||[];const inv=conf.filter(f=>/investigaci/i.test(JSON.stringify(f)));
+ const ma=q('.mini-alert');if(ma){if(inv.length){ma.querySelector('strong').textContent=inv.length+(inv.length===1?' investigación abierta':' investigaciones abiertas');ma.querySelector('span').textContent='Hallazgos clasificados como «Investigación requerida» en la capa de confianza; no se elevan a conclusión.';}else ma.remove();}
+ m7FooterTexts(root,['Field Intelligence™ de '+name+': cruces M1–M4, entrevistas y declaraciones del cliente.','Los porcentajes de uso, causas y fricciones proceden del diagnóstico; son declaraciones por contrastar.','Validar las brechas en campo antes de elevarlas a business case, inversión o prioridad M6.']);
+}
+
+// ── Step 6 · Pages 6-7 built from client data ──
+function m7ShortLabel(l){return String(l||'').split('/')[0].trim();}
+function m7ApprovedFillPage6(root,r,c){
+ const E=m7ApprovedEsc,q=s=>root.querySelector(s),name=m7ApprovedClientName(),F=m7P1Facts(r,c);
+ const pg=q('header .page');if(pg)pg.textContent='pág. 06';
+ const conf=((c.conf&&c.conf.findings)||[]).filter(f=>String(f.finding||'').trim());
+ const tz=Array.isArray(r.trazabilidad_hallazgos)?r.trazabilidad_hallazgos:[];
+ const verifyByMod={M1:'registro de KPI, definiciones, unidades y fuente física del dato.',M2:'ciclos por producto y turno, paradas, disponibilidad, mezcla y demanda representativa.',M3:'conexiones efectivas IT/OT, trazabilidad de un dato hasta el KPI y responsables del dato.',M4:'entrevistas por turno, propietarios de KPI y seguimiento real de acciones.'};
+ const impl={'Investigación requerida':'hay contradicción o información insuficiente; no es defendible concluir ni cuantificar todavía.','Hipótesis fuerte':'consistente con varios elementos del diagnóstico, pero pendiente de medición directa.','Confirmado':'cuenta con respaldo verificable; aun así debe mantenerse trazable a su fuente.'};
+ let items;
+ if(conf.length)items=conf.map(f=>({title:f.label||f.module,state:String(f.confidence||'Sin clasificar'),mod:f.module||'',baseLbl:'Hallazgo registrado:',base:f.finding,imp:impl[f.confidence]||'sin clasificación de confianza; tratar como dato declarado.',ver:verifyByMod[f.module]||'fuente, definición y alcance del dato.'}));
+ else items=tz.slice(0,6).map(t=>({title:t.hallazgo||'Hallazgo',state:String(t.tipo||'Sin clasificar'),mod:'',baseLbl:'Evidencia:',base:t.evidencia||'Sin evidencia documentada',imp:t.implicacion||'Por determinar',ver:'contrastar con la fuente indicada.'}));
+ items=items.slice(0,6);
+ const cntState=k=>items.filter(i=>new RegExp(k,'i').test(i.state)).length;
+ const parts=[];const bn=F.vsm&&F.vsm.bn;
+ if(bn)parts.push('una posible restricción en <b>'+E(bn.name)+'</b>');
+ if(F.weak.length)parts.push('debilidades en '+E(F.weak.slice(0,3).join(', ').toLowerCase()));
+ if(F.gross>0)parts.push('pérdidas económicas todavía <b>sin conciliar</b>');
+ const sm=q('.p6-summary p');if(sm)sm.innerHTML=(parts.length?'El diagnóstico de '+E(name)+' identifica '+parts.join(', ')+'. ':'El diagnóstico de '+E(name)+' no reúne todavía señales suficientes para priorizar. ')+'La prioridad es diferenciar lo declarado de lo demostrado, resolver contradicciones y contrastar en planta antes de decidir inversiones.';
+ const cs=root.querySelectorAll('.p6-counters article');
+ const vals=[[items.length,'HALLAZGOS REVISADOS'],[cntState('fuerte'),'HIPÓTESIS FUERTES'],[cntState('investigaci'),'INVESTIGACIONES REQUERIDAS'],[cntState('confirmado'),'HALLAZGOS MARCADOS «CONFIRMADO»']];
+ cs.forEach((a,i)=>{a.querySelector('b').textContent=vals[i][0];a.querySelector('span').textContent=vals[i][1];});
+ const sh=q('.p6-section-head small');if(sh)sh.textContent='Fuente: '+(conf.length?'Confidence Layer™ (M5)':'trazabilidad del informe')+' de '+name+' · estados originales conservados';
+ const fw=q('.p6-findings');
+ if(fw){const t=fw.querySelector('.p6-finding');
+  if(items.length&&t){const tpl=t.cloneNode(true);fw.innerHTML='';items.forEach((it,i)=>{const n=tpl.cloneNode(true);n.querySelector('.p6-num').textContent=String(i+1).padStart(2,'0');n.querySelector('.p6-finding-title strong').textContent=it.title;n.querySelector('.p6-state').textContent=(it.state+(it.mod?' · '+it.mod:'')).toUpperCase();
+   const ps=n.querySelectorAll('p');ps[0].innerHTML='<b>'+E(it.baseLbl)+'</b> '+E(it.base);ps[1].innerHTML='<b>Implicación:</b> '+E(it.imp);ps[2].innerHTML='<b>Verificar →</b> '+E(it.ver);fw.appendChild(n);});}
+  else fw.innerHTML='<div style="padding:14px;color:#657073;font-size:14px">No hay hallazgos clasificados en la capa de confianza (M5) ni trazabilidad en el informe.</div>';}
+ const rk=q('.p6-risks'),risks=(r.riesgos_principales||[]).slice(0,4);
+ if(rk){const t=rk.querySelector('.p6-risk');
+  if(risks.length&&t){const tpl=t.cloneNode(true);rk.querySelectorAll('.p6-risk').forEach(x=>x.remove());risks.forEach(k=>{const n=tpl.cloneNode(true);n.querySelector('strong').textContent=k.riesgo||'Riesgo';n.querySelector('small').textContent='Probabilidad cualitativa: '+(k.probabilidad||'sin valorar');const d=n.querySelectorAll(':scope > div');d[1].textContent=k.impacto||'—';d[2].textContent=k.mitigacion||'—';rk.appendChild(n);});}
+  else rk.insertAdjacentHTML('beforeend','<div style="padding:14px;color:#657073;font-size:14px">Sin riesgos registrados en el informe.</div>');}
+ const ac=q('.p6-action span');
+ if(ac)ac.innerHTML='Antes de autorizar iniciativas: <b>1)</b> cerrar contradicciones de datos, <b>2)</b> '+(bn?'medir la restricción de '+E(bn.name):'medir el flujo y su capacidad real')+', <b>3)</b> '+(F.gross>0?'conciliar las pérdidas económicas.':'completar la base económica.');
+ m7FooterTexts(root,['Confidence Layer™ (M5), módulos M1–M4 y cartera M6 de '+name+'. Estados de confianza asignados por el consultor.','Los '+items.length+' casos mostrados son los hallazgos clasificados; no cubren todo el diagnóstico.','Los porcentajes globales de confianza requieren reconciliación con la evidencia de cada módulo antes de citarse.']);
+}
+function m7ApprovedFillPage7(root,r,c){
+ const E=m7ApprovedEsc,q=s=>root.querySelector(s),name=m7ApprovedClientName(),F=m7P1Facts(r,c);
+ const pg=q('header .page');if(pg)pg.textContent='pág. 07';
+ const ec=c.econ||{},rec=r.economic_reconciliation||{items:[]},ev=F.ev,bk=F.bk;
+ const n=F.comps.length,top=F.top,topL=top?m7ShortLabel(top.label).toLowerCase():'';
+ const mc=q('.main-conclusion p');
+ if(mc)mc.innerHTML=F.gross>0?E(name)+' presenta una <strong>exposición bruta orientativa de '+E(m7P1Int(F.gross))+' €/año</strong>'+(top&&F.topShare>=60?', dominada por '+E(topL)+' ('+E(m7P1Eur(top.value))+')':', repartida entre '+n+' componentes')+'. Este importe <strong>no es una pérdida auditada ni equivale al ahorro recuperable</strong>: exige conciliar '+E(top?m7P1Verify(top.key):'supuestos y duplicidades')+' antes de usarlo como base de decisión.':E(name)+' no tiene una exposición económica calculada: faltan datos de la sesión de Fábrica.';
+ const mp=q('.method');
+ if(mp)mp.innerHTML='<b>Dos magnitudes que no deben confundirse</b><p><strong>'+E(F.gross>0?m7P1Eur(F.gross):'Sin calcular')+'</strong> expresa una suma bruta de componentes operativos, con supuestos'+(rec.consolidated!=null?'':' y pendiente de conciliar')+'. <strong>'+E(F.base>0?m7P1Int(F.base)+' €/año':'Sin ahorro declarado')+'</strong> corresponde al escenario base de la cartera de iniciativas M6, declarado por el consultor; no se deriva del bruto.</p>';
+ const ms=root.querySelectorAll('.metrics .metric');
+ const set=(m,l,v,s)=>{if(!m)return;m.querySelector('small').textContent=l;m.querySelector('strong').textContent=v;m.querySelector('span').textContent=s;};
+ set(ms[0],'Exposición operativa anual',F.gross>0?m7P1Eur(F.gross):'Sin calcular','Bruta · orientativa · '+(rec.consolidated!=null?'conciliada':'sin conciliar')+(ev&&ev.validated!=null&&F.gross>0?' · validado '+m7P1Eur(ev.validated):''));
+ const cnt=rec.items?rec.items.length:0,done=rec.items?rec.items.filter(i=>i.reconciled).length:0,docs=rec.items?rec.items.filter(i=>i.recoveryDocumented).length:0;
+ set(ms[1],'Pérdida conciliada / recuperable',rec.recoverable!=null?m7P1Eur(rec.recoverable):'Sin validar',cnt?done+'/'+cnt+' partidas documentadas · '+(rec.consolidated!=null?'conciliación completa':'no existe cifra consolidada aprobada'):'sin partidas');
+ set(ms[2],'Escenario base M6',F.base>0?m7P1Eur(F.base):'Sin declarar',F.base>0?'Ahorro anual orientativo · confianza '+String(ec.confidenceBand||'pendiente').toLowerCase()+' · no auditado':'M6 sin iniciativas con ahorro cargado');
+ const sh=root.querySelectorAll('.section-head span');
+ const panel=q('.bridge .panel'),lr=panel?panel.querySelectorAll('.loss-row'):[];
+ if(lr.length){const tpl=lr[0].cloneNode(true);const tot=panel.querySelector('.loss-total');lr.forEach(x=>x.remove());
+  F.comps.forEach((k,i)=>{const row=tpl.cloneNode(true);row.querySelector('b').textContent=k.label;const f=row.querySelector('.fill');const w=F.gross>0?k.value/F.gross*100:0;f.className='fill'+(i?' dim':'');f.style.width=Math.max(w,0.3).toFixed(2)+'%';if(i)f.style.minWidth='3px';row.querySelector('.v').textContent=m7P1Eur(k.value);panel.insertBefore(row,tot);});
+  if(tot)tot.querySelector('strong').textContent=m7P1Eur(F.gross);}
+ const mn=q('.micro-note');if(mn)mn.textContent=top&&F.topShare!=null?m7ShortLabel(top.label)+' ≈ '+m7P1Pct(F.topShare)+' del total. '+(F.topShare>=60?'Su predominio obliga a verificar ':'Verificar ')+m7P1Verify(top.key)+'.':'Sin componentes calculados.';
+ const concl=root.querySelectorAll('.conciliation > div');
+ if(concl.length>=4){concl[0].querySelector('strong').textContent=done+' de '+cnt;concl[1].querySelector('strong').textContent=docs+' de '+cnt;concl[2].querySelector('strong').textContent=rec.consolidated!=null?m7P1Eur(rec.consolidated):'Pendiente';concl[3].querySelector('strong').textContent=rec.recoverable!=null?m7P1Eur(rec.recoverable):'Pendiente';}
+ const si=root.querySelectorAll('.bridge .panel .smallinfo')[1];if(si)si.textContent=rec.consolidated!=null?'Hay conciliación completa de las partidas; la recuperabilidad depende de la documentación de cada una.':'La revisión económica no ha acreditado todavía una pérdida neta ni una fracción recuperable.';
+ const wr=q('.warning');if(wr)wr.innerHTML='<b>Punto crítico de integridad</b> Confirmar que paradas y averías, así como merma y retrabajo, no contienen costes duplicados entre componentes.'+(ev&&ev.pending>0?' '+E(m7P1Eur(ev.pending))+' están pendientes de validar ('+E(F.pendingLabels.join(', '))+') por datos de entrada anómalos.':'');
+ // M6 scenarios
+ const sp=root.querySelectorAll('.panel')[root.querySelectorAll('.panel').length-1];
+ const scs=root.querySelectorAll('.scenarios .sc'),L=[['Conservador',ec.totalLow,ec.paybackLow],['Base',ec.totalBase,ec.paybackBase],['Optimista',ec.totalHigh,ec.paybackHigh]];
+ scs.forEach((s,i)=>{const d=L[i];if(!d)return;s.querySelector('small').textContent=d[0];s.querySelector('strong').textContent=d[1]>0?m7P1Eur(d[1]):'—';s.querySelector('span').textContent=d[1]>0?'Por año'+(d[2]?' · payback orientativo '+d[2]+' meses':''):'Sin datos';});
+ const nBack=(c.m6&&c.m6.backlog||[]).length;
+ const pi=root.querySelector('.scenarios')&&root.querySelector('.scenarios').parentElement.querySelector('.smallinfo');if(pi)pi.textContent='Estimación del portfolio de '+nBack+' iniciativas; depende de la evidencia, los prerrequisitos y la capacidad de ejecución.';
+ const pf=root.querySelectorAll('.portfolio-footer > div');
+ if(pf[0]){pf[0].querySelector('b').textContent=ec.totalInv>0?m7P1Eur(ec.totalInv):'—';}
+ if(pf[1]){pf[1].querySelector('b').textContent=(ec.confidenceBand||'Pendiente')+' · requiere validación';}
+ if(pf[0]&&bk&&F.base>0&&!root.querySelector('.portfolio-footer .bk')){const x=pf[0].cloneNode(true);x.classList.add('bk');x.style.gridColumn='1 / -1';x.querySelector('small').textContent='Base respaldada por pérdida validada';x.querySelector('b').textContent=m7P1Eur(bk.supported.base)+' de '+m7P1Eur(F.base);pf[0].parentElement.appendChild(x);}
+ const an=root.querySelectorAll('.analysis article');
+ if(an[0])an[0].querySelector('p').innerHTML='El bruto combina registros declarados y supuestos'+(top&&top.inputSummary?'; '+E(topL)+': '+E(top.inputSummary)+'. ':'. ')+'<b>No se presenta como ahorro.</b>';
+ if(an[2])an[2].querySelector('p').textContent='Conciliar primero las '+(cnt||'')+' partidas y verificar, iniciativa por iniciativa, el respaldo de cada ahorro declarado en M6.';
+ const ac=q('.action span');if(ac)ac.innerHTML='<b>Priorizar la conciliación de '+E(topL||'las partidas')+' y el coste real de los eventos de pérdida</b> antes de defender retornos económicos. Mantener M6 como escenario separado.';
+ m7FooterTexts(root,['Baseline y revisión M7 de '+name+'; cartera de '+nBack+' iniciativas y escenarios M6.','Estimaciones declaradas y con supuestos. Sin auditoría financiera ni conciliación completa salvo indicación expresa.','COGS, unidades de coste horario, registros de parada, balances de materiales y duplicidades entre partidas.']);
+}
+
+// ── Step 6 · Pages 8-9 built from client data ──
+function m7ApprovedFillPage8(root,r,c){
+ const E=m7ApprovedEsc,q=s=>root.querySelector(s),name=m7ApprovedClientName();
+ const pg=q('header .page');if(pg)pg.textContent='pág. 08';
+ const backlog=(c.m6&&c.m6.backlog)||[],rm=Array.isArray(r.roadmap_m6)?r.roadmap_m6:[];
+ const ttl=(r.ofi_resumen&&r.ofi_resumen.ttl_capa)||'L1';
+ const N=rm.length||backlog.length;
+ const items=(rm.length?rm:backlog.map((b,i)=>({order:i+1,name:b.name,layer:b.layer||'L1',rim:'SIN EVALUAR',decision:'PENDIENTE DE VERIFICACIÓN',reason:'Sin snapshot de ejecución.',launch:false}))).map((x,i)=>Object.assign({},x,{qw:(backlog[i]&&backlog[i].cat)==='A'}));
+ const cnt=f=>items.filter(f).length;
+ const nLaunchRim=cnt(x=>x.rim==='LANZAR AHORA'),nEnabled=cnt(x=>x.launch),nTTL=cnt(x=>/TTL/.test(x.decision)),nPre=cnt(x=>/PRERREQUISITOS/.test(x.decision)),nPend=cnt(x=>/PENDIENTE/.test(x.decision)),nQW=cnt(x=>x.qw);
+ const mc=q('.main-conclusion p');
+ if(mc)mc.innerHTML=N?E(name)+' dispone de <strong>'+N+' iniciativa'+(N>1?'s':'')+' evaluada'+(N>1?'s':'')+' en M6</strong>, con '+nLaunchRim+' en zona RIM «Lanzar ahora», '+nEnabled+' habilitada'+(nEnabled===1?'':'s')+' para ejecutar y '+(nTTL+nPre+nPend)+' condicionada'+(nTTL+nPre+nPend===1?'':'s')+' por TTL, prerrequisitos o verificación. <strong>Una prioridad no equivale a una autorización</strong>: las condiciones de seguridad, recursos, información y adopción siguen pendientes de verificar.':E(name)+' no tiene iniciativas cargadas en M6; cualquier propuesta es exploratoria hasta que el consultor las evalúe.';
+ const ms=root.querySelectorAll('.metrics .metric');
+ const sm=(m,l,v,s)=>{if(!m)return;m.querySelector('small').textContent=l;m.querySelector('strong').textContent=v;m.querySelector('span').textContent=s;};
+ sm(ms[0],'Iniciativas M6',N,'Evaluadas y seleccionadas');sm(ms[1],'Quick Wins sugeridos',nQW,'Clasificación provisional del catálogo');sm(ms[2],'RIM · Lanzar ahora',nLaunchRim,'Prioridad; no autorización');sm(ms[3],'Habilitadas para ejecutar',nEnabled,'Según estados actuales de prerrequisitos y TTL');
+ const sh=root.querySelectorAll('.section-head h2');if(sh[0])sh[0].textContent='Secuencia de transformación · posición TTL '+ttl;
+ // layers
+ const lw=q('.layers'),L=(typeof DIOP_TTL_LAYERS!=='undefined'?DIOP_TTL_LAYERS:[]);
+ const es={Stabilize:'ESTABILIZAR',Measure:'CAPTURAR Y NORMALIZAR',Connect:'INTEGRAR',Govern:'GOBERNAR',Optimize:'OPTIMIZAR',Intelligence:'INTELIGENCIA'};
+ if(lw){const t=lw.querySelector('.layer');
+  const groups=L.map(l=>({l,list:items.filter(x=>x.layer===l.layer)})).filter(g=>g.list.length);
+  if(groups.length&&t){const tpl=t.cloneNode(true);lw.innerHTML='';groups.forEach((g,i)=>{const n=tpl.cloneNode(true);n.className='layer'+(i===0?' top':'');
+   const ln=n.querySelector('.layer-num'),ar=ln.querySelector('.arrow');const future=Number(g.l.layer.slice(1))>Number(String(ttl).slice(1));
+   ln.firstChild.nodeValue=g.l.layer+' · '+(future?'EVALUACIÓN FUTURA':es[g.l.name]||g.l.name.toUpperCase());if(ar&&i===groups.length-1)ar.style.visibility='hidden';
+   n.querySelector('.layer-title').textContent=g.l.desc;
+   const names=g.list.map(x=>x.name);n.querySelector('.desc').textContent=names.slice(0,3).join(', ')+(names.length>3?' y '+(names.length-3)+' más':'')+(future?'. Capa superior a la posición TTL orientativa; no está autorizada.':'.');
+   const dl=g.list.filter(x=>x.launch).length,bl=g.list.filter(x=>/TTL|PRERREQ/.test(x.decision)).length;
+   n.querySelector('.count').textContent=g.list.length+' iniciativa'+(g.list.length>1?'s':'')+' · '+dl+' habilitada'+(dl===1?'':'s')+(bl?' · '+bl+' bloqueada'+(bl>1?'s':''):'');
+   lw.appendChild(n);});}
+  else lw.innerHTML='<div style="padding:14px;color:#657073;font-size:14px">Sin iniciativas en M6 para ordenar por capa TTL.</div>';}
+ // cards
+ const cw=q('.cards');
+ if(cw){const t=cw.querySelector('.initiative');
+  if(items.length&&t){const tpl=t.cloneNode(true);cw.innerHTML='';items.slice(0,12).forEach((it,i)=>{const n=tpl.cloneNode(true);n.querySelector('.num').textContent=String(i+1).padStart(2,'0');n.querySelector('h3').textContent=it.name;
+   const ch=n.querySelectorAll('.meta .chip');ch[0].textContent=it.layer;ch[1].textContent='RIM · '+it.rim;if(ch[2]){if(it.qw)ch[2].textContent='Quick Win sugerido';else ch[2].remove();}
+   n.querySelector('.status').textContent=it.decision;n.querySelector('p').textContent=it.reason;cw.appendChild(n);});}
+  else cw.innerHTML='<div style="padding:14px;color:#657073;font-size:14px">Sin iniciativas cargadas en M6.</div>';}
+ const co=root.querySelectorAll('.callout > div');
+ if(co[1])co[1].querySelector('p').textContent=N?(nPre?nPre+' iniciativa'+(nPre>1?'s':'')+' bloqueada'+(nPre>1?'s':'')+' por prerrequisitos; ':'')+(nTTL?nTTL+' por TTL; ':'')+(nPend?nPend+' pendiente'+(nPend>1?'s':'')+' de verificación. ':'')+'Las condiciones se verifican iniciativa a iniciativa.':'Sin iniciativas que evaluar.';
+ m7FooterTexts(root,['Backlog y estados de ejecución de M6 · '+name+'. '+N+' iniciativa'+(N===1?'':'s')+'; las condiciones proceden del último registro del consultor.','La secuencia no establece fechas comprometidas ni acredita la viabilidad técnica o económica.','Confirmar los tipos sugeridos, prerrequisitos y responsables con el consultor antes de ejecutar.']);
+}
+function m7ApprovedFillPage9(root,r,c){
+ const E=m7ApprovedEsc,q=s=>root.querySelector(s),name=m7ApprovedClientName(),F=m7P1Facts(r,c);
+ const pg=q('header .page');if(pg)pg.textContent='PÁG. 09 / 09';
+ const bn=F.vsm&&F.vsm.bn,tools=(r.herramientas_mercado||[]).filter(t=>t&&t.nombre).slice(0,3);
+ const N=(c.m6&&c.m6.backlog||[]).length,ttl=(r.ofi_resumen&&r.ofi_resumen.ttl_capa)||'—';
+ const sys=((typeof m3extData!=='undefined'&&typeof currentClient!=='undefined'&&currentClient&&m3extData[currentClient.id])||{}).systems||[];
+ const sysNames=sys.map(s=>s.name).filter(Boolean).slice(0,3);
+ const mc=q('.main-conclusion p');
+ const parts=[];if(F.weak.length)parts.push('debilidades en <strong>'+E(F.weak.slice(0,3).join(', ').toLowerCase())+'</strong>');
+ if(bn)parts.push('una posible restricción en '+E(bn.name));
+ if(F.gross>0)parts.push('una exposición económica aún sin conciliar');
+ if(mc)mc.innerHTML=E(name)+' no necesita comenzar por una compra tecnológica. '+(parts.length?'El diagnóstico muestra '+parts.join(', ')+'. ':'')+'La secuencia razonable es <strong>confirmar los datos de partida, estabilizar la operación y verificar prerrequisitos</strong>; solo entonces tiene sentido definir el alcance de una herramienta o integración.';
+ const ms=root.querySelectorAll('.metrics .metric');
+ const sm=(m,l,v,s)=>{if(!m)return;m.querySelector('small').textContent=l;m.querySelector('strong').textContent=v;m.querySelector('span').textContent=s;};
+ sm(ms[0],'Punto de partida','TTL '+ttl,(r.ofi_resumen&&r.ofi_resumen.ttl_provisional?'Provisional; ':'Posición orientativa; ')+'no autoriza una inversión');
+ sm(ms[1],'Cartera de mejora',N,'Iniciativas M6 · Ejecución condicionada');
+ sm(ms[2],'Referencias comerciales',tools.length,tools.length?tools.map(t=>t.nombre).join(', ')+' · Cotización pendiente':'Sin referencias justificadas por la evidencia');
+ const ws=root.querySelectorAll('.workstep');
+ if(ws[0]){ws[0].querySelector('h3').textContent=bn?'Validar las pérdidas y la restricción de capacidad':'Validar las pérdidas y la capacidad real';ws[0].querySelector('p').textContent='Contrastar tiempos, disponibilidad, paradas y flujo de materiales en planta; conciliar las partidas económicas y las diferencias de registro antes de formular un ahorro recuperable.';}
+ if(ws[2])ws[2].querySelector('p').textContent='Revisar primero las funciones de '+(sysNames.length?sysNames.join(', '):'los sistemas existentes')+'. Definir requisitos, seguridad OT y criterios de aceptación antes de pedir cotizaciones.';
+ const gr=q('.guardrail');
+ if(gr)gr.innerHTML='<b>Condición económica</b><p>'+(F.gross>0?'Los <strong>'+E(m7P1Eur(F.gross))+'</strong> del diagnóstico corresponden a exposición bruta sin conciliar; ':'No hay exposición bruta calculada; ')+(F.base>0?'los <strong>'+E(m7P1Int(F.base))+' €/año</strong> del escenario M6 son una hipótesis independiente de cartera, de confianza no validada.':'M6 no declara un escenario de ahorro.')+'</p>';
+ const rh=root.querySelector('.rec-right .section-head span');if(rh)rh.textContent='Selección no vinculante · '+tools.length+(tools.length===1?' alternativa':' alternativas');
+ const sw=q('.software');
+ if(sw){const t=sw.querySelector('.software-card');
+  if(tools.length&&t){const tpl=t.cloneNode(true);sw.innerHTML='';tools.forEach(tl=>{const n=tpl.cloneNode(true);n.querySelector('.class').textContent=tl.tipo||'Herramienta';n.querySelector('h3').textContent=tl.nombre;n.querySelector('.source').textContent='Precio: cotización';
+   n.querySelector(':scope > p').innerHTML='Alternativa a evaluar para <strong>'+E(tl.para_que||'una necesidad documentada')+'</strong>. No implica recomendar una nueva plataforma sin evaluar antes lo que ya existe.';
+   const sp=n.querySelectorAll('.lines span');sp[0].textContent=tl.para_que||'Necesidad documentada en el diagnóstico.';sp[1].textContent='Compatibilidad técnica, ciberseguridad OT, licencias, soporte y alternativa de aprovechar sistemas existentes.';
+   const a=sp[2].querySelector('a');if(a){let host='';try{host=new URL(tl.url).hostname.replace(/^www\./,'');}catch(e){}if(host&&/^https?:/.test(tl.url||'')){a.textContent=host;a.href=tl.url;}else sp[2].textContent='Sin enlace verificado';}
+   sw.appendChild(n);});}
+  else sw.innerHTML='<div style="padding:14px;color:#657073;font-size:14px">El diagnóstico no justifica todavía una herramienta comercial concreta; no se muestran referencias.</div>';}
+ const dc=q('.decision p');
+ if(dc){if(r.siguiente_pregunta_ceo)dc.innerHTML='<strong>'+E(r.siguiente_pregunta_ceo)+'</strong> La respuesta debe concretarse en responsables, participación en el piloto y criterios de adopción.';else{const d=q('.decision');if(d)d.style.display='none';}}
+ m7FooterTexts(root,['Informe DIOP '+name+' · M3, M4, M6 y M7; referencias comerciales incluidas solo si están justificadas por el diagnóstico.','Herramientas, ahorros, implantaciones y precios pendientes de evaluación; nada de lo anterior es una adjudicación.','Validar requisitos con planta, operaciones, mantenimiento, IT/OT y finanzas antes de cotizar.']);
+}
+
 function buildApprovedM7(r,c){
  const name=m7ApprovedClientName();
  const isFreshBake=/freshbake/i.test(name);
@@ -3213,7 +3735,16 @@ function buildApprovedM7(r,c){
  for(let n=1;n<=9;n++){
   const root=m7ApprovedFromText(M7_APPROVED_TEMPLATES[String(n)]);
   m7ApprovedFillHeader(root,n);
-  if(liveMatch)m7ApprovedUpdateFreshBake(root,n,r,c);
+  if(n===1)m7ApprovedFillPage1(root,r,c);
+  else if(n===2)m7ApprovedFillPage2(root,r,c);
+  else if(n===3)m7ApprovedFillPage3(root,r,c);
+  else if(n===4)m7ApprovedFillPage4(root,r,c);
+  else if(n===5)m7ApprovedFillPage5(root,r,c);
+  else if(n===6)m7ApprovedFillPage6(root,r,c);
+  else if(n===7)m7ApprovedFillPage7(root,r,c);
+  else if(n===8)m7ApprovedFillPage8(root,r,c);
+  else if(n===9)m7ApprovedFillPage9(root,r,c);
+  else if(liveMatch)m7ApprovedUpdateFreshBake(root,n,r,c);
   else {
     // Retain TECNOFAB's approved paper, typography and hierarchy, but never publish sample-case facts for other clients.
     const brand=root.querySelector('header');root.innerHTML='';if(brand)root.appendChild(brand);
@@ -5466,7 +5997,7 @@ function renderF0() {
   // SECTOR BENCHMARKS
   html+=`<div class="vsm-section"><div class="vsm-section-title">📊 Referencias internas no validadas — ${sector||'General'}</div><div class="vsm-section-sub">Rangos internos de exploración. No son estándares ni estadísticas sectoriales validadas.</div><div style="padding:11px 13px;margin:10px 0 13px;background:#fff8ed;border:1px solid #efd6ac;border-radius:9px;font-size:11px;color:#875b22;line-height:1.6;"><strong>Referencia NO VALIDADA.</strong> Fuente, fecha, muestra y comparabilidad no documentadas. Úsala solo para formular preguntas; no califiques a la planta como mejor o peor que su sector basándote en estos rangos.</div>`;
   html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">`;
-  const benchItems=[{l:'OEE global',v:bench.oee},{l:'Tasa rechazo',v:bench.rechazo},{l:'MTBF equipos',v:bench.mtbf},{l:'MTTR equipos',v:bench.mttr},{l:'% Mant. reactivo',v:bench.maint_react},{l:'Tiempo cambio',v:bench.changeover},{l:'Nivel servicio',v:bench.servicio},{l:'Rotación inv.',v:bench.inv_rotation},{l:'Días stock',v:bench.stock_days}];
+  const benchItems=[{l:'OEE global',v:bench.oee},{l:'Tasa rechazo',v:bench.rechazo},{l:'MTBF equipos',v:bench.mtbf},{l:'MTTR equipos',v:bench.mttr},{l:'% Mant. reactivo',v:bench.maint_react},{l:'Tiempo cambio (línea completa)',v:bench.changeover},{l:'Nivel servicio',v:bench.servicio},{l:'Rotación inv.',v:bench.inv_rotation},{l:'Días stock',v:bench.stock_days}];
   benchItems.forEach(b=>{
     html+=`<div style="padding:10px;background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-sm);text-align:center;">
       <div style="font-size:14px;font-weight:700;color:#0f6e56;font-family:var(--mono);">${b.v}</div>
@@ -5790,7 +6321,7 @@ function calcOFI_D3(){
   const erp=a('erp_system');
   if(erp){const modules=(erp.match(/\|\|/g)||[]).length+1;if(erp.includes('No tienen'))score+=3;else if(modules>=4)score+=22;else if(modules>=2)score+=15;else score+=8;count++;}
   const lt=a('lot_tracking');
-  if(lt){if(lt.includes('completa'))score+=24;else if(lt.includes('parcial'))score+=15;else if(lt.includes('solo.*entrada'))score+=8;else score+=4;count++;}
+  if(lt){if(lt.includes('completa'))score+=24;else if(lt.includes('parcial'))score+=15;else if(/solo.*entrada/i.test(lt))score+=8;else score+=4;count++;}
   const wm=a('warehouse_management');
   if(wm){if(wm.includes('WMS'))score+=24;else if(wm.includes('ERP'))score+=18;else if(wm.includes('Excel'))score+=10;else score+=4;count++;}
   
@@ -5816,6 +6347,63 @@ function getCurrentOFIScore() {
   return calculateOFIScore(calcOFI_D1(), calcOFI_D2(), calcOFI_D3(), calcOFI_D4());
 }
 
+
+// ══════════════════════════════════════════════════════
+// ── DIOP · POSICIÓN TTL™ POR CAPAS COMPLETADAS + COBERTURA DEL OFI ──
+// Cada capa se apoya en la dimensión OFI que la mide: L1←D1, L2←D2, L3←D3, L4←D4.
+// Una capa está completada si su dimensión alcanza DIOP_TTL_LAYER_MIN (sobre 25) y está evaluada,
+// y todas las anteriores lo están. La posición TTL es la primera capa no completada, que es
+// donde hay que trabajar. L5/L6 solo se alcanzan con L1–L4 completadas y OFI ≥ 60 / ≥ 75.
+// El umbral 12/25 es PROVISIONAL: calibrado con 9 clientes (solo 1 con M2/M3/M4 completos);
+// revalidar con los siguientes antes de darlo por definitivo.
+// ══════════════════════════════════════════════════════
+const DIOP_TTL_LAYERS = Object.freeze([
+  Object.freeze({layer:'L1',name:'Stabilize',desc:'Estabilización de procesos básicos'}),
+  Object.freeze({layer:'L2',name:'Measure',desc:'Medición y captura de datos'}),
+  Object.freeze({layer:'L3',name:'Connect',desc:'Integración de sistemas'}),
+  Object.freeze({layer:'L4',name:'Govern',desc:'Gobernanza y rutinas'}),
+  Object.freeze({layer:'L5',name:'Optimize',desc:'Optimización avanzada'}),
+  Object.freeze({layer:'L6',name:'Intelligence',desc:'IA y automatización de decisiones'})
+]);
+const DIOP_TTL_LAYER_MIN = 12;
+const DIOP_OFI_DIM_LABELS = Object.freeze(['D1 Rendimiento','D2 Datos','D3 Digital','D4 Organización']);
+
+// Qué dimensiones del OFI tienen evidencia suficiente. D1–D3: al menos una respuesta puntuada
+// (la puntuación mínima de cada respuesta es > 0). D4: M4 con todas sus dimensiones rellenas,
+// igual que el criterio que ya usa la hoja de ruta para dar M4 por hecho.
+function getOFICoverage() {
+  const m4 = m4Data[currentClient?.id];
+  const m4Filled = m4?.dimensions ? M4_DIMENSIONS.filter(dim => Number(m4.dimensions[dim.k] || 0) > 0).length : 0;
+  const m4Complete = m4Filled === M4_DIMENSIONS.length;
+  const scores = [calcOFI_D1(), calcOFI_D2(), calcOFI_D3(), calcOFI_D4()];
+  const dims = scores.map((score, i) => {
+    const evaluated = i === 3 ? m4Complete : score > 0;
+    const note = evaluated ? '' : (i === 3 ? `M4 con ${m4Filled} de ${M4_DIMENSIONS.length} dimensiones` : 'sin respuestas puntuables');
+    return { label: DIOP_OFI_DIM_LABELS[i], score, evaluated, note };
+  });
+  const missing = dims.filter(d => !d.evaluated);
+  return { dims, missing, provisional: missing.length > 0 };
+}
+
+function getTTLPosition() {
+  const cov = getOFICoverage();
+  const scores = cov.dims.map(d => d.score);
+  const ofi = calculateOFIScore(scores[0], scores[1], scores[2], scores[3]);
+  const completed = [];
+  let idx = -1, stoppedByMissing = false, reason = '';
+  for (let i = 0; i < 4; i++) {
+    const L = DIOP_TTL_LAYERS[i], d = cov.dims[i];
+    if (!d.evaluated) { idx = i; stoppedByMissing = true; reason = `${L.layer} no evaluable: ${d.label} sin datos suficientes (${d.note})`; break; }
+    if (d.score < DIOP_TTL_LAYER_MIN) { idx = i; reason = `${L.layer} no completada: ${d.label} ${d.score}/25, por debajo del mínimo ${DIOP_TTL_LAYER_MIN}/25`; break; }
+    completed.push(L.layer);
+  }
+  if (idx < 0) {
+    if (ofi >= 75) { idx = 5; reason = 'L1–L5 completadas y OFI ≥ 75'; }
+    else if (ofi >= 60) { idx = 4; reason = 'L1–L4 completadas y OFI ≥ 60'; }
+    else { idx = 3; reason = `L1–L4 superan ${DIOP_TTL_LAYER_MIN}/25 pero el OFI (${ofi}) no alcanza 60: se mantiene en consolidación de L4`; }
+  }
+  return { ...DIOP_TTL_LAYERS[idx], idx, completed, provisional: stoppedByMissing, ofiProvisional: cov.provisional, reason, coverage: cov, ofi };
+}
 
 // DIOP Next 3.2 — Indicador ejecutivo independiente de OFI D3.
 // No sustituye el cálculo existente 0–25 ni modifica TTL/ROI.
@@ -5993,11 +6581,13 @@ function renderM5(){
   
   // Determine friction vector
   const dims=[{name:'D1 Rendimiento',score:d1,weight:0.30},{name:'D2 Datos',score:d2,weight:0.25},{name:'D3 Digital',score:d3,weight:0.25},{name:'D4 Organización',score:d4,weight:0.20}];
+  const cov=getOFICoverage();
+  const evNames=new Set(cov.dims.filter(x=>x.evaluated).map(x=>x.label));
   dims.sort((a,b)=>a.score-b.score);
-  const frictionVector=dims[0];
+  const frictionVector=dims.find(x=>evNames.has(x.name))||dims[0]; // una dimensión sin evaluar no puede ser el vector de fricción
   
   // TTL layer estimate
-  const ttl=ofi<15?{layer:'L1',name:'Stabilize',desc:'Estabilización de procesos básicos'}:ofi<30?{layer:'L2',name:'Measure',desc:'Medición y captura de datos'}:ofi<45?{layer:'L3',name:'Connect',desc:'Integración de sistemas'}:ofi<60?{layer:'L4',name:'Govern',desc:'Gobernanza y rutinas'}:ofi<75?{layer:'L5',name:'Optimize',desc:'Optimización avanzada'}:{layer:'L6',name:'Intelligence',desc:'IA y automatización de decisiones'};
+  const ttl=getTTLPosition();
   
   // Archetype from F0
   const f0=f0Data[currentClient?.id];
@@ -6009,7 +6599,8 @@ function renderM5(){
   // OFI MAIN SCORE
   html+=`<div class="vsm-section" style="text-align:center;padding:30px;">
     <div style="font-size:64px;font-weight:800;color:${zone.col};font-family:var(--mono);line-height:1;">${ofi}</div>
-    <div style="font-size:12px;color:#5a6b70;margin-top:4px;">OFI™ / 100</div>
+    <div style="font-size:12px;color:#5a6b70;margin-top:4px;">OFI™ / 100 · a mayor puntuación, menor fricción operativa</div>
+    ${cov.provisional?`<div style="display:inline-block;margin-top:8px;padding:4px 12px;background:rgba(186,117,23,0.1);border:1px solid #BA7517;border-radius:20px;font-size:10px;font-weight:600;color:#BA7517;">OFI PROVISIONAL · sin evaluar: ${cov.missing.map(m=>m.label+' ('+m.note+')').join('; ')}</div>`:''}
     <div style="display:inline-block;margin-top:10px;padding:6px 16px;background:${zone.col}22;border:1px solid ${zone.col};border-radius:20px;font-size:12px;font-weight:600;color:${zone.col};">${zone.name}</div>
     <div style="font-size:11px;color:#5a6b70;margin-top:6px;">${zone.desc}</div>
   </div>`;
@@ -6017,12 +6608,13 @@ function renderM5(){
   // 4 DIMENSIONS
   html+=`<div class="vsm-section"><div class="vsm-section-title">📐 Desglose por dimensión</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px;">`;
   [{name:'D1 Rendimiento',score:d1,weight:'30%',icon:'⚙️'},{name:'D2 Datos',score:d2,weight:'25%',icon:'📊'},{name:'D3 Digital',score:d3,weight:'25%',icon:'💻'},{name:'D4 Organización',score:d4,weight:'20%',icon:'🏢'}].forEach(d=>{
+    const dEval=cov.dims.find(x=>x.label===d.name).evaluated;
     const pct=d.score;const col=pct<8?'var(--red)':pct<15?'var(--amber)':pct<20?'var(--teal)':'var(--green)';
-    const isFriction=d.name===frictionVector.name;
+    const isFriction=dEval&&d.name===frictionVector.name;
     html+=`<div style="padding:14px;background:#ffffff;border:1px solid ${isFriction?'var(--red)':'#dde3e1'};border-radius:var(--r);text-align:center;">
       <div style="font-size:20px;margin-bottom:4px;">${d.icon}</div>
-      <div style="font-size:24px;font-weight:700;color:${col};font-family:var(--mono);">${d.score}</div>
-      <div style="font-size:8px;color:#8a9793;">/ 25</div>
+      <div style="font-size:24px;font-weight:700;color:${col};font-family:var(--mono);">${dEval?d.score:'—'}</div>
+      <div style="font-size:8px;color:#8a9793;">${dEval?'/ 25':'no evaluado'}</div>
       <div style="font-size:10px;color:#5a6b70;margin-top:4px;">${d.name}</div>
       <div style="font-size:9px;color:#8a9793;">Peso: ${d.weight}</div>
       ${isFriction?'<div style="font-size:8px;color:var(--red);margin-top:4px;font-weight:600;">⚠ VECTOR DE FRICCIÓN</div>':''}
@@ -6037,7 +6629,7 @@ function renderM5(){
     const past=i<parseInt(ttl.layer.replace('L',''))-1;
     html+=`<div style="flex:1;padding:10px 4px;text-align:center;border-radius:var(--r-sm);background:${current?'rgba(0,173,181,0.15)':past?'rgba(0,173,181,0.05)':'#ffffff'};border:1px solid ${current?'var(--teal)':'#dde3e1'};"><div style="font-size:10px;font-weight:700;color:${current?'#0f6e56':past?'var(--teal)':'#8a9793'};">${l.split(' ')[0]}</div><div style="font-size:8px;color:${current?'var(--teal)':'#8a9793'};">${l.split(' ')[1]}</div></div>`;
   });
-  html+=`</div><div style="margin-top:8px;padding:10px;background:rgba(0,173,181,0.05);border-radius:var(--r-sm);font-size:11px;color:#5a6b70;">Capa actual estimada: <strong style="color:#0f6e56;">${ttl.layer} ${ttl.name}</strong> — ${ttl.desc}. Iniciativas por encima de esta capa requieren consolidar las anteriores primero.</div></div>`;
+  html+=`</div><div style="margin-top:8px;padding:10px;background:rgba(0,173,181,0.05);border-radius:var(--r-sm);font-size:11px;color:#5a6b70;">Capa actual estimada: <strong style="color:#0f6e56;">${ttl.layer} ${ttl.name}</strong> — ${ttl.desc}. Iniciativas por encima de esta capa requieren consolidar las anteriores primero.<br><span style="font-size:10px;color:#8a9793;">Criterio: ${ttl.reason}${ttl.provisional?' · POSICIÓN PROVISIONAL':''}.</span></div></div>`;
   
   // ARCHETYPE
   if(arch){
@@ -6388,6 +6980,10 @@ const TTL_CATALOGUE_DEFAULT=[
   {layer:'L1',name:'PM básico en equipos críticos',desc:'Plan de mantenimiento preventivo en los 3-5 equipos más críticos.',cat:'A',ttm:'3–5 sem'},
   {layer:'L1',name:'SMED básico — reducción de changeover',desc:'Análisis y separación de tareas internas/externas en el cambio de mayor impacto.',cat:'A',ttm:'4–8 sem'},
   {layer:'L1',name:'Segmentación red OT/IT',desc:'Separar red de planta (OT) de la red corporativa (IT).',cat:'D',ttm:'4–6 sem'},
+  {layer:'L1',name:'MFA en acceso remoto a SCADA y OT',desc:'Exigir doble factor en VPN y accesos remotos a SCADA/HMI; revisar cuentas activas y accesos de proveedores.',cat:'D',ttm:'1–3 sem'},
+  {layer:'L1',name:'Cambio de credenciales por defecto en equipos OT',desc:'Inventariar PLCs, HMIs, switches y cámaras; sustituir credenciales de fábrica por credenciales únicas y custodiadas.',cat:'D',ttm:'1–2 sem'},
+  {layer:'L1',name:'Plan de actualización de firmware en PLC/HMI',desc:'Inventariar versiones, priorizar vulnerabilidades conocidas y programar ventanas de parada para actualizar con validación.',cat:'D',ttm:'4–8 sem'},
+  {layer:'L1',name:'Política y responsables de ciberseguridad OT',desc:'Documentar política mínima, responsable OT, acceso de proveedores, gestión de cambios y respuesta a incidentes.',cat:'D',ttm:'3–6 sem'},
   {layer:'L1',name:'Protocolo limpieza e inspección',desc:'Rutinas de limpieza que sirven como inspección del equipo.',cat:'A',ttm:'2–4 sem'},
   {layer:'L1',name:'Reorganización de layout sin obra',desc:'Reordenar equipos y materiales para reducir movimientos.',cat:'A',ttm:'3–6 sem'},
   {layer:'L1',name:'Estándares de calidad visual en línea',desc:'Muestras OK/NOK en cada puesto de inspección visual.',cat:'A',ttm:'2–3 sem'},
@@ -6605,6 +7201,10 @@ function generateSuggestions(currentBacklog){
   // ── From cybersecurity ──
   if(m3&&m3.cyber){
     if(m3.cyber.net_separation==='No')add('Segmentación red OT/IT','Redes OT/IT no separadas — riesgo crítico');
+    if(m3.cyber.mfa_scada==='No')add('MFA en acceso remoto a SCADA y OT','Acceso remoto al SCADA sin MFA — riesgo crítico');
+    if(m3.cyber.default_passwords==='No')add('Cambio de credenciales por defecto en equipos OT','Contraseñas por defecto sin cambiar en equipos OT');
+    if(m3.cyber.firmware_updated==='No')add('Plan de actualización de firmware en PLC/HMI','Firmware de PLCs/HMIs sin actualizar');
+    if(m3.cyber.policy_documented==='No')add('Política y responsables de ciberseguridad OT','Sin política de ciberseguridad OT documentada');
   }
   
   // ── From digital maturity ──
@@ -6672,6 +7272,132 @@ function getQuickWinInvestmentThreshold(cid) {
   return Math.round(Math.min(Math.max(RAW_THRESHOLD, FLOOR), CEILING));
 }
 
+// ══════════════════════════════════════════════════════
+// ── M6 · VÍNCULO ENTRE INICIATIVAS Y PÉRDIDAS MEDIDAS (M7) ──
+// Cada iniciativa (a) ataca una o varias pérdidas medidas, (b) es habilitadora (permite medir o
+// sostener, su ahorro no es atribuible) o (c) es de riesgo (evita exposición, sin ahorro propio).
+// El ahorro declarado a mano se contrasta con el techo de la pérdida: la SUMA de ahorros sobre un
+// mismo grupo de pérdidas no puede superar la pérdida. No se asume ningún % de recuperación: el
+// techo es la pérdida validada (o su figura consolidada / recuperable si el consultor la documentó).
+// Los importes declarados no se modifican; se añade qué parte está respaldada.
+// ══════════════════════════════════════════════════════
+const M6_LOSS_LABELS = Object.freeze({downtime:'Paradas',scrap:'Merma',rework:'Retrabajo',changeover:'Cambios de formato',maintenance:'Averías'});
+
+function getInitiativeLossTarget(b) {
+  const o = b && b.loss_target;
+  if (o === 'habilitadora' || o === 'riesgo') return {kind:o, keys:[], source:'consultor'};
+  if (o && Object.prototype.hasOwnProperty.call(M6_LOSS_LABELS, o)) return {kind:'perdida', keys:[o], source:'consultor'};
+  const n = String(b?.name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const has = (...t) => t.some(x => n.includes(x));
+  const r = (kind, keys) => ({kind, keys: keys || [], source:'catálogo'});
+  if (has('segmentacion','ot/it','ciberseguridad','mfa en acceso','credenciales por defecto','firmware','trazabilidad')) return r('riesgo');
+  if (has('smed','changeover','cambio de formato')) return r('perdida', ['changeover']);
+  if (has('oee')) return r('perdida', ['downtime','changeover']);
+  if (has('captura de paros')) return r('perdida', ['downtime']);
+  if (has('pm basico','gmao','registro digital de mantenimiento','mantenimiento predictivo','limpieza e inspeccion')) return r('perdida', ['downtime','maintenance']);
+  if (has('planificacion avanzada')) return r('perdida', ['changeover','downtime']);
+  if (has('5s')) return r('perdida', ['rework']);
+  if (has('estandarizacion de procedimiento','estandares de calidad visual','control estadistico','spc','optimizacion de recetas','control de calidad visual','integracion calidad')) return r('perdida', ['scrap','rework']);
+  return r('habilitadora');
+}
+
+function getM6ReferenceImpact() {
+  try {
+    if (m7ImpactEdited && m7DraftClientId === currentClient?.id) return {impact: m7ImpactEdited, reconciliation: m7ReconciliationSummary(m7ImpactEdited)};
+  } catch (e) { /* sin borrador M7 en curso */ }
+  return {impact: calcM7OperationalImpact(), reconciliation: null};
+}
+
+function calcPortfolioBacking(backlog, impact, reconciliation) {
+  const SC = ['low','base','high'];
+  const comps = Array.isArray(impact && impact.components) ? impact.components : [];
+  const pending = new Set(m7ValidationSummary(impact, reconciliation).pendingKeys);
+  const recItems = (reconciliation && reconciliation.items) || [];
+  const loss = {};
+  for (const k of Object.keys(M6_LOSS_LABELS)) {
+    const c = comps.find(x => x.key === k);
+    const v = Number(c && c.value) || 0;
+    const rec = recItems.find(i => i.key === k && i.reconciled);
+    let ceil;
+    if (rec) { const f = rec.recoverable != null ? rec.recoverable : rec.consolidated; ceil = {low:f, base:f, high:f}; }
+    else if (k === 'scrap' && c && c.range && c.range.low !== null && c.range.low !== undefined) ceil = {low:c.range.low, base:v, high:c.range.high}; // high null = sin tope
+    else ceil = {low:v, base:v, high:v};
+    loss[k] = {value:v, status: (!c || v <= 0) ? 'sin_dato' : (pending.has(k) ? 'pendiente' : 'validada'), ceil};
+  }
+  const items = (backlog || []).map(b => {
+    const t = getInitiativeLossTarget(b);
+    const declared = {low:Number(b.savings_low)||0, base:Number(b.savings)||0, high:Number(b.savings_high)||0};
+    const hasSavings = declared.low > 0 || declared.base > 0 || declared.high > 0;
+    let status;
+    if (t.kind !== 'perdida') status = hasSavings ? (t.kind === 'riesgo' ? 'riesgo' : 'habilitadora') : 'sin_ahorro';
+    else if (!hasSavings) status = 'sin_ahorro';
+    else {
+      const st = t.keys.map(k => loss[k].status);
+      status = st.includes('pendiente') ? 'pendiente' : st.every(s => s === 'sin_dato') ? 'sin_perdida' : 'validada';
+    }
+    return {name:b.name, kind:t.kind, keys:t.keys, source:t.source, status, declared, supported:{low:0,base:0,high:0}};
+  });
+
+  // Grupos de pérdidas conectados por iniciativas validadas que comparten pérdida (unión-búsqueda).
+  const parent = {};
+  const find = k => (parent[k] === k ? k : (parent[k] = find(parent[k])));
+  const validated = items.filter(i => i.status === 'validada');
+  validated.forEach(i => i.keys.forEach(k => { if (!(k in parent)) parent[k] = k; }));
+  validated.forEach(i => i.keys.slice(1).forEach(k => { parent[find(k)] = find(i.keys[0]); }));
+  const pools = {};
+  validated.forEach(i => { const root = find(i.keys[0]); (pools[root] = pools[root] || {keys:new Set(), items:[]}).items.push(i); i.keys.forEach(k => pools[root].keys.add(k)); });
+  Object.values(pools).forEach(p => {
+    SC.forEach(s => {
+      let cap = 0, open = false;
+      p.keys.forEach(k => { const c = loss[k].ceil[s]; if (c === null || c === undefined) open = true; else cap += c; });
+      const sum = p.items.reduce((a, i) => a + i.declared[s], 0);
+      const factor = (open || sum <= cap || sum === 0) ? 1 : cap / sum;
+      p.items.forEach(i => { i.supported[s] = Math.round(i.declared[s] * factor); });
+    });
+    p.items.forEach(i => { if (SC.some(s => i.declared[s] - i.supported[s] > 1)) i.status = 'excede'; });
+  });
+
+  const sum = (pred, field) => { const o = {low:0, base:0, high:0}; items.filter(pred).forEach(i => SC.forEach(s => { o[s] += i[field][s]; })); return o; };
+  const totals = {
+    declared: sum(() => true, 'declared'),
+    supported: sum(i => i.status === 'validada' || i.status === 'excede', 'supported'),
+    pending: sum(i => i.status === 'pendiente', 'declared'),
+    unattributable: sum(i => i.status === 'habilitadora' || i.status === 'riesgo', 'declared'),
+    noLoss: sum(i => i.status === 'sin_perdida', 'declared')
+  };
+  return {items, loss, totals};
+}
+
+function m6SetLossTarget(idx, value) {
+  const b = getM6().backlog[idx]; if (!b) return;
+  if (!value || value === 'auto') delete b.loss_target; else b.loss_target = value;
+  renderM6(); m6Changed();
+}
+
+function m6BackingHtml(it, idx, b) {
+  if (!it) return '';
+  const eur = n => (Number(n) || 0).toLocaleString('es-ES') + '€';
+  const t = getInitiativeLossTarget(b);
+  const cur = b.loss_target || 'auto';
+  const opt = (v, l) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`;
+  const sel = `<select onchange="m6SetLossTarget(${idx},this.value)" style="background:#ffffff;border:0.5px solid #dde3e1;border-radius:var(--r-xs);padding:3px 5px;color:#16232a;font-size:10px;font-family:var(--mono);outline:none;">`
+    + opt('auto', 'Automático (' + (t.kind === 'perdida' ? t.keys.map(k => M6_LOSS_LABELS[k]).join(' + ') : t.kind === 'riesgo' ? 'riesgo' : 'habilitadora') + ')')
+    + Object.keys(M6_LOSS_LABELS).map(k => opt(k, M6_LOSS_LABELS[k])).join('')
+    + opt('habilitadora', 'Habilitadora (sin ahorro propio)') + opt('riesgo', 'Riesgo (sin ahorro propio)') + '</select>';
+  const msg = {
+    validada: ['var(--green)', `Respaldado por pérdida validada (${eur(it.supported.base)})`],
+    excede: ['var(--amber)', `Excede la pérdida validada: respaldado ${eur(it.supported.base)} de ${eur(it.declared.base)} declarados`],
+    pendiente: ['var(--amber)', 'Pérdida pendiente de confirmar: ahorro no validado'],
+    sin_perdida: ['var(--red)', 'Sin pérdida medida que respalde este ahorro'],
+    habilitadora: ['var(--amber)', 'Habilitadora: su ahorro no es atribuible; asígnalo a la iniciativa que lo materializa'],
+    riesgo: ['var(--amber)', 'Riesgo: evita exposición, no genera ahorro propio']
+  }[it.status];
+  return `<div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:10px;font-family:var(--mono);color:#5a6b70;">`
+    + `<span>Pérdida que ataca:</span>${sel}`
+    + (msg ? `<span style="color:${msg[0]};">${msg[1]}</span>` : '')
+    + `</div>`;
+}
+
 function calcPortfolioEconomics(backlog){
   const list=(backlog||[]).filter(b=>b.investment>0&&(b.savings>0||b.savings_low>0||b.savings_high>0));
   const totalInv=list.reduce((a,b)=>a+(Number(b.investment)||0),0);
@@ -6729,13 +7455,18 @@ function getRIMZone(impact,readiness){if(impact>=7&&readiness>=7)return{zone:'LA
 
 // DIOP 3.6 — RIM puntúa impacto/readiness; la autorización de ejecución es un control separado.
 // No infiere que una capa TTL esté consolidada a partir del OFI: el nivel TTL es orientativo.
-function getTTLFromOFI(ofi){return ofi<15?'L1':ofi<30?'L2':ofi<45?'L3':ofi<60?'L4':ofi<75?'L5':'L6';}
+// El argumento se conserva por compatibilidad: la posición ya no sale del OFI total sino de las capas completadas.
+function getTTLFromOFI(){return getTTLPosition().layer;}
 // DIOP 3.6c — Prerrequisitos contextuales, basados en el tipo y objetivo de la iniciativa.
 // Son verificaciones a documentar por el consultor, nunca evidencia comprobada por el sistema.
 function getInitiativePrerequisites(b){
   const n=String(b?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const has=(...terms)=>terms.some(term=>n.includes(term));
-  if(has('segmentacion','ot/it','ciberseguridad','firewall','seguridad ot')) return [
+  if(has('politica y responsables')) return [
+    'Responsable OT y sponsor de dirección designados',
+    'Alcance de activos, usuarios y proveedores con acceso definido',
+    'Procedimiento de acceso, cambios e incidentes acordado y comunicado'];
+  if(has('segmentacion','ot/it','ciberseguridad','firewall','seguridad ot','mfa en acceso','credenciales por defecto','firmware')) return [
     'Inventario de activos y flujos IT/OT, responsables y dependencias críticas',
     'Evaluación de riesgos, segmentación prevista y mecanismo de reversión',
     'Ventana de intervención, pruebas de conectividad y aprobación del responsable OT'];
@@ -6802,6 +7533,8 @@ function renderM6(){
   const m=getM6();const backlog=m.backlog||[];
   const ofi=getCurrentOFIScore();
   const clientTTL=getTTLFromOFI(ofi);
+  const m6Ref=getM6ReferenceImpact();
+  const backing=calcPortfolioBacking(backlog,m6Ref.impact,m6Ref.reconciliation);
   
   let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🎯</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M6 · Initiative Backlog + RIM™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Selección, priorización y ROI de iniciativas · Posición TTL orientativa por OFI: ${clientTTL}</div>${m6SaveIndicatorHtml(currentClient.id)}<button onclick="retryM6Save()" style="margin-top:5px;padding:3px 8px;border:1px solid #ccd4d1;border-radius:6px;background:#fff;color:#335b5d;font-size:10px;cursor:pointer;">Guardar ahora / reintentar</button></div></div>`;
   html+=`<div class="m1v2-sessionwrap">`;
@@ -6924,6 +7657,7 @@ function renderM6(){
             <span style="color:var(--teal);">Base: ${Math.round(b.investment/b.savings*12)}m payback · ${Math.round(b.savings/b.investment*100)}% ROI</span>
             <span style="color:var(--green);">Optim: ${b.savings_high?Math.round(b.investment/(b.savings_high)*12)+'m payback':'—'}</span>
           </div>`:''}
+          ${m6BackingHtml(backing.items[i],i,b)}
         </div>
         <div style="margin-top:10px;padding:9px;border:1px solid #dde3e1;border-radius:6px;background:#f8faf9;">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:10px;">
@@ -6971,6 +7705,7 @@ function renderM6(){
         <div class="vsm-result-card"><div class="vsm-result-val ${econ.riskCount?'bad':''}">${econ.riskCount}</div><div class="vsm-result-label">Riesgos Cat D</div></div>
       </div>
       <div style="margin-top:14px;font-size:10px;color:#5a6b70;font-family:var(--mono);">BNA = Beneficio Neto Anual estimado. Aplicar reglas de integridad ROI TECNOFAB antes de presentar como ahorro duro.</div>
+      <div style="margin-top:8px;font-size:10px;color:#5a6b70;font-family:var(--mono);">Ahorro base declarado: ${(backing.totals.declared.base).toLocaleString('es-ES')}€ · respaldado por pérdidas validadas: ${(backing.totals.supported.base).toLocaleString('es-ES')}€ · pendiente de confirmar la pérdida: ${(backing.totals.pending.base).toLocaleString('es-ES')}€ · no atribuible (habilitadoras y riesgo): ${(backing.totals.unattributable.base).toLocaleString('es-ES')}€${backing.totals.noLoss.base?` · sin pérdida medida: ${backing.totals.noLoss.base.toLocaleString('es-ES')}€`:''}</div>
       <div class="vsm-section-title" style="margin-top:16px;font-size:12px;">💰 Resumen ROI — 3 escenarios</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
         <div style="padding:14px;background:#ffffff;border:1px solid rgba(226,75,74,0.3);border-radius:var(--r);text-align:center;">
@@ -7561,6 +8296,71 @@ function effectiveCT(proc) {
   return ct / (up / 100);
 }
 
+// ── MÉTRICAS VSM · ÚNICA FUENTE (resultados, análisis, diagrama, contexto IA e informe) ──
+// El lead time = tiempo de valor añadido (suma de C/T nominales) + inventarios convertidos a tiempo:
+// almacén MP (días declarados), WIP entre procesos (uds × C/T nominal del proceso siguiente) y
+// almacén PT (uds ÷ demanda diaria). El C/T efectivo (nominal ÷ disponibilidad) solo se usa para
+// detectar cuellos de botella, no para el lead time.
+function calcVSMMetrics(vsm) {
+  const procs = (vsm && vsm.processes) || [];
+  const inv = (vsm && vsm.inventories) || {};
+  const takt = calcTaktTime(vsm);
+  let totalVA = 0;
+  procs.forEach(p => { const ct = normalizeCT(p); if (ct) totalVA += ct; });
+
+  const nva = [];
+  let mpSec = 0, wipSec = 0, ptSec = 0;
+  const mpDays = parseFloat(inv.mp);
+  if (mpDays) { mpSec = mpDays * 24 * 3600; nva.push({ key: 'mp', name: 'Almacén MP', seconds: mpSec }); }
+  for (let i = 0; i < procs.length - 1; i++) {
+    const wip = parseFloat(inv.between?.[`${i}_${i+1}`]);
+    const nextCT = normalizeCT(procs[i+1]);
+    if (wip && nextCT) { const s = wip * nextCT; wipSec += s; nva.push({ key: `wip_${i}`, name: `${procs[i].name||'?'} → ${procs[i+1].name||'?'}`, seconds: s }); }
+  }
+  const ptUnits = parseFloat(inv.pt);
+  const demandDay = parseFloat(vsm && vsm.demand && vsm.demand.units_per_day);
+  if (ptUnits && demandDay) { ptSec = (ptUnits / demandDay) * 24 * 3600; nva.push({ key: 'pt', name: 'Almacén PT', seconds: ptSec }); }
+
+  const totalNVA = mpSec + wipSec + ptSec;
+  const leadTime = totalVA + totalNVA;
+  const vaRatio = leadTime > 0 ? (totalVA / leadTime) * 100 : 0;
+  const bottlenecks = procs
+    .map((p, i) => ({ ...p, idx: i, ctEff: effectiveCT(p), ctNorm: normalizeCT(p) }))
+    .filter(p => takt && p.ctEff && p.ctEff > takt)
+    .map(p => ({ ...p, cause: p.ctNorm > takt ? 'ritmo' : 'disponibilidad' }));
+  return { takt, totalVA, totalNVA, mpSec, wipSec, ptSec, nva, leadTime, vaRatio, bottlenecks };
+}
+
+function vsmBottleneckCauseLabel(cause) {
+  return cause === 'ritmo'
+    ? 'por ritmo nominal (C/T nominal > takt)'
+    : 'por disponibilidad (C/T nominal ≤ takt, pero el efectivo lo supera)';
+}
+
+function vsmFormatLeadTime(seconds) {
+  if (!seconds || isNaN(seconds)) return '—';
+  const days = seconds / 86400;
+  if (days >= 1) return days.toFixed(1) + ' días';
+  return (seconds / 3600).toFixed(1) + ' horas';
+}
+
+// Definición única del cambio de formato: el declarado en el cuestionario (changeover_time) es el de
+// LÍNEA COMPLETA, de principio a fin. El C/O del VSM es POR ESTACIÓN. Si las estaciones cambian en
+// paralelo, el de línea se acerca al máximo de estaciones; si lo hacen en serie, a la suma.
+// Un valor declarado fuera de [máx, suma] indica que alguna de las dos lecturas no es coherente.
+function vsmChangeoverCrossCheck(vsm, cid) {
+  const declared = parseFloat(cid ? allAnswers[`${cid}_fab_changeover_time`] : NaN);
+  const cos = ((vsm && vsm.processes) || []).map(p => parseFloat(p.co)).filter(v => v > 0);
+  if (!declared || !cos.length) return { status: 'sin_dato', declared: declared || null, min: null, max: null, message: '' };
+  const min = Math.max(...cos), max = cos.reduce((a, b) => a + b, 0);
+  const ok = declared >= min && declared <= max;
+  return {
+    status: ok ? 'ok' : 'fuera_de_rango', declared, min, max,
+    message: ok ? '' : `el cambio de formato de línea declarado (${declared} min) queda fuera del intervalo que permiten los C/O por estación del VSM (${min}–${max} min: de la estación más lenta a la suma de todas). Hay que revisar cuál de los dos datos es el correcto antes de usarlos en el informe.`
+  };
+}
+
+
 // ── INVENTORY TO TIME ──
 function invToTime(wip, nextCT_sec) {
   const w = parseFloat(wip);
@@ -7755,7 +8555,7 @@ function renderProcessCard(proc, idx, takt) {
         <input type="number" value="${proc.operators||''}" placeholder="1" oninput="getVSM().processes[${idx}].operators=this.value;vsmChanged()">
       </div>
     </div>
-    ${ctNorm !== null ? `<div class="vsm-proc-ct-norm ${isBottleneck ? 'bottleneck' : ''}">C/T: ${ctNorm.toFixed(2)} seg/ud${ctEff && ctEff !== ctNorm ? ` · Efectivo: ${ctEff.toFixed(2)} seg/ud` : ''}${isBottleneck ? ' ⚠ CUELLO DE BOTELLA' : ''}</div>` : ''}
+    ${ctNorm !== null ? `<div class="vsm-proc-ct-norm ${isBottleneck ? 'bottleneck' : ''}">C/T: ${ctNorm.toFixed(2)} seg/ud${ctEff && ctEff !== ctNorm ? ` · Efectivo (C/T ÷ disponibilidad): ${ctEff.toFixed(2)} seg/ud` : ''}${isBottleneck ? (ctNorm > takt ? ' ⚠ CUELLO DE BOTELLA · por ritmo nominal' : ' ⚠ CUELLO DE BOTELLA · por disponibilidad') : ''}</div>` : ''}
   </div>`;
 }
 
@@ -7830,32 +8630,16 @@ function renderVSMResults() {
   const procs = vsm.processes;
   if (!procs.length) { el.innerHTML = '<div style="color:#8a9793;font-size:12px;">Añade procesos para ver resultados</div>'; return; }
   
-  // Total VA
-  let totalVA = 0;
-  procs.forEach(p => { const ct = normalizeCT(p); if (ct) totalVA += ct; });
-  
-  // Total NVA
-  let totalNVA = 0;
-  // MP
+  const VM = calcVSMMetrics(vsm);
+  const { totalVA, totalNVA, leadTime, vaRatio } = VM;
   const mpDays = parseFloat(vsm.inventories.mp);
-  if (mpDays) totalNVA += mpDays * 24 * 3600;
-  // Between
-  for (let i = 0; i < procs.length - 1; i++) {
-    const key = `${i}_${i+1}`;
-    const wip = parseFloat(vsm.inventories.between?.[key]);
-    const nextCT = normalizeCT(procs[i+1]);
-    if (wip && nextCT) totalNVA += wip * nextCT;
-  }
-  // PT
   const ptUnits = parseFloat(vsm.inventories.pt);
   const demandDay = parseFloat(vsm.demand.units_per_day);
-  if (ptUnits && demandDay) totalNVA += (ptUnits / demandDay) * 24 * 3600;
-  
-  const leadTime = totalVA + totalNVA;
-  const vaRatio = leadTime > 0 ? (totalVA / leadTime) * 100 : 0;
   
   // Bottlenecks
-  const bottlenecks = procs.filter(p => { const eff = effectiveCT(p); return takt && eff && eff > takt; });
+  const bottlenecks = VM.bottlenecks;
+  const coCheck = vsmChangeoverCrossCheck(vsm, currentClient && currentClient.id);
+  const coCheckHtml = coCheck && coCheck.status === 'fuera_de_rango' ? `<div style="margin-top:10px;padding:10px 14px;background:rgba(186,117,23,0.08);border:0.5px solid rgba(186,117,23,0.25);border-radius:var(--r-sm);font-size:11px;color:#5a6b70;"><strong style="color:#BA7517;">⚠ Cambio de formato incoherente:</strong> ${coCheck.message}</div>` : '';
   
   el.innerHTML = `
     <div class="vsm-results-grid" style="margin-top:12px;">
@@ -7878,8 +8662,9 @@ function renderVSMResults() {
     </div>
     ${bottlenecks.length ? `<div style="margin-top:12px;padding:10px 14px;background:rgba(226,75,74,0.06);border:0.5px solid rgba(226,75,74,0.2);border-radius:var(--r-sm);">
       <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:4px;">⚠ Cuellos de botella detectados</div>
-      ${bottlenecks.map(b => `<div style="font-size:11px;color:#5a6b70;margin-top:2px;">• <strong>${b.name||'Sin nombre'}</strong> — C/T efectivo: ${effectiveCT(b).toFixed(2)} seg/ud (takt: ${takt.toFixed(2)})</div>`).join('')}
+      ${bottlenecks.map(b => `<div style="font-size:11px;color:#5a6b70;margin-top:2px;">• <strong>${b.name||'Sin nombre'}</strong> — C/T nominal ${b.ctNorm.toFixed(2)} · efectivo (÷ disponibilidad) ${b.ctEff.toFixed(2)} seg/ud (takt: ${takt.toFixed(2)}) · ${vsmBottleneckCauseLabel(b.cause)}</div>`).join('')}
     </div>` : ''}
+    ${coCheckHtml}
   `;
 }
 
@@ -8023,23 +8808,11 @@ function renderVSMDiagram() {
   
   // ── TIMELINE ──
   const tlY = procY + procH + dataH + 30;
-  let totalVA = 0, totalNVA = 0;
-  procs.forEach(p => { const ct = normalizeCT(p); if (ct) totalVA += ct; });
-  
+  const VM = calcVSMMetrics(vsm);
+  const { totalVA, totalNVA, leadTime, vaRatio } = VM;
   const mpDays = parseFloat(vsm.inventories.mp);
-  if (mpDays) totalNVA += mpDays * 24 * 3600;
-  for (let i = 0; i < procs.length - 1; i++) {
-    const key = `${i}_${i+1}`;
-    const wip = parseFloat(vsm.inventories.between?.[key]);
-    const nextCT = normalizeCT(procs[i+1]);
-    if (wip && nextCT) totalNVA += wip * nextCT;
-  }
   const ptUnits = parseFloat(vsm.inventories.pt);
   const demandDay = parseFloat(vsm.demand.units_per_day);
-  if (ptUnits && demandDay) totalNVA += (ptUnits / demandDay) * 24 * 3600;
-  
-  const leadTime = totalVA + totalNVA;
-  const vaRatio = leadTime > 0 ? (totalVA / leadTime) * 100 : 0;
   
   svg += `<line x1="20" y1="${tlY}" x2="${totalW-20}" y2="${tlY}" stroke="${cBorder}" stroke-width="0.5"/>`;
   svg += `<text x="20" y="${tlY+14}" fill="${cText3}" font-size="6">Lead Time: ${formatTime(leadTime)}</text>`;
@@ -8080,28 +8853,12 @@ function renderVSMConclusions() {
   const bench = VSM_BENCHMARKS[sector] || VSM_BENCHMARKS['default'];
   
   // Calculate all metrics
-  let totalVA = 0;
-  procs.forEach(p => { const ct = normalizeCT(p); if (ct) totalVA += ct; });
-  
-  let totalNVA = 0;
-  const nvaBreakdown = [];
-  
+  const VM = calcVSMMetrics(vsm);
+  const { totalVA, totalNVA, leadTime, vaRatio } = VM;
   const mpDays = parseFloat(vsm.inventories.mp);
-  if (mpDays) { const s = mpDays * 24 * 3600; totalNVA += s; nvaBreakdown.push({ name: 'Almacén MP', seconds: s, pct: 0 }); }
-  
-  for (let i = 0; i < procs.length - 1; i++) {
-    const key = `${i}_${i+1}`;
-    const wip = parseFloat(vsm.inventories.between?.[key]);
-    const nextCT = normalizeCT(procs[i+1]);
-    if (wip && nextCT) { const s = wip * nextCT; totalNVA += s; nvaBreakdown.push({ name: `${procs[i].name||'?'} → ${procs[i+1].name||'?'}`, seconds: s, pct: 0 }); }
-  }
-  
   const ptUnits = parseFloat(vsm.inventories.pt);
   const demandDay = parseFloat(vsm.demand.units_per_day);
-  if (ptUnits && demandDay) { const s = (ptUnits / demandDay) * 24 * 3600; totalNVA += s; nvaBreakdown.push({ name: 'Almacén PT', seconds: s, pct: 0 }); }
-  
-  const leadTime = totalVA + totalNVA;
-  const vaRatio = leadTime > 0 ? (totalVA / leadTime) * 100 : 0;
+  const nvaBreakdown = VM.nva.map(n => ({ name: n.name, seconds: n.seconds, pct: 0 }));
   const leadTimeDays = leadTime / 86400;
   
   // Calculate percentages
@@ -8109,7 +8866,7 @@ function renderVSMConclusions() {
   nvaBreakdown.sort((a, b) => b.seconds - a.seconds);
   
   // Bottlenecks
-  const bottlenecks = procs.map((p, i) => ({ ...p, idx: i, ctEff: effectiveCT(p), ctNorm: normalizeCT(p) })).filter(p => takt && p.ctEff && p.ctEff > takt);
+  const bottlenecks = VM.bottlenecks;
   
   // Highest C/O
   const sortedCO = procs.map(p => ({ name: p.name, co: parseFloat(p.co) || 0 })).filter(p => p.co > 0).sort((a, b) => b.co - a.co);
@@ -8134,7 +8891,7 @@ function renderVSMConclusions() {
     { label: 'Ratio VA', value: vaRatio > 0 ? vaRatio.toFixed(4) + '%' : '—', bench: bench.va_ratio[0] + '–' + bench.va_ratio[1] + '%', status: vaStatus },
     { label: 'Lead Time', value: leadTimeDays > 0 ? leadTimeDays.toFixed(1) + ' días' : '—', bench: bench.lead_time_days[0] + '–' + bench.lead_time_days[1] + ' días', status: ltStatus },
     { label: 'Uptime medio', value: avgUp > 0 ? avgUp.toFixed(1) + '%' : '—', bench: bench.uptime[0] + '–' + bench.uptime[1] + '%', status: upStatus },
-    { label: 'C/O medio', value: avgCO > 0 ? avgCO.toFixed(0) + ' min' : '—', bench: bench.co_min[0] + '–' + bench.co_min[1] + ' min', status: coStatus }
+    { label: 'C/O medio por estación', value: avgCO > 0 ? avgCO.toFixed(0) + ' min' : '—', bench: bench.co_min[0] + '–' + bench.co_min[1] + ' min', status: coStatus }
   ];
   
   benchItems.forEach(b => {
@@ -8188,7 +8945,7 @@ function renderVSMConclusions() {
   
   // Finding 3: Bottlenecks
   if (bottlenecks.length) {
-    const bNames = bottlenecks.map(b => `${b.name||'?'} (${b.ctEff.toFixed(2)} seg vs takt ${takt.toFixed(2)} seg)`);
+    const bNames = bottlenecks.map(b => `${b.name||'?'} (C/T efectivo ${b.ctEff.toFixed(2)} seg vs takt ${takt.toFixed(2)} seg; ${vsmBottleneckCauseLabel(b.cause)})`);
     html += renderFinding('red', `Cuellos de botella detectados: ${bNames.join(', ')}. Estos procesos no pueden seguir el ritmo de la demanda del cliente.`);
   }
   
@@ -8266,43 +9023,31 @@ function getVSMReportContext() {
   const takt = calcTaktTime(vsm);
   const procs = vsm.processes;
   
-  let totalVA = 0;
-  procs.forEach(p => { const ct = normalizeCT(p); if (ct) totalVA += ct; });
-  
-  let totalNVA = 0;
+  const VM = calcVSMMetrics(vsm);
+  const { totalVA, totalNVA, leadTime, vaRatio } = VM;
   const mpDays = parseFloat(vsm.inventories.mp);
-  if (mpDays) totalNVA += mpDays * 24 * 3600;
-  for (let i = 0; i < procs.length - 1; i++) {
-    const key = `${i}_${i+1}`;
-    const wip = parseFloat(vsm.inventories.between?.[key]);
-    const nextCT = normalizeCT(procs[i+1]);
-    if (wip && nextCT) totalNVA += wip * nextCT;
-  }
   const ptUnits = parseFloat(vsm.inventories.pt);
   const demandDay = parseFloat(vsm.demand.units_per_day);
-  if (ptUnits && demandDay) totalNVA += (ptUnits / demandDay) * 24 * 3600;
   
-  const leadTime = totalVA + totalNVA;
-  const vaRatio = leadTime > 0 ? (totalVA / leadTime) * 100 : 0;
-  
-  const bottlenecks = procs.filter(p => { const eff = effectiveCT(p); return takt && eff && eff > takt; });
+  const bottlenecks = VM.bottlenecks;
   
   let ctx = '\n=== VALUE STREAM MAP (ANÁLISIS DE FLUJO) ===\n';
   ctx += `Familia de producto mapeada: ${vsm.client_info.name || 'No especificada'}\n`;
   ctx += `Demanda: ${vsm.demand.units_per_day || '?'} uds/día\n`;
   ctx += `Takt Time: ${takt ? takt.toFixed(2) + ' seg/ud' : 'No calculado'}\n`;
-  ctx += `Lead Time total: ${formatTime(leadTime)}\n`;
+  ctx += `Lead Time total (CALCULADO por la herramienta, no modificar): ${formatTime(leadTime)} — desglose: valor añadido ${formatTime(totalVA)}, almacén MP ${formatTime(VM.mpSec)}, WIP entre procesos ${formatTime(VM.wipSec)}, almacén PT ${formatTime(VM.ptSec)}\n`;
   ctx += `Tiempo de valor añadido: ${formatTime(totalVA)}\n`;
   ctx += `Ratio de valor añadido: ${vaRatio > 0 ? vaRatio.toFixed(4) + '%' : 'No calculado'}\n`;
   ctx += `\nProcesos mapeados:\n`;
   procs.forEach((p, i) => {
     const ct = normalizeCT(p); const eff = effectiveCT(p);
     const isBot = takt && eff && eff > takt;
-    ctx += `  ${i+1}. ${p.name||'?'} — C/T: ${ct ? ct.toFixed(2)+'seg' : '?'}, C/O: ${p.co||'?'}min, Uptime: ${p.uptime||'?'}%${isBot ? ' [CUELLO DE BOTELLA]' : ''}\n`;
+    ctx += `  ${i+1}. ${p.name||'?'} — C/T: ${ct ? ct.toFixed(2)+'seg' : '?'}, C/O: ${p.co||'?'}min, Uptime: ${p.uptime||'?'}%${isBot ? ` [CUELLO DE BOTELLA · ${vsmBottleneckCauseLabel(ct > takt ? 'ritmo' : 'disponibilidad')}]` : ''}\n`;
   });
   if (bottlenecks.length) {
     ctx += `\nCuellos de botella: ${bottlenecks.map(b => b.name||'?').join(', ')}\n`;
   }
+  { const cc = vsmChangeoverCrossCheck(vsm, currentClient.id); if (cc && cc.status !== 'ok') ctx += `ALERTA de coherencia del cambio de formato: ${cc.message}\n`; }
   ctx += `Almacén MP: ${vsm.inventories.mp||'?'} días\n`;
   ctx += `Almacén PT: ${vsm.inventories.pt||'?'} uds${demandDay ? ' (' + (ptUnits/demandDay).toFixed(1) + ' días)' : ''}\n`;
   ctx += `Sistema de planificación: ${vsm.planning.type||'?'} — programa ${vsm.planning.frequency||'?'}\n`;
@@ -8506,14 +9251,17 @@ function getOFIReportContext() {
   if(ofi===0)return '';
   
   const zone=ofi>=75?'Optimización avanzada':ofi>=50?'Mejora estructurada':ofi>=25?'Estabilización necesaria':'Intervención urgente';
-  const ttl=ofi<15?'L1 Stabilize':ofi<30?'L2 Measure':ofi<45?'L3 Connect':ofi<60?'L4 Govern':ofi<75?'L5 Optimize':'L6 Intelligence';
+  const ttlPos=getTTLPosition();
+  const ttl=`${ttlPos.layer} ${ttlPos.name}`;
   
   const f0=f0Data[currentClient.id];
   const archKey=f0?.archetype_hypothesis;
   const arch=archKey?ARCHETYPES[archKey]:null;
   
   let ctx='\n=== OFI™ — OPERATIONAL FRICTION INDEX ===\n';
-  ctx+=`OFI: ${ofi}/100 — Zona: ${zone}\n`;
+  ctx+=`OFI: ${ofi}/100 — Zona: ${zone} (escala inversa: a mayor puntuación, MENOR fricción operativa)\n`;
+  { const covC=getOFICoverage(); if(covC.provisional) ctx+=`OFI PROVISIONAL — dimensiones sin evidencia suficiente: ${covC.missing.map(m=>m.label+' ('+m.note+')').join('; ')}. Su puntuación no indica mal desempeño sino dato pendiente.\n`; }
+  ctx+=`Capa TTL: ${ttl} — criterio: ${ttlPos.reason}${ttlPos.provisional?' (POSICIÓN PROVISIONAL)':''}\n`;
   ctx+=`D1 Rendimiento: ${d1}/25 (30%) · D2 Datos: ${d2}/25 (25%) · D3 Digital: ${d3}/25 (25%) · D4 Organización: ${d4}/25 (20%)\n`;
   ctx+=`Posición TTL™: ${ttl}\n`;
   if(arch)ctx+=`Arquetipo cliente: ${arch.name} — ${arch.desc}\n`;
@@ -9193,22 +9941,41 @@ function getMaxWeeklyOpHours(cid) {
   return shiftsMap[shifts] || 90; // 90h/sem (2 turnos) como supuesto conservador si no hay dato
 }
 
-function calcFreeTrialBreakdown() {
-  const cid = currentClient.id;
+// ══════════════════════════════════════════════════════
+// ── DIOP · NÚCLEO ECONÓMICO COMPARTIDO (M7 y Free Trial) ──
+// Única fuente de las fórmulas de paradas, merma, retrabajo y cambios de formato
+// y de los límites de plausibilidad. Devuelve solo números y banderas: cada pantalla
+// compone sus propios textos. No modifica datos almacenados.
+// ══════════════════════════════════════════════════════
+const DIOP_ECON_LIMITS = Object.freeze({ operatorHour: [8, 100], lineHour: [50, 3000] });
+// Tramos de respuesta [mín, máx]; null = sin tope superior declarado.
+const DIOP_REVENUE_BANDS = Object.freeze({'menos de 2M€':[0,2e6],'2M€ - 5M€':[2e6,5e6],'5M€ - 10M€':[5e6,10e6],'10M€ - 25M€':[10e6,25e6],'25M€ - 50M€':[25e6,50e6],'más de 50M€':[50e6,null]});
+const DIOP_COGS_BANDS = Object.freeze({'menos del 25%':[0,0.25],'25% - 40%':[0.25,0.40],'40% - 55%':[0.40,0.55],'más del 55%':[0.55,null]});
+const DIOP_SCRAP_BANDS = Object.freeze({'menos del 2%':[0,0.02],'2% - 5%':[0.02,0.05],'5% - 10%':[0.05,0.10],'10% - 20%':[0.10,0.20],'más del 20%':[0.20,null]});
+
+// Rango de la merma a partir de los tramos declarados (facturación × COGS × % de merma).
+// El valor central es el que ya usa el motor; el rango solo muestra la incertidumbre del dato.
+function calcScrapRange(revenueRaw, cogsRaw, scrapRaw, central) {
+  const rv = DIOP_REVENUE_BANDS[revenueRaw], cg = DIOP_COGS_BANDS[cogsRaw], sc = DIOP_SCRAP_BANDS[scrapRaw];
+  if (!sc) return null; // sin merma declarada no hay importe que acotar
+  if (!rv || !cg) return { central, low: null, high: null, open: true, reason: 'faltan facturación o COGS declarados' };
+  const open = rv[1] === null || cg[1] === null || sc[1] === null;
+  return {
+    central,
+    low: Math.round(rv[0] * cg[0] * sc[0]),
+    high: open ? null : Math.round(rv[1] * cg[1] * sc[1]),
+    open,
+    reason: open ? 'algún tramo no tiene tope superior' : null
+  };
+}
+
+function calcOperationalEconomicCore(cid) {
   const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
-  const sector = currentClient.sector || 'default';
-
-  const components = [];
-
-  // ── Inputs base reutilizados en varios componentes ──
-  const OPERATOR_COST_MAX_PLAUSIBLE = 100; // €/h — un operario cargado con overhead casi nunca supera esto
-  const LINE_COST_MAX_PLAUSIBLE = 3000; // €/h — línea parada en una pyme F&B, margen generoso sobre el rango típico (200-2.000€/h)
 
   const operatorHourCostRaw = a('fab', 'operator_hour_cost');
   const operatorHourCost = parseFloat(operatorHourCostRaw) || 22; // fallback benchmark, marcado como tal
   const operatorHourCostIsReal = !!parseFloat(operatorHourCostRaw);
-  const operatorCostAnomaly = operatorHourCostIsReal && (operatorHourCost < 8 || operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE);
-  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario está fuera del rango de contraste orientativo (8–100€/h, no un benchmark universal). Confirma unidad, cargas y alcance antes de usar el importe. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)"` : null;
+  const operatorCostAnomaly = operatorHourCostIsReal && (operatorHourCost < DIOP_ECON_LIMITS.operatorHour[0] || operatorHourCost > DIOP_ECON_LIMITS.operatorHour[1]);
 
   const economicInputs = resolveDIOPEconomicInputs(cid);
   const productiveWeeks = economicInputs.weeks.value;
@@ -9230,21 +9997,93 @@ function calcFreeTrialBreakdown() {
   else if (downtimeScopeRaw === 'Varias líneas a la vez') { scopeFactor = Math.max(2, Math.round(linesTotal/2)); scopeLabel = 'las líneas afectadas'; }
   else if (downtimeScopeRaw === 'Toda la fábrica') { scopeFactor = linesTotal || 1; scopeLabel = 'toda la fábrica'; }
 
-  // ── COMPONENTE 1: Paradas ──
   const downtimeH = economicInputs.downtime.value;
   const downtimeIsReal = economicInputs.downtime.isReal;
-  const downtimeInputLabel = `${downtimeH}h/semana (${economicInputs.downtime.source}${economicInputs.downtime.input ? ': '+economicInputs.downtime.input : ''})`;
   const lineCostEur = economicInputs.lineCost.value;
   const lineCostIsReal = economicInputs.lineCost.isReal;
-  const lineCostInputLabel = `${lineCostEur}€/h (${economicInputs.lineCost.source}${economicInputs.lineCost.input ? ': '+economicInputs.lineCost.input : ''})`;
-  const lineCostAnomaly = lineCostIsReal && (lineCostEur < 50 || lineCostEur > LINE_COST_MAX_PLAUSIBLE);
-  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada está fuera del rango de contraste orientativo (50–3.000€/h, no un benchmark universal). Confirma unidad, componentes del coste y alcance. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)"` : null;
+  const lineCostAnomaly = lineCostIsReal && (lineCostEur < DIOP_ECON_LIMITS.lineHour[0] || lineCostEur > DIOP_ECON_LIMITS.lineHour[1]);
 
   const maxWeeklyHours = getMaxWeeklyOpHours(cid);
   const downtimeImpliedWeeklyHours = downtimeH * scopeFactor;
   const downtimeAnomaly = downtimeImpliedWeeklyHours > maxWeeklyHours;
   const downtimeCappedHours = downtimeAnomaly ? maxWeeklyHours : downtimeImpliedWeeklyHours;
   const downtimeValue = Math.round(downtimeCappedHours * lineCostEur * productiveWeeks);
+
+  const scrapRaw = a('fab', 'scrap_pct');
+  const scrapMap = {'menos del 2%':0.015,'2% - 5%':0.035,'5% - 10%':0.075,'10% - 20%':0.15,'más del 20%':0.25};
+  const scrapPctNum = scrapMap[scrapRaw] || 0;
+  const cogsBase = revenueNum * cogsPct;
+  const scrapValue = Math.round(scrapPctNum * cogsBase);
+  const scrapRange = calcScrapRange(revenueRaw, cogsRaw, scrapRaw, scrapValue);
+
+  const reworkHoursWeek = parseFloat(a('fab', 'rework_hours_week')) || 0;
+  const reworkValue = Math.round(reworkHoursWeek * operatorHourCost * productiveWeeks);
+
+  const changeoversWeek = parseFloat(a('fab', 'changeovers_week')) || 0;
+  const changeoverTime = parseFloat(a('fab', 'changeover_time')) || 0;
+  const changeoverImpliedWeeklyHours = (changeoverTime/60) * changeoversWeek;
+  const changeoverAnomaly = changeoverImpliedWeeklyHours > maxWeeklyHours;
+  const changeoverCappedHours = changeoverAnomaly ? maxWeeklyHours : changeoverImpliedWeeklyHours;
+  const changeoverValue = Math.round(changeoverCappedHours * lineCostEur * productiveWeeks);
+
+  return {
+    operatorHourCost, operatorHourCostIsReal, operatorCostAnomaly, economicInputs, productiveWeeks, productiveWeeksIsReal,
+    revenueRaw, revenueNum, cogsRaw, cogsPct, cogsIsReal, downtimeScopeRaw, linesTotal, scopeFactor, scopeLabel,
+    lineCostEur, lineCostIsReal, lineCostAnomaly, downtimeH, downtimeIsReal,
+    maxWeeklyHours, downtimeImpliedWeeklyHours, downtimeAnomaly, downtimeCappedHours, downtimeValue,
+    scrapRaw, scrapPctNum, cogsBase, scrapValue, scrapRange, reworkHoursWeek, reworkValue,
+    changeoversWeek, changeoverTime, changeoverImpliedWeeklyHours, changeoverAnomaly, changeoverCappedHours, changeoverValue
+  };
+}
+
+// Estado de validación de las partidas del impacto operativo.
+// Una partida con dato anómalo queda "pendiente de confirmar" hasta que el consultor la concilia
+// con justificación documentada (la misma vía que usa la revisión M7). El importe validado es el
+// bruto de las partidas sin anomalía pendiente; la pérdida conciliada sigue calculándose aparte.
+function m7ValidationSummary(impact, reconciliation) {
+  const comps = Array.isArray(impact && impact.components) ? impact.components : [];
+  const reconciled = new Set(((reconciliation && reconciliation.items) || []).filter(i => i.reconciled).map(i => i.key));
+  let validated = 0, pending = 0;
+  const pendingKeys = [];
+  for (const c of comps) {
+    const v = Number(c.value) || 0;
+    if (c.anomaly && !reconciled.has(c.key)) { pending += v; pendingKeys.push(c.key); }
+    else validated += v;
+  }
+  return { grossTotal: validated + pending, validatedTotal: validated, pendingTotal: pending, pendingKeys };
+}
+
+
+function calcFreeTrialBreakdown() {
+  const cid = currentClient.id;
+  const a = (sess, qid) => allAnswers[`${cid}_${sess}_${qid}`] || '';
+  const sector = currentClient.sector || 'default';
+
+  const components = [];
+
+  // Cálculo numérico y banderas: núcleo compartido (una sola fórmula para M7 y Free Trial).
+  const {
+    operatorHourCost, operatorHourCostIsReal, operatorCostAnomaly, economicInputs, productiveWeeks, productiveWeeksIsReal,
+    revenueRaw, revenueNum, cogsRaw, cogsPct, cogsIsReal, downtimeScopeRaw, linesTotal, scopeFactor, scopeLabel,
+    lineCostEur, lineCostIsReal, lineCostAnomaly, downtimeH, downtimeIsReal,
+    maxWeeklyHours, downtimeImpliedWeeklyHours, downtimeAnomaly, downtimeCappedHours, downtimeValue,
+    scrapRaw, scrapPctNum, cogsBase, scrapValue, scrapRange, reworkHoursWeek, reworkValue,
+    changeoversWeek, changeoverTime, changeoverImpliedWeeklyHours, changeoverAnomaly, changeoverCappedHours, changeoverValue
+  } = calcOperationalEconomicCore(cid);
+
+  // ── Inputs base reutilizados en varios componentes ──
+
+  const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario está fuera del rango de contraste orientativo (8–100€/h, no un benchmark universal). Confirma unidad, cargas y alcance antes de usar el importe. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)"` : null;
+
+
+
+
+
+  // ── COMPONENTE 1: Paradas ──
+  const downtimeInputLabel = `${downtimeH}h/semana (${economicInputs.downtime.source}${economicInputs.downtime.input ? ': '+economicInputs.downtime.input : ''})`;
+  const lineCostInputLabel = `${lineCostEur}€/h (${economicInputs.lineCost.source}${economicInputs.lineCost.input ? ': '+economicInputs.lineCost.input : ''})`;
+  const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada está fuera del rango de contraste orientativo (50–3.000€/h, no un benchmark universal). Confirma unidad, componentes del coste y alcance. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)"` : null;
+
   const downtimeBench = ftBenchmarkCheck(downtimeValue, revenueNum, 'downtime_pct_revenue', sector);
   components.push({
     key: 'downtime', label: 'Paradas no planificadas',
@@ -9258,24 +10097,18 @@ function calcFreeTrialBreakdown() {
   });
 
   // ── COMPONENTE 2: Merma ──
-  const scrapRaw = a('fab', 'scrap_pct');
-  const scrapMap = {'menos del 2%':0.015,'2% - 5%':0.035,'5% - 10%':0.075,'10% - 20%':0.15,'más del 20%':0.25};
-  const scrapPctNum = scrapMap[scrapRaw] || 0;
-  const cogsBase = revenueNum * cogsPct;
-  const scrapValue = Math.round(scrapPctNum * cogsBase);
   const scrapBench = ftBenchmarkCheck(scrapValue, cogsBase, 'scrap_pct_cogs', sector);
   components.push({
     key: 'scrap', label: 'Merma / desperdicio',
     inputSummary: `merma: "${scrapRaw||'sin dato'}" → ${(scrapPctNum*100).toFixed(1)}% · coste de producto (COGS): ${cogsIsReal ? (cogsPct*100).toFixed(0)+'% estimado a partir de rango declarado' : '40% benchmark sector (sin dato)'} sobre facturación`,
     formula: `${(scrapPctNum*100).toFixed(1)}% × ${cogsBase.toLocaleString('es-ES')}€ (COGS)`,
     value: scrapValue,
+    range: scrapRange,
     isEstimate: !cogsIsReal || !scrapRaw,
     benchmark: scrapBench
   });
 
   // ── COMPONENTE 3: Retrabajo ──
-  const reworkHoursWeek = parseFloat(a('fab', 'rework_hours_week')) || 0;
-  const reworkValue = Math.round(reworkHoursWeek * operatorHourCost * productiveWeeks);
   components.push({
     key: 'rework', label: 'Retrabajo / reproceso',
     inputSummary: `${reworkHoursWeek}h/semana de retrabajo · coste operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h declarado' : '22€/h benchmark (sin dato)'}`,
@@ -9288,12 +10121,6 @@ function calcFreeTrialBreakdown() {
   });
 
   // ── COMPONENTE 4: Changeover ──
-  const changeoversWeek = parseFloat(a('fab', 'changeovers_week')) || 0;
-  const changeoverTime = parseFloat(a('fab', 'changeover_time')) || 0;
-  const changeoverImpliedWeeklyHours = (changeoverTime/60) * changeoversWeek;
-  const changeoverAnomaly = changeoverImpliedWeeklyHours > maxWeeklyHours;
-  const changeoverCappedHours = changeoverAnomaly ? maxWeeklyHours : changeoverImpliedWeeklyHours;
-  const changeoverValue = Math.round(changeoverCappedHours * lineCostEur * productiveWeeks);
   components.push({
     key: 'changeover', label: 'Cambios de formato (changeover)',
     inputSummary: `${changeoversWeek} cambios/sem × ${changeoverTime}min cada uno · coste línea: ${lineCostInputLabel}`,
@@ -9946,51 +10773,32 @@ function calcM7OperationalImpact() {
 
   const components = [];
 
-  // ── Inputs base reutilizados ──
-  const OPERATOR_COST_MAX_PLAUSIBLE = 100;
-  const LINE_COST_MAX_PLAUSIBLE = 3000;
+  // Cálculo numérico y banderas: núcleo compartido (una sola fórmula para M7 y Free Trial).
+  const {
+    operatorHourCost, operatorHourCostIsReal, operatorCostAnomaly, economicInputs, productiveWeeks,
+    revenueRaw, revenueNum, cogsRaw, cogsPct, cogsIsReal, downtimeScopeRaw, linesTotal, scopeFactor, scopeLabel,
+    lineCostEur, lineCostIsReal, lineCostAnomaly, downtimeH, downtimeIsReal,
+    maxWeeklyHours: maxWeeklyHoursM7, downtimeImpliedWeeklyHours: downtimeImpliedWeeklyHoursM7,
+    downtimeAnomaly: downtimeAnomalyM7, downtimeCappedHours: downtimeCappedHoursM7, downtimeValue,
+    scrapRaw, scrapPctNum, cogsBase, scrapValue, scrapRange, reworkHoursWeek, reworkValue,
+    changeoversWeek, changeoverTime, changeoverImpliedWeeklyHours: changeoverImpliedWeeklyHoursM7,
+    changeoverAnomaly: changeoverAnomalyM7, changeoverCappedHours: changeoverCappedHoursM7, changeoverValue
+  } = calcOperationalEconomicCore(cid);
 
-  const operatorHourCostRaw = a('fab', 'operator_hour_cost');
-  const operatorHourCost = parseFloat(operatorHourCostRaw) || 22;
-  const operatorHourCostIsReal = !!parseFloat(operatorHourCostRaw);
-  const operatorCostAnomaly = operatorHourCostIsReal && (operatorHourCost < 8 || operatorHourCost > OPERATOR_COST_MAX_PLAUSIBLE);
+  // ── Inputs base reutilizados ──
+
   const operatorCostAnomalyNote = operatorCostAnomaly ? `⚠ ${operatorHourCost}€/h de coste de operario está fuera del rango de contraste orientativo (8–100€/h, no un benchmark universal). Confirma unidad, cargas y alcance antes de usar el importe. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de un operario? (salario + cargas sociales, número real)"` : null;
 
-  const economicInputs = resolveDIOPEconomicInputs(cid);
-  const productiveWeeks = economicInputs.weeks.value;
 
-  const revenueRaw = a('ceo', 'revenue');
-  const revenueMap = {'menos de 2M€':1500000,'2M€ - 5M€':3500000,'5M€ - 10M€':7500000,'10M€ - 25M€':17500000,'25M€ - 50M€':37500000,'más de 50M€':60000000};
-  const revenueNum = revenueMap[revenueRaw] || 3500000;
 
-  const cogsRaw = a('fab', 'cogs_pct_revenue');
-  const cogsMap = {'menos del 25%':0.20,'25% - 40%':0.32,'40% - 55%':0.47,'más del 55%':0.60};
-  const cogsPct = cogsMap[cogsRaw] || 0.40;
-  const cogsIsReal = !!cogsMap[cogsRaw];
 
-  const downtimeScopeRaw = a('fab', 'downtime_scope');
-  const linesTotal = parseInt(a('fab', 'production_lines_total')) || 1;
-  let scopeFactor = 1, scopeLabel = 'la línea afectada';
-  if (downtimeScopeRaw === 'Una línea crítica específica') { scopeFactor = 1; scopeLabel = 'la línea crítica afectada'; }
-  else if (downtimeScopeRaw === 'Varias líneas a la vez') { scopeFactor = Math.max(2, Math.round(linesTotal/2)); scopeLabel = 'las líneas afectadas'; }
-  else if (downtimeScopeRaw === 'Toda la fábrica') { scopeFactor = linesTotal || 1; scopeLabel = 'toda la fábrica'; }
 
   // Coste horario resuelto por el mismo selector que M1 y el Impact Assessment.
-  const lineCostEur = economicInputs.lineCost.value;
-  const lineCostIsReal = economicInputs.lineCost.isReal;
   const lineCostSource = `${economicInputs.lineCost.source}${economicInputs.lineCost.input ? ': '+economicInputs.lineCost.input : ''} → ${lineCostEur}€/h`;
-  const lineCostAnomaly = lineCostIsReal && (lineCostEur < 50 || lineCostEur > LINE_COST_MAX_PLAUSIBLE);
   const lineCostAnomalyNote = lineCostAnomaly ? `⚠ ${lineCostEur}€/h de coste de línea parada está fuera del rango de contraste orientativo (50–3.000€/h, no un benchmark universal). Confirma unidad, componentes del coste y alcance. Revisa (Sesión Fábrica → "KPIs operativos estimados") — Pregunta: "¿Cuánto cuesta aproximadamente una hora de línea parada en total? (mano de obra + amortización + overhead, número aproximado real)"` : null;
 
   // ── COMPONENTE 1: Paradas ──
-  const downtimeH = economicInputs.downtime.value;
-  const downtimeIsReal = economicInputs.downtime.isReal;
   const downtimeInputLabel = `${downtimeH}h/semana (${economicInputs.downtime.source}${economicInputs.downtime.input ? ': '+economicInputs.downtime.input : ''})`;
-  const maxWeeklyHoursM7 = getMaxWeeklyOpHours(cid);
-  const downtimeImpliedWeeklyHoursM7 = downtimeH * scopeFactor;
-  const downtimeAnomalyM7 = downtimeImpliedWeeklyHoursM7 > maxWeeklyHoursM7;
-  const downtimeCappedHoursM7 = downtimeAnomalyM7 ? maxWeeklyHoursM7 : downtimeImpliedWeeklyHoursM7;
-  const downtimeValue = Math.round(downtimeCappedHoursM7 * lineCostEur * productiveWeeks);
   components.push({
     key: 'downtime', label: 'Paradas no planificadas',
     inputSummary: `${downtimeInputLabel} · coste línea: ${lineCostSource} · alcance: ${scopeLabel} (×${scopeFactor}) · ${productiveWeeks} sem/año`,
@@ -10001,21 +10809,14 @@ function calcM7OperationalImpact() {
   });
 
   // ── COMPONENTE 2: Merma ──
-  const scrapRaw = a('fab', 'scrap_pct');
-  const scrapMap = {'menos del 2%':0.015,'2% - 5%':0.035,'5% - 10%':0.075,'10% - 20%':0.15,'más del 20%':0.25};
-  const scrapPctNum = scrapMap[scrapRaw] || 0;
-  const cogsBase = revenueNum * cogsPct;
-  const scrapValue = Math.round(scrapPctNum * cogsBase);
   components.push({
     key: 'scrap', label: 'Merma / desperdicio',
     inputSummary: `merma "${scrapRaw||'sin dato'}" (${(scrapPctNum*100).toFixed(1)}%) · COGS: ${cogsIsReal ? (cogsPct*100).toFixed(0)+'% estimado a partir de rango declarado' : '40% benchmark'} sobre facturación`,
     formula: `${(scrapPctNum*100).toFixed(1)}% × ${cogsBase.toLocaleString('es-ES')}€ (COGS)`,
-    value: scrapValue, isEstimate: true
+    value: scrapValue, range: scrapRange, isEstimate: true
   });
 
   // ── COMPONENTE 3: Retrabajo ──
-  const reworkHoursWeek = parseFloat(a('fab', 'rework_hours_week')) || 0;
-  const reworkValue = Math.round(reworkHoursWeek * operatorHourCost * productiveWeeks);
   components.push({
     key: 'rework', label: 'Retrabajo / reproceso',
     inputSummary: `${reworkHoursWeek}h/sem retrabajo · operario: ${operatorHourCostIsReal ? operatorHourCost+'€/h declarado' : '22€/h benchmark'}`,
@@ -10025,12 +10826,6 @@ function calcM7OperationalImpact() {
   });
 
   // ── COMPONENTE 4: Changeover ──
-  const changeoversWeek = parseFloat(a('fab', 'changeovers_week')) || 0;
-  const changeoverTime = parseFloat(a('fab', 'changeover_time')) || 0;
-  const changeoverImpliedWeeklyHoursM7 = (changeoverTime/60) * changeoversWeek;
-  const changeoverAnomalyM7 = changeoverImpliedWeeklyHoursM7 > maxWeeklyHoursM7;
-  const changeoverCappedHoursM7 = changeoverAnomalyM7 ? maxWeeklyHoursM7 : changeoverImpliedWeeklyHoursM7;
-  const changeoverValue = Math.round(changeoverCappedHoursM7 * lineCostEur * productiveWeeks);
   components.push({
     key: 'changeover', label: 'Cambios de formato',
     inputSummary: `${changeoversWeek}/sem × ${changeoverTime}min · coste línea: ${lineCostSource}`,
@@ -10057,7 +10852,7 @@ function calcM7OperationalImpact() {
 
   const total = components.reduce((s,c) => s + c.value, 0);
 
-  return { components, total, meta: { revenueNum, operatorHourCost, lineCostEur, productiveWeeks, scopeLabel } };
+  return { components, total, ...m7ValidationSummary({ components }), meta: { revenueNum, operatorHourCost, lineCostEur, productiveWeeks, scopeLabel } };
 }
 
 // DIOP Next 3.4 · Control de integridad: ADVERTIR, nunca reconciliar cifras automáticamente.
@@ -10069,8 +10864,8 @@ function auditM7EconomicIntegrity(impact) {
   const a = (session,key) => allAnswers[`${cid}_${session}_${key}`] || '';
   const ops = Number(impact.meta?.operatorHourCost);
   const line = Number(impact.meta?.lineCostEur);
-  if (ops > 0 && (ops < 8 || ops > 100)) warnings.push({code:'UNIT_OPERATOR',title:'Validar unidad de coste de operario',detail:`Se utiliza ${ops} €/h. Confirmar que corresponde al coste horario completo y no a otra unidad; el umbral es una señal orientativa, no un estándar sectorial.`});
-  if (line > 0 && (line < 50 || line > 3000)) warnings.push({code:'UNIT_LINE',title:'Validar unidad de coste de línea',detail:`Se utiliza ${line} €/h. Confirmar si incluye mano de obra, amortización, costes indirectos y si corresponde a una línea o a toda la planta.`});
+  if (ops > 0 && (ops < DIOP_ECON_LIMITS.operatorHour[0] || ops > DIOP_ECON_LIMITS.operatorHour[1])) warnings.push({code:'UNIT_OPERATOR',title:'Validar unidad de coste de operario',detail:`Se utiliza ${ops} €/h. Confirmar que corresponde al coste horario completo y no a otra unidad; el umbral es una señal orientativa, no un estándar sectorial.`});
+  if (line > 0 && (line < DIOP_ECON_LIMITS.lineHour[0] || line > DIOP_ECON_LIMITS.lineHour[1])) warnings.push({code:'UNIT_LINE',title:'Validar unidad de coste de línea',detail:`Se utiliza ${line} €/h. Confirmar si incluye mano de obra, amortización, costes indirectos y si corresponde a una línea o a toda la planta.`});
   if (impact.components.some(c=>c.key==='scrap' && c.value>0)) warnings.push({code:'SCRAP_BASE',title:'Merma y base COGS pendientes de conciliación',detail:'El porcentaje de merma procede de un intervalo declarado; el COGS se estima a partir de otro intervalo y de la facturación estimada. Verificar si la merma mide peso, unidades o valor, y si procede aplicarla al COGS anual completo. Evitar comunicar este importe como pérdida auditada.'});
   const stops = impact.components.find(c=>c.key==='downtime');
   const failures = impact.components.find(c=>c.key==='maintenance');
@@ -10452,6 +11247,8 @@ async function confirmM7ImpactAndGenerate() {
     return;
   }
   m7ImpactEdited.reconciliation = m7ReconciliationSummary(m7ImpactEdited);
+  // Una partida anómala pasa a validada solo si se concilia con justificación documentada.
+  Object.assign(m7ImpactEdited, m7ValidationSummary(m7ImpactEdited, m7ImpactEdited.reconciliation));
   await generateReport(m7ImpactEdited);
 }
 
