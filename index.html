@@ -3246,6 +3246,7 @@ function m7RecState(r){
  const rec=(r&&r.economic_reconciliation)||{},items=Array.isArray(rec.items)?rec.items:[];
  const done=items.filter(i=>i.reconciled).length,total=items.length;
  return {items,done,total,complete:total>0&&done===total&&rec.consolidated!=null,consolidated:rec.consolidated!=null?rec.consolidated:null,recoverable:rec.recoverable!=null?rec.recoverable:null,
+  solid:items.filter(i=>i.reconciled&&i.strength==='medida').length,declared:items.filter(i=>i.reconciled&&i.strength==='declarada').length,
   pendingLabels:items.filter(i=>!i.reconciled).map(i=>String(i.label||i.key).split('/')[0].trim().toLowerCase()),
   tag:(total>0&&done===total&&rec.consolidated!=null)?'Conciliada':(done>0?'Conciliación parcial ('+done+'/'+total+')':'Sin conciliar')};
 }
@@ -3333,7 +3334,7 @@ function m7ApprovedFillPage1(root,r,c){
   if(F.top&&F.topShare!=null){const rg=F.top.range&&F.top.range.low!=null&&F.top.range.high!=null?' (rango declarado '+m7P1Eur(F.top.range.low)+' – '+m7P1Eur(F.top.range.high)+')':'';
    const RS=F.rec,lead='<strong>Interpretación.</strong> '+E(F.top.label.split('/')[0].trim())+' representa aproximadamente el '+E(m7P1Pct(F.topShare))+' del total bruto calculado'+E(rg)+'. ';
    let tail;
-   if(RS.complete)tail='La conciliación está documentada: '+E(m7P1Eur(RS.consolidated))+' consolidados'+(RS.recoverable!=null?' y '+E(m7P1Eur(RS.recoverable))+' recuperables con base escrita.':'; falta documentar la recuperabilidad.')+' Son cifras de la conciliación del consultor, no de una auditoría.';
+   if(RS.complete)tail='La conciliación está documentada: '+E(m7P1Eur(RS.consolidated))+' consolidados'+(RS.recoverable!=null?' y '+E(m7P1Eur(RS.recoverable))+' recuperables con base escrita.':'; falta documentar la recuperabilidad.')+(RS.solid+RS.declared?' Fuentes: '+RS.solid+' con registro o medición, '+RS.declared+' declaradas.':'')+' Son cifras de la conciliación del consultor, no de una auditoría.';
    else if(RS.done>0)tail='Conciliadas '+RS.done+' de '+RS.total+' partidas; quedan por conciliar: '+E(RS.pendingLabels.slice(0,4).join(', '))+'. Hasta entonces no hay pérdida consolidada ni ahorro recuperable.';
    else tail='Debemos comprobar '+E(m7P1Verify(F.top.key))+' antes de hablar de pérdida consolidada o ahorro recuperable.'+(F.pendingLabels.length&&F.ev.pending>0?' '+E(m7P1Eur(F.ev.pending))+' quedan pendientes de validar ('+E(F.pendingLabels.join(', '))+') por datos de entrada anómalos.':'');
    ca.innerHTML=lead+tail;}
@@ -3631,7 +3632,7 @@ function m7ApprovedFillPage7(root,r,c){
  const set=(m,l,v,s)=>{if(!m)return;m.querySelector('small').textContent=l;m.querySelector('strong').textContent=v;m.querySelector('span').textContent=s;};
  set(ms[0],'Exposición operativa anual',F.gross>0?m7P1Eur(F.gross):'Sin calcular','Bruta · orientativa · '+(rec.consolidated!=null?'conciliada':'sin conciliar'));
  const cnt=rec.items?rec.items.length:0,done=rec.items?rec.items.filter(i=>i.reconciled).length:0,docs=rec.items?rec.items.filter(i=>i.recoveryDocumented).length:0;
- set(ms[1],'Pérdida conciliada / recuperable',rec.recoverable!=null?m7P1Eur(rec.recoverable):'Sin validar',cnt?done+'/'+cnt+' partidas documentadas · '+(rec.consolidated!=null?'conciliación completa':'no existe cifra consolidada aprobada'):'sin partidas');
+ set(ms[1],'Pérdida conciliada / recuperable',rec.recoverable!=null?m7P1Eur(rec.recoverable):'Sin validar',cnt?done+'/'+cnt+' partidas documentadas · '+(rec.consolidated!=null?'conciliación completa'+(m7RecState(r).solid+m7RecState(r).declared?' · fuentes: '+m7RecState(r).solid+' registro/medición, '+m7RecState(r).declared+' declaradas':''):'no existe cifra consolidada aprobada'):'sin partidas');
  set(ms[2],'Escenario base M6',F.base>0?m7P1Eur(F.base):'Sin declarar',F.base>0?'Ahorro anual orientativo · confianza '+String(ec.confidenceBand||'pendiente').toLowerCase()+' · no auditado':'M6 sin iniciativas con ahorro cargado');
  const sh=root.querySelectorAll('.section-head span');
  const panel=q('.bridge .panel'),lr=panel?panel.querySelectorAll('.loss-row'):[];
@@ -3760,7 +3761,7 @@ function m7ApprovedPage0(r,c){
  let a2;
  if(F.gross>0){
   const RS=m7RecState(r);
-  const rtxt=RS.complete?'de exposición anual bruta. Conciliada: <b>'+m7P1Eur(RS.consolidated)+'</b> consolidados'+(RS.recoverable!=null?' y <b>'+m7P1Eur(RS.recoverable)+'</b> recuperables documentados.':'; falta documentar la recuperabilidad.')
+  const rtxt=RS.complete?'de exposición anual bruta. Conciliada: <b>'+m7P1Eur(RS.consolidated)+'</b> consolidados'+(RS.recoverable!=null?' y <b>'+m7P1Eur(RS.recoverable)+'</b> recuperables documentados.':'; falta documentar la recuperabilidad.')+((RS.solid+RS.declared)?' Fuentes: '+RS.solid+' con registro o medición, '+RS.declared+' declaradas.':'')
    :(RS.done>0?'de exposición anual bruta. Conciliación parcial: '+RS.done+' de '+RS.total+' partidas. No es un ahorro garantizado.':'de exposición anual bruta. Orientativa y sin conciliar: no es un ahorro garantizado.');
   a2={k:'Cuánto está en juego',big:m7P1Eur(F.gross).replace(' €','<small> €</small>'),txt:rtxt};
  }else a2={k:'Cuánto está en juego',big:'—',txt:'Aún no hay una cifra económica calculada; falta completar los datos de Fábrica.'};
@@ -11138,7 +11139,8 @@ async function m7LoadDraft(cid,impact) {
     for(const [k,v] of Object.entries(draft.reconciliation)){
       if(validKeys.has(k) && v && typeof v==='object')safe[k]={
         deduction:String(v.deduction??''),basis:String(v.basis??''),
-        fraction:String(v.fraction??''),recoveryBasis:String(v.recoveryBasis??'')};
+        fraction:String(v.fraction??''),recoveryBasis:String(v.recoveryBasis??''),
+        srcType:String(v.srcType??''),srcRef:String(v.srcRef??''),srcDate:String(v.srcDate??''),srcBy:String(v.srcBy??'')};
     }
     // Si cambió el importe bruto revisado respecto al guardado, se descarta su ajuste.
     const edited=new Map(draft.edited_components.map(c=>[c.key,Number(c.value)]));
@@ -11155,6 +11157,8 @@ async function m7LoadDraft(cid,impact) {
 function m7Esc(value) {
   return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+const M7_SRC_TYPES={registro:'Registro de ERP o de planta',medicion:'Medición propia',documento:'Documento (factura, albarán…)',estandar:'Estándar o dato de referencia',declaracion:'Declaración verbal del cliente'};
+const M7_SRC_STRENGTH={registro:'medida',medicion:'medida',documento:'medida',estandar:'declarada',declaracion:'declarada'};
 function m7ReconciliationSummary(impact) {
   if (!impact || !Array.isArray(impact.components)) return {gross:0,consolidated:null,recoverable:null,items:[],status:'SIN CONCILIAR'};
   const items = impact.components.map(c => {
@@ -11164,13 +11168,17 @@ function m7ReconciliationSummary(impact) {
     const basis = String(entry.basis||'').trim();
     const recoveryBasis = String(entry.recoveryBasis||'').trim();
     const gross = Number(c.value)||0;
-    const validDeduction = deduction!==null && Number.isFinite(deduction) && deduction>=0 && deduction<=gross && basis.length>=12;
+    const srcType = String(entry.srcType||''), srcRef = String(entry.srcRef||'').trim(), srcDate = String(entry.srcDate||''), srcBy = String(entry.srcBy||'').trim();
+    const validSrc = !!M7_SRC_TYPES[srcType] && srcRef.length>=5 && /^\d{4}-\d{2}-\d{2}$/.test(srcDate) && !isNaN(Date.parse(srcDate)) && srcDate<=new Date().toISOString().slice(0,10) && srcBy.length>=2;
+    const validDeduction = deduction!==null && Number.isFinite(deduction) && deduction>=0 && deduction<=gross && basis.length>=12 && validSrc;
     const consolidated = validDeduction ? gross-deduction : null;
     const validRecovery = validDeduction && fraction!==null && Number.isFinite(fraction) && fraction>=0 && fraction<=100 && recoveryBasis.length>=12;
     return {key:c.key,label:c.label,gross,deduction:validDeduction?deduction:null,
       consolidated, fraction:validRecovery?fraction:null,
       recoverable:validRecovery?Math.round(consolidated*fraction/100):null,
       basis:validDeduction?basis:null,recoveryBasis:validRecovery?recoveryBasis:null,
+      srcType:validDeduction?srcType:null,srcRef:validDeduction?srcRef:null,srcDate:validDeduction?srcDate:null,srcBy:validDeduction?srcBy:null,
+      strength:validDeduction?M7_SRC_STRENGTH[srcType]:null,
       reconciled:validDeduction,recoveryDocumented:validRecovery};
   });
   // No asignar cifra consolidada ni recuperable cuando haya cualquier partida pendiente.
@@ -11184,7 +11192,7 @@ function m7ReconciliationSummary(impact) {
     recoveryCompleted:items.filter(i=>i.recoveryDocumented).length};
 }
 function m7SetReconciliation(key,field,value) {
-  if (!m7Reconciliation[key]) m7Reconciliation[key]={deduction:'',basis:'',fraction:'',recoveryBasis:''};
+  if (!m7Reconciliation[key]) m7Reconciliation[key]={deduction:'',basis:'',fraction:'',recoveryBasis:'',srcType:'',srcRef:'',srcDate:'',srcBy:''};
   if (['deduction','fraction'].includes(field)) {
     if (value!=='' && (!Number.isFinite(Number(value)) || Number(value)<0)) return;
     m7Reconciliation[key][field] = value;
@@ -11207,10 +11215,23 @@ function m7ReconciliationInputsHtml(component) {
   const e=m7Reconciliation[component.key]||{};
   const id=JSON.stringify(component.key);
   return `<details style="margin:4px 0 12px;padding:10px 13px;background:#f7f9f8;border:1px solid var(--border);border-radius:9px;">
-    <summary style="font-size:11px;font-weight:650;color:var(--text2);cursor:pointer;">Conciliar esta partida (opcional · requiere justificación)</summary>
+    <summary style="font-size:11px;font-weight:650;color:var(--text2);cursor:pointer;">Conciliar esta partida (opcional · exige fuente, referencia, fecha y responsable)</summary>
     <div style="font-size:10px;color:var(--text3);margin:8px 0;">Descuento documentado por solapamiento o coste no aplicable. Para confirmar importe sin ajuste, indica 0 € y documenta por qué no hay duplicidades.</div>
     <label style="display:block;font-size:10px;color:var(--text2);">Ajuste a deducir (€; de 0 al bruto de la partida)</label>
     <input type="number" min="0" max="${component.value}" step="any" value="${m7Esc(e.deduction??'')}" oninput='m7SetReconciliation(${id},"deduction",this.value)' style="padding:7px;border:1px solid var(--border2);border-radius:6px;width:160px;margin:4px 0 8px;" />
+    <label style="display:block;font-size:10px;color:var(--text2);">Fuente del dato (obligatorio)</label>
+    <select oninput='m7SetReconciliation(${id},"srcType",this.value)' style="padding:7px;border:1px solid var(--border2);border-radius:6px;margin:4px 0 8px;max-width:100%;">
+      <option value="">— Selecciona el tipo de fuente —</option>
+      ${Object.keys(M7_SRC_TYPES).map(k=>`<option value="${k}"${e.srcType===k?' selected':''}>${m7Esc(M7_SRC_TYPES[k])}</option>`).join('')}
+    </select>
+    <label style="display:block;font-size:10px;color:var(--text2);">Referencia concreta (informe, hoja, turno, documento; mín. 5 caracteres)</label>
+    <input type="text" value="${m7Esc(e.srcRef||'')}" oninput='m7SetReconciliation(${id},"srcRef",this.value)' style="padding:7px;border:1px solid var(--border2);border-radius:6px;width:100%;box-sizing:border-box;margin:4px 0 8px;" />
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+      <div><label style="display:block;font-size:10px;color:var(--text2);">Fecha del dato o de la medición</label>
+        <input type="date" max="${new Date().toISOString().slice(0,10)}" value="${m7Esc(e.srcDate||'')}" oninput='m7SetReconciliation(${id},"srcDate",this.value)' style="padding:7px;border:1px solid var(--border2);border-radius:6px;margin-top:4px;" /></div>
+      <div><label style="display:block;font-size:10px;color:var(--text2);">Quién lo aportó o validó</label>
+        <input type="text" value="${m7Esc(e.srcBy||'')}" oninput='m7SetReconciliation(${id},"srcBy",this.value)' style="padding:7px;border:1px solid var(--border2);border-radius:6px;margin-top:4px;" /></div>
+    </div>
     <label style="display:block;font-size:10px;color:var(--text2);">Evidencia / método de conciliación (mín. 12 caracteres)</label>
     <textarea oninput='m7SetReconciliation(${id},"basis",this.value)' style="display:block;box-sizing:border-box;width:100%;min-height:50px;border:1px solid var(--border2);border-radius:6px;padding:7px;">${m7Esc(e.basis||'')}</textarea>
     <label style="display:block;font-size:10px;color:var(--text2);margin-top:9px;">Fracción potencialmente recuperable (0–100 %, no ahorro garantizado)</label>
