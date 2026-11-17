@@ -2050,12 +2050,12 @@ function buildM6RoadmapSnapshot(backlog, ttl){
       ?getRIMZone(Number(b.impact),Number(b.readiness)).zone:'SIN EVALUAR';
     return {order:i+1,name:String(b.name||`Iniciativa ${i+1}`),layer:b.layer||'L1',
       rim,decision:gate.decision,reason:gate.reason,prereq_checks:getInitiativePrerequisites(b),
-      prereq_status:b.prereq_status||'pendiente',source:'M6',launch:gate.launch};
+      prereq_status:b.prereq_status||'pendiente',source:'M6 (estado declarado y guardado por el consultor)',launch:gate.launch};
   });
 }
 function m6RoadmapNarrative(steps){
   if(!steps.length)return 'Sin iniciativas aprobadas en M6. Toda propuesta adicional es exploratoria y requiere evaluación del consultor.';
-  const intro='Secuencia de iniciativas seleccionadas por el consultor en M6. La prioridad RIM expresa atractivo relativo, no autorización de ejecución. El orden conserva el backlog M6 y no implica un calendario comprometido.';
+  const intro='Secuencia de iniciativas seleccionadas por el consultor en M6. La prioridad RIM expresa atractivo relativo, no autorización de ejecución. Los estados Pendiente, Verificado o Bloqueado proceden del último registro guardado por el consultor en M6; la IA no los establece. El orden conserva el backlog y no implica un calendario comprometido.';
   return intro+'\n'+steps.map(s=>`${s.order}. ${s.name} (${s.layer}): RIM ${s.rim}; ejecución ${s.decision}. ${s.reason}.`).join('\n');
 }
 function markM7ExploratoryQuickWins(quickWins,generatedNarrative){
@@ -2105,7 +2105,7 @@ function diopAiOutputChecks(r, expectedQuickWins, hasM6) {
   const checks=[];
   const add=(code,ok,detail)=>checks.push({code,ok:!!ok,detail});
   add('json_objeto',!!r&&typeof r==='object'&&!Array.isArray(r),'Respuesta JSON objeto');
-  add('resumen',typeof r?.resumen_ejecutivo==='string'&&r.resumen_ejecutivo.trim().length>=120,'Resumen ejecutivo presente');
+  add('resumen',typeof r?.resumen_ejecutivo==='string'&&r.resumen_ejecutivo.trim().length>=400,'Resumen ejecutivo desarrollado (mínimo 400 caracteres; requiere revisión humana)');
   add('analisis',typeof r?.analisis_detallado==='string'&&r.analisis_detallado.trim().length>=800,'Análisis detallado presente (caracteres, no calidad semántica)');
   add('riesgos',Array.isArray(r?.riesgos_principales)&&r.riesgos_principales.length>=1,'Riesgos documentados');
   add('herramientas',Array.isArray(r?.herramientas_mercado)&&r.herramientas_mercado.every(t=>DIOP_MARKET_TOOLS.some(a=>a.nombre===t.nombre)),'Herramientas limitadas al catálogo oficial');
@@ -2122,7 +2122,7 @@ function normalizeReportProcesos(r) {
   // Los procesos narrados por IA nunca reemplazan las iniciativas evaluadas en M6.
   const aiProcesos = Array.isArray(r.procesos) ? r.procesos : [];
   const backlog = currentClient && m6Data[currentClient.id]?.backlog ? m6Data[currentClient.id].backlog : [];
-  if (!backlog.length && aiProcesos.length) return r; // Mantener informes sin M6.
+  // Sin M6 no existe cartera aprobada: mantener matriz vacía y sugerencias exploratorias separadas.
   const procesos = [];
 
   // 1) Decisión profesional de M6 = fuente de verdad.
@@ -2133,13 +2133,6 @@ function normalizeReportProcesos(r) {
   // el RIM™ que usa el consultor y "Nice-to-Have" en lo que ve el cliente.
   // Ahora el RIM™ es la única fuente de verdad: la etiqueta cliente es
   // simplemente su traducción de lenguaje, nunca un cálculo distinto.
-  const RIM_TO_CATEGORIA = {
-    'LANZAR AHORA': 'quick_win',
-    'PREPARAR': 'big_swing',
-    'VISIÓN': 'big_swing',
-    'EVALUAR': 'nice_to_have',
-    'DESCARTAR': 'deprioritize'
-  };
   backlog.forEach((b, i) => {
     const impactRaw = Number(b.impact || 0);
     const readRaw = Number(b.readiness || 0);
@@ -2161,42 +2154,14 @@ function normalizeReportProcesos(r) {
     });
   });
 
-  // 2) Complemento desde quick wins del informe
-  (r.quick_wins || []).forEach((q, i) => {
-    const name = q.proceso_ref || q.titulo || `Quick win ${i+1}`;
-    if (!procesos.some(p => (p.nombre || '').toLowerCase() === String(name).toLowerCase())) {
-      procesos.push({
-        nombre: name,
-        impacto: 4,
-        esfuerzo: 2,
-        categoria: 'nice_to_have', // Propuesta automática sin aprobación del consultor.
-        horas_mes: 20,
-        ttl_capa: q.ttl_capa || 'L1',
-        fuente: 'quick_win'
-      });
-    }
-  });
-
-  // 2b) Procesos propuestos por IA: únicamente exploratorios, sin alterar M6.
-  aiProcesos.forEach(p => {
-    const name=String(p?.nombre||'').trim();
-    if(name && !procesos.some(x=>x.nombre.toLowerCase()===name.toLowerCase())){
-      procesos.push({nombre:name,impacto:Math.min(5,Math.max(1,Number(p.impacto)||3)),
-        esfuerzo:Math.min(5,Math.max(1,Number(p.esfuerzo)||3)),categoria:'nice_to_have',
-        horas_mes:Number(p.horas_mes)||0,ttl_capa:p.ttl_capa||'L1',fuente:'propuesta_no_validada'});
-    }
-  });
-
-  // 3) Fallback desde procesos seleccionados en FAB
-  const selected = currentClient ? allAnswers[`${currentClient.id}_fab_procesos_planta`] : '';
-  if (selected) {
-    selected.split('||').map(x => x.trim()).filter(Boolean).forEach((name) => {
-      if (!procesos.some(p => (p.nombre || '').toLowerCase() === name.toLowerCase())) {
-        procesos.push({nombre:name, impacto:3, esfuerzo:3, categoria:'big_swing', horas_mes:15, ttl_capa:'L1', fuente:'detectado'});
-      }
-    });
-  }
-
+  // RC4: La matriz de cartera SOLO refleja iniciativas seleccionadas en M6.
+  // Las propuestas exploratorias siguen en quick_wins/trazabilidad, no en la
+  // misma matriz ni en sus agregados. Nunca contar procesos de planta como inversiones.
+  r.procesos_exploratorios_ia = aiProcesos.map(p=>({
+    nombre:String(p?.nombre||'').trim(), fuente:'propuesta_no_validada'
+  })).filter(p=>p.nombre && !procesos.some(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()));
+  r.matriz_fuente='Solo iniciativas evaluadas en M6';
+  r.matriz_numero_iniciativas_m6=procesos.length;
   r.procesos = procesos;
   return r;
 }
@@ -2633,7 +2598,7 @@ FRAMEWORKS DE TECNO-FAB:
 4. Arquetipos: Reactive Factory, Growing Complexity, Legacy Digitalization Trap, Excel-Driven Operation, Governance Fragmented, Partially Optimized.
 
 REGLAS CRÍTICAS:
-1. El resumen_ejecutivo debe ser un PÁRRAFO COMPLETO de 6-8 frases en lenguaje de CEO. No jerga técnica. Identifica el driver principal de pérdida, cuantifica el impacto, y conecta con la capacidad de crecer del negocio.
+1. El resumen_ejecutivo debe ser un PÁRRAFO COMPLETO de 6-8 frases en lenguaje de CEO, 130–200 palabras. No jerga técnica. Comienza por la restricción de flujo concreta del VSM cuando exista (nombra proceso, tiempo de ciclo efectivo y takt si están disponibles), explica una señal de confiabilidad de datos o sistema existente con su nombre/uso declarado, y una dependencia humana u organizativa. Diferencia las pérdidas brutas NO conciliadas de ahorros aprobados M6. Relaciona estos hechos con capacidad/continuidad sin afirmar beneficios demostrados. Termina con la DECISIÓN prioritaria para el CEO y la medición que permitiría confirmarla. No escribas «crecimiento esperado», «competitividad» o «sostenibilidad económica» sin aportar un dato particular de este diagnóstico.
 2. El analisis_detallado debe ser EXTENSO (mínimo 4 párrafos) cubriendo: diagnóstico operativo (qué encontramos en planta), diagnóstico digital (estado de sistemas y datos), diagnóstico organizacional (readiness del equipo), y visión estratégica (qué limita el crecimiento). Escribe como consultor senior hablando con el CEO.
 3. Si hay datos de VSM, dedica un párrafo específico al flujo de valor: lead time, ratio VA, cuellos de botella, y qué significa económicamente.
 4. Si hay datos de OFI, usa el score y las dimensiones para estructurar el análisis. El vector de fricción principal debe ser protagonista.
@@ -3564,6 +3529,7 @@ function renderReport(r, reportsHistoryHtml = '') {
         <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>07 · Economic Bridge™ · Portfolio de oportunidades</h3></div>
           <div class="diop-opp-row">${opportunitySummary}</div>
+          <p class="diop-muted" style="margin:8px 0 12px;">Matriz exclusiva de M6 · ${procesos.length} iniciativas evaluadas por el consultor. No incluye oportunidades exploratorias ni procesos de planta. «Quick Win» en esta matriz significa habilitada por RIM, TTL y prerrequisitos; no equivale a ahorro auditado.</p>
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric" style="border-left:3px solid var(--red);border-radius:0 12px 12px 0;">
               <div class="diop-metric-label" style="color:var(--red);">Conservador</div>
