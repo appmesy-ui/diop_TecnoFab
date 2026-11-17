@@ -2142,7 +2142,8 @@ function normalizeReportProcesos(r) {
     const gate = getInitiativeExecutionGate(b,getTTLFromOFI(getCurrentOFIScore()));
     // RC5: El tipo Quick Win (M5.3, 0–8 semanas) NO depende del permiso de ejecución.
     // RIM determina prioridad y el gate autoriza; ninguno cambia el tipo declarado.
-    const tipoDeclarado = b.tipo || null;
+    const tipoInfo = m6ResolvedType(b);
+    const tipoDeclarado = tipoInfo.tipo;
     const categoria = tipoDeclarado==='quick_win' ? 'quick_win' :
       (rimZone==='DESCARTAR'?'deprioritize':rimZone==='EVALUAR'?'nice_to_have':'big_swing');
     procesos.push({
@@ -2151,6 +2152,7 @@ function normalizeReportProcesos(r) {
       horas_mes: b.hours || b.horas_mes || 20,
       ttl_capa: b.layer || 'L1',
       tipo: tipoDeclarado,
+      tipo_origen: tipoInfo.origen,
       rim_zone: rimZone,
       decision_ejecucion: gate.decision,
       habilitada_ejecucion: gate.launch === true,
@@ -2165,7 +2167,7 @@ function normalizeReportProcesos(r) {
   r.procesos_exploratorios_ia = aiProcesos.map(p=>({
     nombre:String(p?.nombre||'').trim(), fuente:'propuesta_no_validada'
   })).filter(p=>p.nombre && !procesos.some(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()));
-  r.matriz_fuente='Solo iniciativas evaluadas en M6';
+  r.matriz_fuente='Solo iniciativas evaluadas en M6; tipos legados sugeridos marcados como provisionales';
   r.matriz_numero_iniciativas_m6=procesos.length;
   r.procesos = procesos;
   return r;
@@ -2226,6 +2228,7 @@ function renderMatrixTab() {
         <span style="font-size:9px;padding:1px 6px;border-radius:3px;font-weight:600;background:${cfg.color}20;color:${cfg.color};">${cfg.label}</span>
         ${p.ttl_capa?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;font-weight:600;background:rgba(0,173,181,0.1);color:var(--teal);">${p.ttl_capa}</span>`:''}
         ${p.tipo?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;font-weight:600;background:${tipoIniciativaColor(p.tipo)}20;color:${tipoIniciativaColor(p.tipo)};">${tipoIniciativaLabel(p.tipo)}</span>`:''}
+        ${p.tipo_origen==='catalogo_provisional'?`<span style="font-size:8px;color:#9b651e;">Tipo sugerido · pendiente de confirmar</span>`:''}
         ${p.decision_ejecucion?`<span style="font-size:8px;color:var(--text3);">${p.decision_ejecucion}</span>`:''}
         ${p.fuente==='M6'?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(16,185,129,0.1);color:var(--green);">Consultor</span>`:''}
         <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">I:${p.impacto} E:${p.esfuerzo}${p.horas_mes?' · '+p.horas_mes+'h/mes':''}</span>
@@ -3160,11 +3163,12 @@ function renderReport(r, reportsHistoryHtml = '') {
   };
   // RC5: contar Quick Wins por tipo aprobado en M6; informar aparte los habilitados.
   const identifiedQuickWins = procesos.filter(p=>p.tipo==='quick_win');
+  const provisionalQuickWins = identifiedQuickWins.filter(p=>p.tipo_origen==='catalogo_provisional');
   const executableQuickWins = identifiedQuickWins.filter(p=>p.habilitada_ejecucion===true);
   const opportunitySummary = Object.entries(catCfg).map(([key,cfg]) => {
     const items = procesos.filter(p => p.categoria === key);
     const hours = items.reduce((a,p)=>a+(Number(p.horas_mes)||0),0);
-    const statusDetail = key==='quick_win' ? `${executableQuickWins.length} habilitados` : (hours ? '~'+hours+'h/mes' : '—');
+    const statusDetail = key==='quick_win' ? `${executableQuickWins.length} habilitados · ${provisionalQuickWins.length} provisionales` : (hours ? '~'+hours+'h/mes' : '—');
     return `<div class="diop-opp-pill" style="border-color:${cfg.color}55;background:${cfg.color}10;"><strong style="color:${cfg.color};">${items.length}</strong><span style="color:${cfg.color};">${cfg.label}</span><small>${statusDetail}</small></div>`;
   }).join('');
 
@@ -3538,7 +3542,7 @@ function renderReport(r, reportsHistoryHtml = '') {
         <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>07 · Economic Bridge™ · Portfolio de oportunidades</h3></div>
           <div class="diop-opp-row">${opportunitySummary}</div>
-          <p class="diop-muted" style="margin:8px 0 12px;">Matriz exclusiva de M6 · ${procesos.length} iniciativas evaluadas por el consultor. Quick Wins identificados por tipo M5.3: <strong>${identifiedQuickWins.length}</strong> · habilitados para ejecución: <strong>${executableQuickWins.length}</strong> · sin habilitar: <strong>${identifiedQuickWins.length-executableQuickWins.length}</strong>. La autorización depende de RIM™, TTL™ y prerrequisitos, y NO implica ahorro auditado. No incluye propuestas exploratorias de IA ni procesos de planta.</p>
+          <p class="diop-muted" style="margin:8px 0 12px;">Matriz exclusiva de M6 · ${procesos.length} iniciativas evaluadas por el consultor. Quick Wins identificados o sugeridos por catálogo M5.3: <strong>${identifiedQuickWins.length}</strong> (de ellos, <strong>${provisionalQuickWins.length}</strong> provisionales sin confirmar) · habilitados para ejecución: <strong>${executableQuickWins.length}</strong> · sin habilitar: <strong>${identifiedQuickWins.length-executableQuickWins.length}</strong>. La autorización depende de RIM™, TTL™ y prerrequisitos, y NO implica ahorro auditado. No incluye propuestas exploratorias de IA ni procesos de planta.</p>
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric" style="border-left:3px solid var(--red);border-radius:0 12px 12px 0;">
               <div class="diop-metric-label" style="color:var(--red);">Conservador</div>
@@ -5856,6 +5860,29 @@ const TIPO_INICIATIVA = {
 function tipoIniciativaLabel(k){ return TIPO_INICIATIVA[k]?.label || 'Sin clasificar'; }
 function tipoIniciativaColor(k){ return TIPO_INICIATIVA[k]?.color || 'var(--text4)'; }
 
+// RC6: compatibilidad con M6 anterior. Una opción seleccionada por defecto
+// no es una decisión explícita guardada del consultor.
+// Solo se propone Quick Win para catálogo L1 de mejora operativa, tipo A,
+// con duración máxima indicada de <=8 semanas. Nunca se persiste la propuesta
+// sin acción expresa del consultor. Otros legados quedan sin clasificar.
+function m6LegacyTypeSuggestion(b) {
+  if(!b || TIPO_INICIATIVA[b.tipo])return null;
+  const item=TTL_CATALOGUE_DEFAULT.find(c=>c.name===b.name);
+  if(!item || item.layer!=='L1' || item.cat!=='A')return null;
+  const t=String(item.ttm||'').match(/(\d+)\s*[–-]\s*(\d+)\s*sem/i);
+  return t && Number(t[2])<=8 ? 'quick_win' : null;
+}
+function m6ResolvedType(b) {
+  const confirmed=!!TIPO_INICIATIVA[b?.tipo];
+  return {tipo:confirmed?b.tipo:m6LegacyTypeSuggestion(b),origen:confirmed?'confirmado':(m6LegacyTypeSuggestion(b)?'catalogo_provisional':'sin_clasificar')};
+}
+function m6SetInitiativeType(idx,value){
+  const b=getM6().backlog[idx]; if(!b)return;
+  if(value && !TIPO_INICIATIVA[value])return;
+  if(value)b.tipo=value;else delete b.tipo;
+  renderM6();m6Changed();
+}
+
 function defaultM6(){return{backlog:[],custom_catalogue:[],numPlants:1};}
 function getM6(){if(!currentClient)return defaultM6();if(!m6Data[currentClient.id])m6Data[currentClient.id]=defaultM6();return m6Data[currentClient.id];}
 
@@ -6278,9 +6305,12 @@ function renderM6(){
             <div style="font-size:10px;color:#5a6b70;">${b.desc||''}</div>
             <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
               <span style="font-size:9px;color:#8a9793;text-transform:uppercase;">Tipo (M5.3):</span>
-              <select onchange="getM6().backlog[${i}].tipo=this.value;renderM6();m6Changed();" style="background:#f4f6f5;border:1px solid ${tipoIniciativaColor(b.tipo)};border-radius:var(--r-xs);padding:4px 8px;color:${tipoIniciativaColor(b.tipo)};font-size:10px;font-weight:600;font-family:var(--font);">
+              <select onchange="m6SetInitiativeType(${i},this.value)" style="background:#f4f6f5;border:1px solid ${tipoIniciativaColor(b.tipo)};border-radius:var(--r-xs);padding:4px 8px;color:${tipoIniciativaColor(b.tipo)};font-size:10px;font-weight:600;font-family:var(--font);">
+                ${!TIPO_INICIATIVA[b.tipo]?`<option value="" selected>Sin clasificar (registro anterior)</option>`:''}
                 ${Object.entries(TIPO_INICIATIVA).map(([k,v]) => `<option value="${k}" ${b.tipo===k?'selected':''}>${v.label} (${v.horizonte})</option>`).join('')}
               </select>
+              ${m6ResolvedType(b).origen==='catalogo_provisional'?`<span style="font-size:10px;color:#9b651e;">Catálogo sugiere Quick Win · selecciona el tipo para confirmarlo</span>`:''}
+              ${m6ResolvedType(b).origen==='sin_clasificar'?`<span style="font-size:10px;color:#9b651e;">Clasificación pendiente del consultor</span>`:''}
             </div>
           </div>
           <button onclick="removeFromBacklog(${i})" style="background:none;border:none;color:#8a9793;cursor:pointer;font-size:14px;">✕</button>
