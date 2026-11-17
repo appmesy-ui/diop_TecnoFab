@@ -2435,6 +2435,11 @@ async function generateReport(confirmedOperationalImpact) {
     openReport();
     return;
   }
+  // Antes de iniciar la generación, exigir confirmación del último cambio M6.
+  if(currentClient && m6DirtyClients.has(currentClient.id)) {
+    const saved=await retryM6Save();
+    if(!saved){showToast('M6 contiene cambios sin guardar: reintenta antes de generar.');return;}
+  }
   const btn = document.getElementById('gen-btn') || document.getElementById('m7-confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Analizando...'; }
 
@@ -2472,7 +2477,7 @@ async function generateReport(confirmedOperationalImpact) {
   const econM6 = calcPortfolioEconomics(m6Data[currentClient.id]?.backlog || []);
   const m7QuickWins = (opImpact && opImpact.components) ? calcDeterministicQuickWins(opImpact.components, 4) : [];
 
-  let lockedNumbersCtx = '\n=== NÚMEROS YA CALCULADOS Y VALIDADOS — ÚSALOS EXACTOS, NO LOS RECALCULES NI LOS CAMBIES ===\n';
+  let lockedNumbersCtx = '\n=== RESULTADOS CALCULADOS, NO AUDITADOS — CONSERVA LAS CIFRAS Y SUS LIMITACIONES ===\n';
   if (opImpact && opImpact.total) {
     lockedNumbersCtx += `Impacto operativo anual BRUTO y ORIENTATIVO (no auditado ni deduplicado): ${opImpact.total.toLocaleString('es-ES')}€\n`;
     lockedNumbersCtx += `Desglose: ${opImpact.components.map(c=>`${c.label} ${c.value.toLocaleString('es-ES')}€`).join(', ')}\n`;
@@ -3356,7 +3361,7 @@ function renderReport(r, reportsHistoryHtml = '') {
                 ${r.benchmark_items.map(it => {
                   const col = it.referencia_estado==='NO_VALIDADO' ? '#a17a46' : (it.esBueno===true ? 'var(--green)' : it.esBueno===false ? 'var(--red)' : '#789095');
                   return `<div style="padding:8px 10px;background:#f4f6f5;border-radius:8px;border-left:3px solid ${col};">
-                    <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:12px;font-weight:600;color:#16232a;">${esc(it.nombre)}</span><span style="font-size:10px;color:${col};font-weight:600;">${esc(it.gap_label)}</span></div>
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:12px;font-weight:600;color:#16232a;">${esc(it.nombre)}</span><span style="font-size:10px;color:${col};font-weight:600;">${esc(ftSafeBenchmarkLabel(it))}</span></div>
                     <div style="font-size:11px;color:#5a6b70;margin-top:2px;">Declarado: ${esc(it.valor_cliente)} · Referencia interna sin validar: ${esc(it.valor_sector)}</div>
                   </div>`;
                 }).join('')}
@@ -4122,7 +4127,7 @@ ${orgReadinessPDF}
         return `<div style="padding:3mm 4mm;background:#f7fafa;border-left:3px solid ${col};border-radius:0 5px 5px 0;margin-bottom:2.5mm;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;">
             <span style="font-size:9.5pt;font-weight:bold;color:#0f1a2e;">${esc(it.nombre)}</span>
-            <span style="font-size:8pt;font-weight:bold;color:${col};">${esc(it.gap_label)}</span>
+            <span style="font-size:8pt;font-weight:bold;color:${col};">${esc(ftSafeBenchmarkLabel(it))}</span>
           </div>
           <div style="font-size:8.5pt;color:#5a6b70;margin-top:1mm;">Declarado: ${esc(it.valor_cliente)} · Rango interno no validado: ${esc(it.valor_sector)}</div>
         </div>`;
@@ -5807,9 +5812,84 @@ function tipoIniciativaColor(k){ return TIPO_INICIATIVA[k]?.color || 'var(--text
 function defaultM6(){return{backlog:[],custom_catalogue:[],numPlants:1};}
 function getM6(){if(!currentClient)return defaultM6();if(!m6Data[currentClient.id])m6Data[currentClient.id]=defaultM6();return m6Data[currentClient.id];}
 
-async function loadM6Data(clientId){try{const key=`${clientId}_m6_m6_config`;if(allAnswers[key]){m6Data[clientId]=JSON.parse(allAnswers[key]);}else{const{data}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','m6').eq('question_id','m6_config').single();if(data?.answer){m6Data[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}}}catch(e){}}
-async function saveM6(){if(!currentClient)return;const j=JSON.stringify(getM6());allAnswers[`${currentClient.id}_m6_m6_config`]=j;try{await sb.from('diop_answers').upsert({client_id:currentClient.id,session:'m6',question_id:'m6_config',answer:j,updated_at:new Date().toISOString()});}catch(e){}}
-function scheduleM6Save(){clearTimeout(m6SaveTimer);m6SaveTimer=setTimeout(saveM6,800);}
+// Core v1.0 · M6: guardado confirmado, ordenado y aislado por cliente.
+// La caché compartida solo se actualiza tras respuesta exitosa de Supabase.
+const m6WriteQueues = new Map();
+const m6DirtyClients = new Set();
+const m6SaveTimers = new Map();
+const m6SaveStates = new Map();
+function m6SaveState(clientId,status,message) {
+  m6SaveStates.set(clientId,{status,message});
+  if(currentClient?.id===clientId) {
+    const el=document.getElementById('m6-save-indicator');
+    if(el){el.textContent=message;el.style.color=status==='error'?'#b45309':status==='saved'?'#147d69':'#6b7c80';}
+  }
+}
+function m6SaveIndicatorHtml(clientId) {
+  const state=m6SaveStates.get(clientId)||{status:'idle',message:'Sin cambios pendientes'};
+  const color=state.status==='error'?'#b45309':state.status==='saved'?'#147d69':'#6b7c80';
+  return `<div style="margin-top:5px;font-size:11px;color:${color};" id="m6-save-indicator" role="status" aria-live="polite">${state.message}</div>`;
+}
+async function loadM6Data(clientId){
+  // Nunca pisar cambios locales pendientes con una lectura antigua.
+  if(m6DirtyClients.has(clientId) && m6Data[clientId])return;
+  const key=`${clientId}_m6_m6_config`;
+  try {
+    if(allAnswers[key]){m6Data[clientId]=JSON.parse(allAnswers[key]);return;}
+    const {data,error}=await sb.from('diop_answers').select('answer').eq('client_id',clientId).eq('session','m6').eq('question_id','m6_config').maybeSingle();
+    if(error)throw error;
+    if(data?.answer){m6Data[clientId]=JSON.parse(data.answer);allAnswers[key]=data.answer;}
+  }catch(e){console.error('Error al cargar M6:',e);m6SaveState(clientId,'error','No se pudo cargar M6. Comprueba la conexión.');showToast('No se pudo cargar M6');}
+}
+function saveM6(clientId=currentClient?.id,snapshot=null){
+  if(!clientId)return Promise.resolve(false);
+  const j=snapshot??JSON.stringify(m6Data[clientId]||defaultM6());
+  const prev=m6WriteQueues.get(clientId)||Promise.resolve();
+  const write=prev.catch(()=>{}).then(async()=>{
+    try{
+      const {error}=await sb.from('diop_answers').upsert({client_id:clientId,session:'m6',question_id:'m6_config',answer:j,updated_at:new Date().toISOString()},{onConflict:'client_id,session,question_id'});
+      if(error)throw error;
+      allAnswers[`${clientId}_m6_m6_config`]=j;
+      // Solo confirmar estado limpio si lo persistido coincide con lo actual.
+      if(JSON.stringify(m6Data[clientId]||defaultM6())===j && !m6SaveTimers.has(clientId)){
+        m6DirtyClients.delete(clientId);
+        m6SaveState(clientId,'saved','Guardado en Supabase ✓');
+      }
+      return true;
+    }catch(e){
+      console.error('M6 no guardado en Supabase:',e);
+      m6DirtyClients.add(clientId);
+      m6SaveState(clientId,'error','Error al guardar M6 · reintentar');
+      showToast('No se guardó M6. Revisa conexión y reintenta.');
+      return false;
+    }
+  });
+  m6WriteQueues.set(clientId,write);
+  return write;
+}
+function scheduleM6Save(){
+  if(!currentClient)return;
+  const cid=currentClient.id;
+  const previous=m6SaveTimers.get(cid);
+  if(previous)clearTimeout(previous);
+  m6DirtyClients.add(cid);
+  m6SaveState(cid,'pending','Cambios pendientes de guardar…');
+  const timer=setTimeout(()=>{
+    m6SaveTimers.delete(cid);
+    // Capturar en el momento de disparo; nunca guardar datos de otro cliente.
+    saveM6(cid,JSON.stringify(m6Data[cid]||defaultM6()));
+  },800);
+  m6SaveTimers.set(cid,timer);
+}
+function retryM6Save(){
+  if(!currentClient)return;
+  const cid=currentClient.id;
+  const timer=m6SaveTimers.get(cid);
+  if(timer)clearTimeout(timer);
+  m6SaveTimers.delete(cid);
+  m6SaveState(cid,'pending','Guardando M6…');
+  return saveM6(cid,JSON.stringify(m6Data[cid]||defaultM6()));
+}
 function m6Changed(){scheduleM6Save();renderSidebarRoadmap();}
 
 async function openM6(){currentSession='m6';document.getElementById('main-content').scrollTop=0;showScreen('m6');await loadM6Data(currentClient.id);await loadM8Data(currentClient.id);await loadM2extData(currentClient.id);await loadM3extData(currentClient.id);await loadM4Data(currentClient.id);await loadVSMData(currentClient.id);renderM6();renderSidebarRoadmap();}
@@ -6080,7 +6160,7 @@ function renderM6(){
   const ofi=getCurrentOFIScore();
   const clientTTL=getTTLFromOFI(ofi);
   
-  let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🎯</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M6 · Initiative Backlog + RIM™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Selección, priorización y ROI de iniciativas · Posición TTL orientativa por OFI: ${clientTTL}</div></div></div>`;
+  let html=`<div class="session-hero"><div class="sh-icon" style="background:rgba(0,173,181,0.1);color:var(--teal-l);">🎯</div><div><div style="font-size:15px;font-weight:600;color:var(--text);">M6 · Initiative Backlog + RIM™</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Selección, priorización y ROI de iniciativas · Posición TTL orientativa por OFI: ${clientTTL}</div>${m6SaveIndicatorHtml(currentClient.id)}<button onclick="retryM6Save()" style="margin-top:5px;padding:3px 8px;border:1px solid #ccd4d1;border-radius:6px;background:#fff;color:#335b5d;font-size:10px;cursor:pointer;">Guardar ahora / reintentar</button></div></div>`;
   html+=`<div class="m1v2-sessionwrap">`;
 
   // ── ADD FROM CATALOGUE ──
@@ -9633,7 +9713,7 @@ async function confirmM7ImpactAndGenerate() {
 // La clasificación es geométrica respecto a un rango interno no validado;
 // no establece superioridad/inferioridad sectorial.
 function ftBenchmarkRange(rangeStr) {
-  const m=String(rangeStr||'').match(/(\d+(?:[.,]\d+)?)\s*[–-]\s*(\d+(?:[.,]\d+)?)/);
+  const m=String(rangeStr||'').match(/(\d+(?:[.,]\d+)?)\s*%?\s*[–-]\s*(\d+(?:[.,]\d+)?)/);
   return m ? {lo:Number(m[1].replace(',','.')),hi:Number(m[2].replace(',','.'))} : null;
 }
 function ftRangeRelation(clientRange, reference) {
@@ -9641,14 +9721,29 @@ function ftRangeRelation(clientRange, reference) {
   if (!clientRange || !br || !Number.isFinite(clientRange.lo) || !Number.isFinite(clientRange.hi)) return 'no_evaluable';
   if (clientRange.hi < br.lo) return 'inferior_al_intervalo_interno';
   if (clientRange.lo > br.hi) return 'superior_al_intervalo_interno';
+  if (clientRange.lo>=br.lo && clientRange.hi<=br.hi) return 'contenido_en_referencia';
   return 'intervalos_solapados';
+}
+function ftSafeBenchmarkLabel(item) {
+  // Los informes históricos pueden conservar etiquetas de 'mejor/peor sector'.
+  // Nunca reaprovechar esas etiquetas si la referencia carece de fuente validada.
+  const raw=String(item?.valor_cliente||'');
+  let client=ftBenchmarkRange(raw);
+  if(!client){const match=raw.match(/^\s*(\d+(?:[.,]\d+)?)(?:\s*(?:min|%|h))?\s*$/i);if(match){const v=Number(match[1].replace(',','.'));client={lo:v,hi:v};}}
+  const reference=ftBenchmarkRange(item?.valor_sector);
+  if(!client||!reference)return 'Contraste no concluyente · referencia interna sin validar';
+  if(client.hi<reference.lo)return 'Intervalos separados · declaración inferior a referencia interna';
+  if(client.lo>reference.hi)return 'Intervalos separados · declaración superior a referencia interna';
+  if(client.lo>=reference.lo&&client.hi<=reference.hi)return 'Intervalo declarado contenido en referencia interna';
+  return 'Solapamiento parcial · sin clasificación sectorial';
 }
 function ftBenchmarkItem(nombre, cliente, rangoCliente, rangoSector) {
   const relacion=ftRangeRelation(rangoCliente,rangoSector);
   const mensajes={
     inferior_al_intervalo_interno:'Intervalo declarado por debajo de la referencia interna (no validada)',
     superior_al_intervalo_interno:'Intervalo declarado por encima de la referencia interna (no validada)',
-    intervalos_solapados:'Intervalos solapados · sin conclusión de posición',
+    intervalos_solapados:'Solapamiento parcial · sin clasificación sectorial',
+    contenido_en_referencia:'Intervalo declarado contenido en referencia interna',
     no_evaluable:'Sin comparación concluyente'
   };
   return {
