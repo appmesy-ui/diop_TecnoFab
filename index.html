@@ -3242,6 +3242,13 @@ function m7P1Int(v){return Math.round(Number(v)||0).toString().replace(/\B(?=(\d
 function m7P1Eur(v){return m7P1Int(v)+' €';}
 function m7P1Dec(v,d){return Number(v).toFixed(d==null?2:d).replace('.',',');}
 function m7P1Pct(v){return m7P1Dec(v,1)+' %';}
+function m7RecState(r){
+ const rec=(r&&r.economic_reconciliation)||{},items=Array.isArray(rec.items)?rec.items:[];
+ const done=items.filter(i=>i.reconciled).length,total=items.length;
+ return {items,done,total,complete:total>0&&done===total&&rec.consolidated!=null,consolidated:rec.consolidated!=null?rec.consolidated:null,recoverable:rec.recoverable!=null?rec.recoverable:null,
+  pendingLabels:items.filter(i=>!i.reconciled).map(i=>String(i.label||i.key).split('/')[0].trim().toLowerCase()),
+  tag:(total>0&&done===total&&rec.consolidated!=null)?'Conciliada':(done>0?'Conciliación parcial ('+done+'/'+total+')':'Sin conciliar')};
+}
 function m7P1Facts(r,c){
  const ofi=r.ofi_resumen||{}, dig=r.madurez_digital_next||{}, ev=r.economic_validation||null;
  const bk=(r.economic_backing&&r.economic_backing.totals)||null;
@@ -3310,7 +3317,7 @@ function m7ApprovedFillPage1(root,r,c){
  // economics
  const ec=root.querySelectorAll('.econ');
  if(ec[0]){ec[0].querySelector('.amount').textContent=F.gross>0?m7P1Eur(F.gross):'Sin calcular';
-  ec[0].querySelector('.sub').textContent=F.ev&&F.ev.validated!=null&&F.gross>0?'Validado '+m7P1Eur(F.ev.validated)+' · Pendiente de validar '+m7P1Eur(F.ev.pending||0)+' · Sin conciliar':'Con supuestos · Sin conciliar · No auditada';}
+  ec[0].querySelector('.sub').textContent=F.ev&&F.ev.validated!=null&&F.gross>0?'Validado '+m7P1Eur(F.ev.validated)+' · Pendiente de validar '+m7P1Eur(F.ev.pending||0)+' · '+m7RecState(r).tag:'Con supuestos · '+m7RecState(r).tag+' · No auditada';}
  if(ec[1]){const am=ec[1].querySelector('.amount'),sub=ec[1].querySelector('.sub'),t=F.bk;
   if(F.base>0){am.innerHTML=E(m7P1Eur(F.base))+'<span style="font-size:15px;color:#51666a"> / año</span>';
    sub.textContent=t?'Declarado por el consultor · respaldado por pérdida validada '+m7P1Eur(t.supported.base)+' · pendiente '+m7P1Eur(t.pending.base)+' · no atribuible '+m7P1Eur(t.unattributable.base):'Caso de cartera independiente · no validado';}
@@ -3723,6 +3730,55 @@ function m7ApprovedFillPage9(root,r,c){
  m7FooterTexts(root,['Informe DIOP '+name+' · M3, M4, M6 y M7; referencias comerciales incluidas solo si están justificadas por el diagnóstico.','Herramientas, ahorros, implantaciones y precios pendientes de evaluación; nada de lo anterior es una adjudicación.','Validar requisitos con planta, operaciones, mantenimiento, IT/OT y finanzas antes de cotizar.']);
 }
 
+// ── Resumen ejecutivo (página 0): la historia del diagnóstico en una hoja, construida desde los datos ──
+function m7ApprovedPage0(r,c){
+ const E=m7ApprovedEsc,F=m7P1Facts(r,c),name=m7ApprovedClientName();
+ const root=m7ApprovedFromText(M7_APPROVED_TEMPLATES['1']);
+ m7ApprovedFillHeader(root,0);
+ const pg=root.querySelector('header .page');if(pg)pg.textContent='RESUMEN EJECUTIVO';
+ const brand=root.querySelector('header');root.innerHTML='';if(brand)root.appendChild(brand);
+ const zone=String(F.ofi.zona||'').toLowerCase();
+ const heads={'intervención urgente':['Antes de invertir,','hay que estabilizar.'],'estabilización necesaria':['Antes de digitalizar,','hay que estabilizar.'],'mejora estructurada':['La base existe.','Falta ordenarla.'],'optimización avanzada':['La base es sólida.','Ahora toca afinar.']};
+ const h=heads[zone]||['Un diagnóstico,','una dirección.'];
+ const score=F.ofi.score!=null?Math.round(Number(F.ofi.score)):null;
+ const chips=[];
+ if(score!=null)chips.push('OFI™ '+score+'/100'+(F.ofi.ofi_provisional?' · provisional':''));
+ if(F.dig&&F.dig.score!=null)chips.push('Madurez digital '+m7P1Dec(F.dig.score,1)+'/5');
+ // Acto 1 · dónde se frena
+ const bn=F.vsm&&F.vsm.bn;let a1;
+ if(bn&&F.vsm.takt)a1={k:'Dónde se frena',big:m7P1Dec(bn.ctEff)+'<small> s</small>',txt:'<b>'+E(bn.name||'Una estación')+'</b> tarda '+m7P1Dec(bn.ctEff)+' s por unidad. La demanda declarada pide una cada '+m7P1Dec(F.vsm.takt)+' s.'};
+ else if(F.vsm&&F.vsm.hasTakt)a1={k:'Dónde se frena',big:m7P1Dec(F.vsm.takt)+'<small> s</small>',txt:'Es el takt declarado. Ninguna estación lo supera con los datos actuales; falta contrastarlo con la demanda real.'};
+ else a1={k:'Dónde se frena',big:'—',txt:'El mapa de flujo no tiene datos suficientes para señalar una restricción.'};
+ // Acto 2 · cuánto está en juego
+ let a2;
+ if(F.gross>0){
+  const RS=m7RecState(r);
+  const rtxt=RS.complete?'de exposición anual bruta. Conciliada: <b>'+m7P1Eur(RS.consolidated)+'</b> consolidados'+(RS.recoverable!=null?' y <b>'+m7P1Eur(RS.recoverable)+'</b> recuperables documentados.':'; falta documentar la recuperabilidad.')
+   :(RS.done>0?'de exposición anual bruta. Conciliación parcial: '+RS.done+' de '+RS.total+' partidas. No es un ahorro garantizado.':'de exposición anual bruta. Orientativa y sin conciliar: no es un ahorro garantizado.');
+  a2={k:'Cuánto está en juego',big:m7P1Eur(F.gross).replace(' €','<small> €</small>'),txt:rtxt};
+ }else a2={k:'Cuánto está en juego',big:'—',txt:'Aún no hay una cifra económica calculada; falta completar los datos de Fábrica.'};
+ // Acto 3 · qué hacer primero
+ const rm=(Array.isArray(r.roadmap_m6)?r.roadmap_m6:[]).slice().sort((a,b)=>(a.order||0)-(b.order||0));
+ let now=rm.filter(x=>/lanzar/i.test(String(x.rim||'')));
+ let a3;
+ if(now.length){a3={k:'Qué hacer primero',big:String(now.length),txt:(now.length===1?'iniciativa para empezar a preparar: ':'iniciativas para empezar a preparar: ')+now.slice(0,3).map(x=>'<b>'+E(x.name)+'</b>').join(', ')+'. Cada una sujeta a sus prerrequisitos.'};}
+ else if(rm.length){a3={k:'Qué hacer primero',big:String(rm.length),txt:(rm.length===1?'iniciativa evaluada':'iniciativas evaluadas')+', ninguna lista para lanzar. Primero hay que cerrar prerrequisitos y datos.'};}
+ else a3={k:'Qué hacer primero',big:'—',txt:'La cartera de iniciativas (M6) aún no está definida.'};
+ const base=F.base>0?'Escenario de iniciativas M6: <b>'+m7P1Eur(F.base)+' / año</b>, con confianza '+(Number(F.base)>0&&r&&c&&c.econ&&c.econ.confidenceBand?E(String(c.econ.confidenceBand).toLowerCase()):'por validar')+'. Es un caso independiente del bruto.':'';
+ const RS2=m7RecState(r);
+ const pend=RS2.pendingLabels.length?'Antes de decidir una inversión hay que conciliar: '+E(RS2.pendingLabels.slice(0,4).join(', '))+'.':(RS2.total>0?(RS2.recoverable!=null?'Partidas conciliadas y recuperabilidad documentada.':'Partidas conciliadas; falta documentar la recuperabilidad.'):'Antes de decidir una inversión, contrastar las cifras con registros de planta.');
+ const act=a=>'<section class="sm-act"><div class="sm-k">'+a.k+'</div><div class="sm-big">'+a.big+'</div><p>'+a.txt+'</p></section>';
+ const wrap=document.createElement('div');wrap.className='sm-body';
+ wrap.innerHTML='<div class="sm-eyebrow">Resumen ejecutivo · '+E(name)+'</div>'
+  +'<h1 class="sm-head">'+E(h[0])+'<br><span>'+E(h[1])+'</span></h1>'
+  +(chips.length?'<div class="sm-chips">'+chips.map(x=>'<span>'+E(x)+'</span>').join('')+'</div>':'')
+  +'<div class="sm-acts">'+act(a1)+act(a2)+act(a3)+'</div>'
+  +(base?'<p class="sm-base">'+base+'</p>':'')
+  +'<div class="sm-path"><div><b>01</b><span>Confirmar</span><i>en planta, con registros</i></div><div><b>02</b><span>Estabilizar</span><i>procesos, datos y rutinas</i></div><div><b>03</b><span>Decidir</span><i>inversión con evidencia</i></div></div>'
+  +'<p class="sm-foot">'+pend+' Cifras declaradas en entrevistas y cálculos DIOP; no sustituyen una auditoría técnica o financiera.</p>';
+ root.appendChild(wrap);
+ return root;
+}
 function buildApprovedM7(r,c){
  const name=m7ApprovedClientName();
  const isFreshBake=/freshbake/i.test(name);
@@ -3733,7 +3789,8 @@ function buildApprovedM7(r,c){
  const matchGross=grossDigits && Number(grossDigits)===845088;
  const matchBase=Number(c.econ?.totalBase)===270000;
  const liveMatch=isFreshBake && Math.round(Number(r.ofi_resumen?.score))===41 && digital.score!=null && Math.abs(Number(digital.score)-1.4)<0.16 && matchGross && matchBase && Array.isArray(c.m6?.backlog) && c.m6.backlog.length===8;
- for(let n=1;n<=9;n++){
+ for(let n=0;n<=9;n++){
+  if(n===0){html+='<div class="ap-page ap-p00 ap-p01">'+m7ApprovedPage0(r,c).outerHTML+'</div>';continue;}
   const root=m7ApprovedFromText(M7_APPROVED_TEMPLATES[String(n)]);
   m7ApprovedFillHeader(root,n);
   if(n===1)m7ApprovedFillPage1(root,r,c);
@@ -3781,6 +3838,28 @@ const M7_APPROVED_EXTRA_CSS=`
 .ap-report .ag-station{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;border:1px solid #dce6e4;padding:15px;align-items:center;text-align:center}
 .ap-report .ag-station .ag-silhouette{font-size:55px;color:#007c82}
 .ap-report .ag-station b{font-size:14px}.ap-report .ag-station small{font-size:11px;color:#52656a}
+.ap-report .sm-body{padding:54px 40px 30px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;color:#0d1a1c;flex:1;display:flex;flex-direction:column}
+.ap-report .sm-eyebrow{font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:#007c82;font-weight:700}
+.ap-report .sm-head{font-size:104px;line-height:1.02;letter-spacing:-.045em;font-weight:700;margin:26px 0 0;color:#0d1a1c}
+.ap-report .sm-head span{color:#00a3aa}
+.ap-report .sm-chips{display:flex;gap:12px;margin:34px 0 0}
+.ap-report .sm-chips span{font-size:16px;color:#3d5558;background:#eef5f4;border-radius:99px;padding:9px 20px;font-weight:600}
+.ap-report .sm-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:70px 0 0;border-top:1px solid #d9e4e2}
+.ap-report .sm-act{padding:34px 30px 10px 0;min-width:0;overflow:hidden}
+.ap-report .sm-act+.sm-act{padding-left:30px;border-left:1px solid #d9e4e2}
+.ap-report .sm-k{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:#657073;font-weight:700}
+.ap-report .sm-big{font-size:84px;line-height:1;letter-spacing:-.05em;font-weight:700;color:#007c82;margin:20px 0 18px;white-space:nowrap}
+.ap-report .sm-big small{font-size:38px;letter-spacing:-.02em;color:#00a3aa;margin-left:4px}
+.ap-report .sm-act p{font-size:21px;line-height:1.45;color:#34484b;margin:0;max-width:380px}
+.ap-report .sm-act p b{color:#0d1a1c}
+.ap-report .sm-base{font-size:17px;color:#536467;margin:40px 0 0;padding-top:22px;border-top:1px solid #d9e4e2}
+.ap-report .sm-base b{color:#0d1a1c}
+.ap-report .sm-path{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:40px 0 0}
+.ap-report .sm-path div{background:#f3f9f8;border-radius:18px;padding:26px 30px;display:flex;flex-direction:column;gap:4px}
+.ap-report .sm-path b{font-size:15px;color:#00a3aa;letter-spacing:.12em}
+.ap-report .sm-path span{font-size:32px;font-weight:700;letter-spacing:-.03em}
+.ap-report .sm-path i{font-size:17px;color:#536467;font-style:normal}
+.ap-report .sm-foot{font-size:14px;color:#657073;line-height:1.5;margin:auto 0 0;padding-top:34px}
 @media print{
  @page{size:A3 landscape;margin:0}
  html,body{margin:0!important;padding:0!important;background:#fff!important}
