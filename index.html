@@ -3007,7 +3007,7 @@ function buildFieldIntelligence(){
   // Avoided systems
   const digUse=a('operario','digital_usage');
   if(digUse&&(digUse.toLowerCase().includes('evit')||digUse.toLowerCase().includes('no uso')||digUse.toLowerCase().includes('no se usa')))
-    fric.push({signal:`Sistema evitado por operarios: "${digUse.substring(0,100)}". El motivo real indica fricción de adopción.`,type:'avoided',count:1});
+    fric.push({signal:`Sistema evitado por operarios: «${m7Clip(digUse,100)}». El motivo real indica fricción de adopción.`,type:'avoided',count:1});
   // Systems with <50% use
   if(m3.systems){
     const lowUse=m3.systems.filter(s=>s.name&&s.use_pct&&parseInt(s.use_pct)<50);
@@ -3034,14 +3034,14 @@ function buildFieldIntelligence(){
   // Untrusted data from IT/OT
   const untrusted=a('itot','untrusted_data');
   if(untrusted&&untrusted.length>8)
-    dtrust.push({signal:`IT/OT declara dato no confiable: "${untrusted.substring(0,120)}".`,type:'declared'});
+    dtrust.push({signal:`IT/OT declara dato no confiable: «${m7Clip(untrusted,120)}».`,type:'declared'});
 
   // ── 4. DEPENDENCIAS HUMANAS ──
   const dep=[];
   const keyPerson=a('fab','key_person_dependency');
   if(keyPerson==='Sí')dep.push({signal:'Dependencia de personas clave confirmada en sesión Fábrica.',source:'M2',severity:'alta'});
   const singleDep=a('ops','single_person_dependency');
-  if(singleDep&&singleDep.length>5)dep.push({signal:`Dir.Ops identifica proceso dependiente de una persona: "${singleDep.substring(0,100)}".`,source:'M1',severity:'alta'});
+  if(singleDep&&singleDep.length>5)dep.push({signal:`Dir.Ops identifica proceso dependiente de una persona: «${m7Clip(singleDep,100)}».`,source:'M1',severity:'alta'});
   const onboarding=a('fab','onboarding_weeks');
   const rotation=a('fab','new_operators_year');
   if(onboarding&&rotation&&parseInt(rotation)>0)
@@ -3055,10 +3055,10 @@ function buildFieldIntelligence(){
   const adopt=[];
   const lastImprovement=a('ops','last_improvement_success');
   if(lastImprovement&&lastImprovement.length>5)
-    adopt.push({signal:`Historial proyectos: "${lastImprovement.substring(0,120)}".`,type:'history'});
+    adopt.push({signal:`Historial proyectos: «${m7Clip(lastImprovement,120)}».`,type:'history'});
   const legacyPractices=a('operario','legacy_practices');
   if(legacyPractices&&legacyPractices.length>5)
-    adopt.push({signal:`Prácticas heredadas sin justificación: "${legacyPractices.substring(0,120)}".`,type:'legacy'});
+    adopt.push({signal:`Prácticas heredadas sin justificación: «${m7Clip(legacyPractices,120)}».`,type:'legacy'});
   // M4 Execution
   const ex=m4raw.execution||{};
   if(ex.change_openness==='Bajo')adopt.push({signal:'Apertura al cambio clasificada como BAJA en M4.',type:'resistance'});
@@ -3291,7 +3291,7 @@ function m7P1Texts(F){
  else f.push(['Flujo y capacidad','El VSM carece de takt o de ciclos completos; no puede afirmarse dónde está la restricción.']);
  if(F.dig.score!=null)f.push([F.weak.length?'Integridad del dato':'Madurez digital','Madurez '+m7P1Dec(F.dig.score,1)+'/5 ('+F.dig.evaluated+'/7 dimensiones)'+(F.weak.length?'; nivel 1–2 en '+F.weak.join(', ').toLowerCase()+'.':'; sin dimensiones en nivel 1–2.')]);
  else f.push(['Madurez digital','Evaluación insuficiente ('+(F.dig.evaluated||0)+'/7 dimensiones); no se asigna nivel.']);
- if(F.top)f.push([F.top.label.split('/')[0].trim()+' y coste real',m7P1Eur(F.top.value)+' de '+m7P1Eur(F.gross)+' brutos'+(F.ev&&F.ev.validated!=null?'; validado '+m7P1Eur(F.ev.validated)+', pendiente '+m7P1Eur(F.ev.pending||0):'')+(F.rec.complete?(F.rec.recoverable!=null?'; conciliado '+m7P1Eur(F.rec.consolidated)+', recuperable documentado '+m7P1Eur(F.rec.recoverable)+'.':'; conciliado '+m7P1Eur(F.rec.consolidated)+', recuperabilidad por documentar.'):(F.rec.done>0?'; conciliación parcial ('+F.rec.done+'/'+F.rec.total+').':'; no acredita aún una pérdida física recuperable.'))]);
+ if(F.top)f.push([F.top.label.split('/')[0].trim()+' y coste real',m7P1Eur(F.top.value)+' de '+m7P1Eur(F.gross)+' brutos'+(F.rec.complete?(F.rec.recoverable!=null?'; conciliado '+m7P1Eur(F.rec.consolidated)+', recuperable documentado '+m7P1Eur(F.rec.recoverable)+'.':'; conciliado '+m7P1Eur(F.rec.consolidated)+', recuperabilidad por documentar.'):(F.rec.done>0?'; conciliación parcial ('+F.rec.done+'/'+F.rec.total+').':'; no acredita aún una pérdida física recuperable.'))]);
  else f.push(['Exposición económica','Sin cifra calculada; completar la sesión de Fábrica.']);
  return {conclusion,findings:f};
 }
@@ -3317,7 +3317,7 @@ function m7ApprovedFillPage1(root,r,c){
  // economics
  const ec=root.querySelectorAll('.econ');
  if(ec[0]){ec[0].querySelector('.amount').textContent=F.gross>0?m7P1Eur(F.gross):'Sin calcular';
-  ec[0].querySelector('.sub').textContent=F.ev&&F.ev.validated!=null&&F.gross>0?'Validado '+m7P1Eur(F.ev.validated)+' · Pendiente de validar '+m7P1Eur(F.ev.pending||0)+' · '+m7RecState(r).tag:'Con supuestos · '+m7RecState(r).tag+' · No auditada';}
+  ec[0].querySelector('.sub').textContent=F.gross>0?'Bruta · orientativa · '+m7RecState(r).tag+' · No auditada':'Con supuestos · '+m7RecState(r).tag+' · No auditada';}
  if(ec[1]){const am=ec[1].querySelector('.amount'),sub=ec[1].querySelector('.sub'),t=F.bk;
   if(F.base>0){am.innerHTML=E(m7P1Eur(F.base))+'<span style="font-size:15px;color:#51666a"> / año</span>';
    sub.textContent=t?'Declarado por el consultor · respaldado por pérdida validada '+m7P1Eur(t.supported.base)+' · pendiente '+m7P1Eur(t.pending.base)+' · no atribuible '+m7P1Eur(t.unattributable.base):'Caso de cartera independiente · no validado';}
@@ -3629,7 +3629,7 @@ function m7ApprovedFillPage7(root,r,c){
  if(mp)mp.innerHTML='<b>Dos magnitudes que no deben confundirse</b><p><strong>'+E(F.gross>0?m7P1Eur(F.gross):'Sin calcular')+'</strong> expresa una suma bruta de componentes operativos, con supuestos'+(rec.consolidated!=null?'':' y pendiente de conciliar')+'. <strong>'+E(F.base>0?m7P1Int(F.base)+' €/año':'Sin ahorro declarado')+'</strong> corresponde al escenario base de la cartera de iniciativas M6, declarado por el consultor; no se deriva del bruto.</p>';
  const ms=root.querySelectorAll('.metrics .metric');
  const set=(m,l,v,s)=>{if(!m)return;m.querySelector('small').textContent=l;m.querySelector('strong').textContent=v;m.querySelector('span').textContent=s;};
- set(ms[0],'Exposición operativa anual',F.gross>0?m7P1Eur(F.gross):'Sin calcular','Bruta · orientativa · '+(rec.consolidated!=null?'conciliada':'sin conciliar')+(ev&&ev.validated!=null&&F.gross>0?' · validado '+m7P1Eur(ev.validated):''));
+ set(ms[0],'Exposición operativa anual',F.gross>0?m7P1Eur(F.gross):'Sin calcular','Bruta · orientativa · '+(rec.consolidated!=null?'conciliada':'sin conciliar'));
  const cnt=rec.items?rec.items.length:0,done=rec.items?rec.items.filter(i=>i.reconciled).length:0,docs=rec.items?rec.items.filter(i=>i.recoveryDocumented).length:0;
  set(ms[1],'Pérdida conciliada / recuperable',rec.recoverable!=null?m7P1Eur(rec.recoverable):'Sin validar',cnt?done+'/'+cnt+' partidas documentadas · '+(rec.consolidated!=null?'conciliación completa':'no existe cifra consolidada aprobada'):'sin partidas');
  set(ms[2],'Escenario base M6',F.base>0?m7P1Eur(F.base):'Sin declarar',F.base>0?'Ahorro anual orientativo · confianza '+String(ec.confidenceBand||'pendiente').toLowerCase()+' · no auditado':'M6 sin iniciativas con ahorro cargado');
