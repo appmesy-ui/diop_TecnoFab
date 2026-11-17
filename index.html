@@ -2788,7 +2788,7 @@ Devuelve SOLO el JSON, sin texto adicional.`;
       r.quick_wins = markM7ExploratoryQuickWins(m7QuickWins,r.quick_wins);
     }
 
-    await sb.from('diop_reports').insert([
+    const {error:reportInsertError}=await sb.from('diop_reports').insert([
       {
         client_id: currentClient.id,
         report_json: r,
@@ -2796,6 +2796,7 @@ Devuelve SOLO el JSON, sin texto adicional.`;
         created_by: 'marti'
       }
     ]);
+    if(reportInsertError)throw new Error('No se pudo guardar el informe en Supabase: '+reportInsertError.message);
 
     const { data: reports, error } = await sb
       .from('diop_reports')
@@ -8863,7 +8864,8 @@ function ftEditComponent(input) {
   const group = input.dataset.group;
   const key = input.dataset.key;
   const idx = input.dataset.idx;
-  const newVal = parseFloat(input.value) || 0;
+  const parsed = Number(input.value);
+  const newVal = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 
   if (group === 'dolor1') {
     const comp = ftBreakdownEdited.dolor1.components.find(c => c.key === key);
@@ -9538,8 +9540,90 @@ function getQualityChecklistReportContext() {
 
 let m7ImpactBreakdown = null;
 let m7ImpactEdited = null;
-// DIOP Next 3.4b — conciliación explícita. Estado temporal hasta generar informe.
+// DIOP Next Core v1.0 RC2 — borrador de conciliación aislado por cliente.
+// Se almacena en diop_answers y nunca cambia las respuestas de diagnóstico.
 let m7Reconciliation = {};
+let m7DraftClientId = null;
+let m7DraftBase = null;
+let m7DraftRevision = 0;
+let m7DraftSaveTimer = null;
+let m7DraftSaveQueue = Promise.resolve();
+let m7DraftStatus = 'Sin cambios pendientes';
+let m7DraftLoadFailed = false;
+function m7DraftSourceSignature(impact) {
+  // Permite detectar que han cambiado los valores de origen antes de reusar un ajuste.
+  return JSON.stringify((impact?.components||[]).map(c=>[c.key,Number(c.value)||0]));
+}
+function m7DraftStatusSet(message, error=false) {
+  m7DraftStatus=message;
+  const el=document.getElementById('m7-draft-status');
+  if(el){el.textContent=message;el.style.color=error?'#b45309':'#147d69';}
+}
+function m7DraftPayload() {
+  return {version:1,source_signature:m7DraftBase,reconciliation:JSON.parse(JSON.stringify(m7Reconciliation)),
+    // Solo la revisión de impacto puede editar estos importes, nunca las respuestas originales.
+    edited_components:(m7ImpactEdited?.components||[]).map(c=>({key:c.key,value:Number(c.value)||0})),
+    saved_at:new Date().toISOString()};
+}
+function m7DraftMarkChanged() {
+  m7DraftRevision++;
+  m7DraftStatusSet('Cambios pendientes de guardar…');
+  if(m7DraftSaveTimer)clearTimeout(m7DraftSaveTimer);
+  const cid=m7DraftClientId;
+  m7DraftSaveTimer=setTimeout(()=>{m7DraftSaveTimer=null;if(m7DraftClientId===cid)m7SaveDraft();},800);
+}
+async function m7SaveDraft() {
+  if(!m7DraftClientId || !m7ImpactEdited || m7DraftLoadFailed)return false;
+  if(m7DraftSaveTimer){clearTimeout(m7DraftSaveTimer);m7DraftSaveTimer=null;}
+  const cid=m7DraftClientId, rev=m7DraftRevision, payload=m7DraftPayload();
+  const write=m7DraftSaveQueue.catch(()=>{}).then(async()=>{
+    try {
+      const {error}=await sb.from('diop_answers').upsert({
+        client_id:cid,session:'m7',question_id:'economic_draft_v1',
+        answer:JSON.stringify(payload),updated_at:new Date().toISOString()
+      },{onConflict:'client_id,session,question_id'});
+      if(error)throw error;
+      if(cid===m7DraftClientId && rev===m7DraftRevision)m7DraftStatusSet('Borrador guardado en Supabase ✓');
+      return true;
+    }catch(e){
+      console.error('M7 borrador: error guardando',e);
+      if(cid===m7DraftClientId)m7DraftStatusSet('No se guardó el borrador · reintentar',true);
+      return false;
+    }
+  });
+  m7DraftSaveQueue=write;
+  return write;
+}
+async function m7LoadDraft(cid,impact) {
+  try {
+    const {data,error}=await sb.from('diop_answers').select('answer')
+      .eq('client_id',cid).eq('session','m7').eq('question_id','economic_draft_v1').maybeSingle();
+    if(error)throw error;
+    if(!data?.answer)return 'No hay borrador previo';
+    const draft=JSON.parse(data.answer);
+    if(draft.version!==1 || !Array.isArray(draft.edited_components) || typeof draft.reconciliation!=='object' || !draft.reconciliation)
+      return 'Borrador incompatible: no se ha aplicado';
+    if(draft.source_signature!==m7DraftSourceSignature(impact))
+      return 'Datos de origen cambiados: borrador anterior no aplicado';
+    const validKeys=new Set(impact.components.map(c=>c.key));
+    const safe={};
+    for(const [k,v] of Object.entries(draft.reconciliation)){
+      if(validKeys.has(k) && v && typeof v==='object')safe[k]={
+        deduction:String(v.deduction??''),basis:String(v.basis??''),
+        fraction:String(v.fraction??''),recoveryBasis:String(v.recoveryBasis??'')};
+    }
+    // Si cambió el importe bruto revisado respecto al guardado, se descarta su ajuste.
+    const edited=new Map(draft.edited_components.map(c=>[c.key,Number(c.value)]));
+    for(const c of m7ImpactEdited.components){
+      const value=edited.get(c.key);
+      if(Number.isFinite(value) && value>=0){c.value=value;}
+      else delete safe[c.key];
+    }
+    m7ImpactEdited.total=m7ImpactEdited.components.reduce((a,c)=>a+c.value,0);
+    m7Reconciliation=safe;
+    return 'Borrador recuperado de Supabase ✓';
+  }catch(e){console.error('M7 borrador: error leyendo',e);m7DraftLoadFailed=true;return 'Error de lectura: vuelve a abrir la revisión antes de editar o guardar';}
+}
 function m7Esc(value) {
   return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -9578,6 +9662,7 @@ function m7SetReconciliation(key,field,value) {
     m7Reconciliation[key][field] = value;
   } else { m7Reconciliation[key][field] = value; }
   // Evitar renderizar al teclear para no perder el foco.
+  m7DraftMarkChanged();
   const summary = m7ReconciliationSummary(m7ImpactEdited);
   const el = document.getElementById('m7-reconciliation-status');
   if (el) el.innerHTML = m7ReconciliationStatusHtml(summary);
@@ -9607,15 +9692,25 @@ function m7ReconciliationInputsHtml(component) {
   </details>`;
 }
 
-function openM7ImpactReview() {
+async function openM7ImpactReview() {
+  const cid=currentClient?.id;
+  if(!cid)return;
   m7ImpactBreakdown = calcM7OperationalImpact();
   if (!m7ImpactBreakdown || !m7ImpactBreakdown.components.length) {
-    // No hay datos suficientes para el impacto operativo — saltar directo
     generateReport();
     return;
   }
+  if(m7DraftSaveTimer){clearTimeout(m7DraftSaveTimer);m7DraftSaveTimer=null;}
+  m7DraftClientId=cid;
+  m7DraftRevision=0;
+  m7DraftLoadFailed=false;
   m7ImpactEdited = JSON.parse(JSON.stringify(m7ImpactBreakdown));
-  m7Reconciliation = {}; // No arrastrar ajustes de otro informe o cliente.
+  m7DraftBase=m7DraftSourceSignature(m7ImpactBreakdown);
+  m7Reconciliation = {};
+  m7DraftStatus='Cargando borrador…';
+  const status=await m7LoadDraft(cid,m7ImpactBreakdown);
+  if(currentClient?.id!==cid || m7DraftClientId!==cid)return;
+  m7DraftStatus=status;
   renderM7ImpactReview();
 }
 
@@ -9644,6 +9739,7 @@ function m7EditImpactComponent(input) {
   m7ImpactEdited.total = m7ImpactEdited.components.reduce((s,c) => s + c.value, 0);
   // Cualquier cambio del bruto invalida la conciliación previa de esa partida.
   delete m7Reconciliation[key];
+  m7DraftMarkChanged();
   renderM7ImpactReview(true);
 }
 
@@ -9678,6 +9774,10 @@ function renderM7ImpactReview(skipScroll) {
       <span style="font-size:12px;color:var(--text2);font-weight:600;">Total bruto orientativo · sin conciliación</span>
       <span style="font-size:19px;font-weight:700;color:var(--teal-l);font-family:var(--mono);">${m7ImpactEdited.total.toLocaleString('es-ES')}€</span>
     </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;flex-wrap:wrap;">
+      <span role="status" aria-live="polite" id="m7-draft-status" style="font-size:11px;color:var(--text2);">${m7Esc(m7DraftStatus)}</span>
+      <button onclick="m7SaveDraft()" style="padding:7px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--s1);cursor:pointer;">Guardar borrador ahora</button>
+    </div>
     <div style="display:flex;gap:10px;">
       <button onclick="cancelM7ImpactReview()" style="padding:9px 16px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);">Cancelar</button>
       <button onclick="confirmM7ImpactAndGenerate()" id="m7-confirm-btn" style="flex:1;padding:9px 16px;background:var(--teal-d);border:0.5px solid var(--teal);border-radius:var(--r-sm);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">✓ Confirmar y generar informe DIOP →</button>
@@ -9688,15 +9788,24 @@ function renderM7ImpactReview(skipScroll) {
   if (!skipScroll) document.getElementById('main-content').scrollTop = 0;
 }
 
-function cancelM7ImpactReview() {
+async function cancelM7ImpactReview() {
+  // Si falla la escritura, no borrar las modificaciones del consultor.
+  if(m7DraftRevision>0 && !(await m7SaveDraft())){
+    showToast('El borrador M7 no se guardó. Reintenta antes de salir.');return;
+  }
   m7ImpactBreakdown = null; m7ImpactEdited = null;
-  m7Reconciliation = {};
+  m7Reconciliation = {};m7DraftClientId=null;m7DraftBase=null;m7DraftRevision=0;
   openReport();
 }
 
 async function confirmM7ImpactAndGenerate() {
   const btn = document.getElementById('m7-confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Generando...'; }
+  if(!(await m7SaveDraft())){
+    showToast('No se ha guardado el borrador M7. Reintenta antes de generar.');
+    if(btn){btn.disabled=false;btn.textContent='✓ Confirmar y generar informe DIOP →';}
+    return;
+  }
   m7ImpactEdited.reconciliation = m7ReconciliationSummary(m7ImpactEdited);
   await generateReport(m7ImpactEdited);
 }
