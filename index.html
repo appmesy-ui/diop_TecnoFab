@@ -2140,15 +2140,20 @@ function normalizeReportProcesos(r) {
     const esfuerzo = Math.max(1, Math.min(5, Math.round((10 - readRaw) / 2) || 3));
     const rimZone = (impactRaw && readRaw) ? getRIMZone(impactRaw, readRaw).zone : null;
     const gate = getInitiativeExecutionGate(b,getTTLFromOFI(getCurrentOFIScore()));
-    const categoria = gate.launch ? 'quick_win' : (rimZone==='DESCARTAR'?'deprioritize':rimZone==='EVALUAR'?'nice_to_have':'big_swing');
+    // RC5: El tipo Quick Win (M5.3, 0–8 semanas) NO depende del permiso de ejecución.
+    // RIM determina prioridad y el gate autoriza; ninguno cambia el tipo declarado.
+    const tipoDeclarado = b.tipo || null;
+    const categoria = tipoDeclarado==='quick_win' ? 'quick_win' :
+      (rimZone==='DESCARTAR'?'deprioritize':rimZone==='EVALUAR'?'nice_to_have':'big_swing');
     procesos.push({
       nombre: b.name || `Iniciativa ${i+1}`,
       impacto, esfuerzo, categoria,
       horas_mes: b.hours || b.horas_mes || 20,
       ttl_capa: b.layer || 'L1',
-      tipo: b.tipo || 'quick_win',
+      tipo: tipoDeclarado,
       rim_zone: rimZone,
       decision_ejecucion: gate.decision,
+      habilitada_ejecucion: gate.launch === true,
       prereq_status: b.prereq_status||'pendiente',
       fuente: 'M6'
     });
@@ -3153,10 +3158,14 @@ function renderReport(r, reportsHistoryHtml = '') {
     nice_to_have:{label:'Nice-to-Have', color:'#BA7517'},
     deprioritize:{label:'Deprioritize', color:'#E24B4A'}
   };
+  // RC5: contar Quick Wins por tipo aprobado en M6; informar aparte los habilitados.
+  const identifiedQuickWins = procesos.filter(p=>p.tipo==='quick_win');
+  const executableQuickWins = identifiedQuickWins.filter(p=>p.habilitada_ejecucion===true);
   const opportunitySummary = Object.entries(catCfg).map(([key,cfg]) => {
     const items = procesos.filter(p => p.categoria === key);
     const hours = items.reduce((a,p)=>a+(Number(p.horas_mes)||0),0);
-    return `<div class="diop-opp-pill" style="border-color:${cfg.color}55;background:${cfg.color}10;"><strong style="color:${cfg.color};">${items.length}</strong><span style="color:${cfg.color};">${cfg.label}</span><small>${hours ? '~'+hours+'h/mes' : '—'}</small></div>`;
+    const statusDetail = key==='quick_win' ? `${executableQuickWins.length} habilitados` : (hours ? '~'+hours+'h/mes' : '—');
+    return `<div class="diop-opp-pill" style="border-color:${cfg.color}55;background:${cfg.color}10;"><strong style="color:${cfg.color};">${items.length}</strong><span style="color:${cfg.color};">${cfg.label}</span><small>${statusDetail}</small></div>`;
   }).join('');
 
   const reportHtml = `
@@ -3529,7 +3538,7 @@ function renderReport(r, reportsHistoryHtml = '') {
         <div class="diop-section diop-page-start">
           <div class="diop-section-title"><h3>07 · Economic Bridge™ · Portfolio de oportunidades</h3></div>
           <div class="diop-opp-row">${opportunitySummary}</div>
-          <p class="diop-muted" style="margin:8px 0 12px;">Matriz exclusiva de M6 · ${procesos.length} iniciativas evaluadas por el consultor. No incluye oportunidades exploratorias ni procesos de planta. «Quick Win» en esta matriz significa habilitada por RIM, TTL y prerrequisitos; no equivale a ahorro auditado.</p>
+          <p class="diop-muted" style="margin:8px 0 12px;">Matriz exclusiva de M6 · ${procesos.length} iniciativas evaluadas por el consultor. Quick Wins identificados por tipo M5.3: <strong>${identifiedQuickWins.length}</strong> · habilitados para ejecución: <strong>${executableQuickWins.length}</strong> · sin habilitar: <strong>${identifiedQuickWins.length-executableQuickWins.length}</strong>. La autorización depende de RIM™, TTL™ y prerrequisitos, y NO implica ahorro auditado. No incluye propuestas exploratorias de IA ni procesos de planta.</p>
           <div class="diop-grid-3" style="margin-bottom:12px;">
             <div class="diop-metric" style="border-left:3px solid var(--red);border-radius:0 12px 12px 0;">
               <div class="diop-metric-label" style="color:var(--red);">Conservador</div>
