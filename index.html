@@ -3262,7 +3262,7 @@ function m7P1Facts(r,c){
  const dims=Array.isArray(dig.dimensions)?dig.dimensions:[];
  const weak=dims.filter(d=>d.score!=null&&d.score<=2).map(d=>d.name);
  const missing=Array.isArray(ofi.dimensiones_no_evaluadas)?ofi.dimensiones_no_evaluadas.map(x=>x.dimension):[];
- return {ofi,dig,ev,bk,comps,gross,top,topShare,vsm,weak,missing,
+ return {rec:m7RecState(r),ofi,dig,ev,bk,comps,gross,top,topShare,vsm,weak,missing,
   pendingLabels:(ev&&ev.pendingKeys||[]).map(k=>{const f=comps.find(x=>x.key===k);return f?String(f.label).toLowerCase():k;}),
   base:Number(c.econ&&c.econ.totalBase)||0};
 }
@@ -3291,7 +3291,7 @@ function m7P1Texts(F){
  else f.push(['Flujo y capacidad','El VSM carece de takt o de ciclos completos; no puede afirmarse dónde está la restricción.']);
  if(F.dig.score!=null)f.push([F.weak.length?'Integridad del dato':'Madurez digital','Madurez '+m7P1Dec(F.dig.score,1)+'/5 ('+F.dig.evaluated+'/7 dimensiones)'+(F.weak.length?'; nivel 1–2 en '+F.weak.join(', ').toLowerCase()+'.':'; sin dimensiones en nivel 1–2.')]);
  else f.push(['Madurez digital','Evaluación insuficiente ('+(F.dig.evaluated||0)+'/7 dimensiones); no se asigna nivel.']);
- if(F.top)f.push([F.top.label.split('/')[0].trim()+' y coste real',m7P1Eur(F.top.value)+' de '+m7P1Eur(F.gross)+' brutos'+(F.ev&&F.ev.validated!=null?'; validado '+m7P1Eur(F.ev.validated)+', pendiente '+m7P1Eur(F.ev.pending||0):'')+'; no acredita aún una pérdida física recuperable.']);
+ if(F.top)f.push([F.top.label.split('/')[0].trim()+' y coste real',m7P1Eur(F.top.value)+' de '+m7P1Eur(F.gross)+' brutos'+(F.ev&&F.ev.validated!=null?'; validado '+m7P1Eur(F.ev.validated)+', pendiente '+m7P1Eur(F.ev.pending||0):'')+(F.rec.complete?(F.rec.recoverable!=null?'; conciliado '+m7P1Eur(F.rec.consolidated)+', recuperable documentado '+m7P1Eur(F.rec.recoverable)+'.':'; conciliado '+m7P1Eur(F.rec.consolidated)+', recuperabilidad por documentar.'):(F.rec.done>0?'; conciliación parcial ('+F.rec.done+'/'+F.rec.total+').':'; no acredita aún una pérdida física recuperable.'))]);
  else f.push(['Exposición económica','Sin cifra calculada; completar la sesión de Fábrica.']);
  return {conclusion,findings:f};
 }
@@ -3331,15 +3331,22 @@ function m7ApprovedFillPage1(root,r,c){
  else rows.forEach(x=>x.remove());
  const ca=q('.caution');if(ca){
   if(F.top&&F.topShare!=null){const rg=F.top.range&&F.top.range.low!=null&&F.top.range.high!=null?' (rango declarado '+m7P1Eur(F.top.range.low)+' – '+m7P1Eur(F.top.range.high)+')':'';
-   ca.innerHTML='<strong>Interpretación.</strong> '+E(F.top.label.split('/')[0].trim())+' representa aproximadamente el '+E(m7P1Pct(F.topShare))+' del total bruto calculado'+E(rg)+'. Debemos comprobar '+E(m7P1Verify(F.top.key))+' antes de hablar de pérdida consolidada o ahorro recuperable.'+(F.pendingLabels.length&&F.ev.pending>0?' '+E(m7P1Eur(F.ev.pending))+' quedan pendientes de validar ('+E(F.pendingLabels.join(', '))+') por datos de entrada anómalos.':'');}
+   const RS=F.rec,lead='<strong>Interpretación.</strong> '+E(F.top.label.split('/')[0].trim())+' representa aproximadamente el '+E(m7P1Pct(F.topShare))+' del total bruto calculado'+E(rg)+'. ';
+   let tail;
+   if(RS.complete)tail='La conciliación está documentada: '+E(m7P1Eur(RS.consolidated))+' consolidados'+(RS.recoverable!=null?' y '+E(m7P1Eur(RS.recoverable))+' recuperables con base escrita.':'; falta documentar la recuperabilidad.')+' Son cifras de la conciliación del consultor, no de una auditoría.';
+   else if(RS.done>0)tail='Conciliadas '+RS.done+' de '+RS.total+' partidas; quedan por conciliar: '+E(RS.pendingLabels.slice(0,4).join(', '))+'. Hasta entonces no hay pérdida consolidada ni ahorro recuperable.';
+   else tail='Debemos comprobar '+E(m7P1Verify(F.top.key))+' antes de hablar de pérdida consolidada o ahorro recuperable.'+(F.pendingLabels.length&&F.ev.pending>0?' '+E(m7P1Eur(F.ev.pending))+' quedan pendientes de validar ('+E(F.pendingLabels.join(', '))+') por datos de entrada anómalos.':'');
+   ca.innerHTML=lead+tail;}
   else ca.innerHTML='<strong>Interpretación.</strong> No hay base económica calculada; completar la sesión de Fábrica antes de hablar de exposición.';}
+ const sub1=q('.evidence .subhead');if(sub1)sub1.textContent=F.rec.complete?'Conciliación documentada por el consultor · Pendiente de contraste en ejecución':(F.rec.done>0?'Conciliación parcial ('+F.rec.done+'/'+F.rec.total+') · Pendiente de contraste técnico y económico':'Lectura orientativa · Pendiente de contraste técnico y económico');
+ const nt=q('.foot .note');if(nt&&F.rec.complete)nt.innerHTML=nt.innerHTML.replace('Las cifras económicas son orientativas y están sujetas a conciliación.','Las cifras económicas proceden de la conciliación documentada por el consultor.');
  // evidence table
  const tds=[...root.querySelectorAll('.table .td')];
  const bn=F.vsm&&F.vsm.bn;
  const tr=[
   [bn?(bn.name||'Estación'):'Flujo',bn?'M2: ciclo efectivo ≈'+m7P1Dec(bn.ctEff)+' s/ud; takt ≈'+m7P1Dec(F.vsm.takt)+' s/ud.':(F.vsm&&F.vsm.hasTakt?'M2: ninguna estación supera el takt de '+m7P1Dec(F.vsm.takt)+' s/ud.':'M2: VSM incompleto.'),bn?'Señal de posible limitación de capacidad bajo la demanda declarada.':'Sin restricción visible con los datos actuales.','Medir ciclo, disponibilidad, mezcla y demanda representativa.'],
-  ['Datos industriales',F.dig.score!=null?'M3: madurez '+m7P1Dec(F.dig.score,1)+'/5'+(F.weak.length?'; nivel 1–2 en '+F.weak.join(', ').toLowerCase()+'.':'.'):'M3: evaluación insuficiente.','Riesgo de decisiones basadas en indicadores no conciliados entre áreas.','Seguir el recorrido de un mismo dato entre planta, ERP y reportes.'],
-  ['Exposición económica',F.top?'M7: '+F.top.label.split('/')[0].trim().toLowerCase()+' '+m7P1Eur(F.top.value)+' dentro de '+m7P1Eur(F.gross)+' brutos orientativos.':'M7: sin cifra calculada.','El importe no equivale a ahorro ni acredita pérdida física.','Conciliar '+(F.top?m7P1Verify(F.top.key):'datos de entrada')+'.']];
+  ['Datos industriales',F.dig.score!=null?'M3: madurez '+m7P1Dec(F.dig.score,1)+'/5'+(F.weak.length?'; nivel 1–2 en '+F.weak.join(', ').toLowerCase()+'.':'.'):'M3: evaluación insuficiente.',(F.dig.score==null?'Sin evaluación suficiente de madurez para valorar el riesgo del dato.':(F.weak.some(w=>/dato|arquitectura/i.test(w))?'Riesgo de decisiones basadas en indicadores no conciliados entre áreas.':'Sin debilidad declarada en datos; contrastar igualmente un mismo dato entre áreas.')),'Seguir el recorrido de un mismo dato entre planta, ERP y reportes.'],
+  ['Exposición económica',F.top?'M7: '+F.top.label.split('/')[0].trim().toLowerCase()+' '+m7P1Eur(F.top.value)+' dentro de '+m7P1Eur(F.gross)+' brutos orientativos.':'M7: sin cifra calculada.',(F.rec.complete?'Cifra conciliada por el consultor; no equivale a ahorro garantizado.':'El importe no equivale a ahorro ni acredita pérdida física.'),(F.rec.complete?(F.rec.recoverable!=null?'Medir la recuperación real al ejecutar las iniciativas.':'Documentar la recuperabilidad de cada partida.'):(F.rec.done>0&&F.rec.pendingLabels.length?'Conciliar '+F.rec.pendingLabels.slice(0,3).join(', ')+'.':'Conciliar '+(F.top?m7P1Verify(F.top.key):'datos de entrada')+'.'))]];
  tds.forEach((el,i)=>{const row=Math.floor(i/4),col=i%4;const v=tr[row]&&tr[row][col];if(v==null)return;const s=el.querySelector('strong');if(s)s.textContent=v;else el.textContent=v;});
 }
 
