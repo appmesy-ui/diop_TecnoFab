@@ -3761,8 +3761,8 @@ function m7ApprovedPage0(r,c){
  let a2;
  if(F.gross>0){
   const RS=m7RecState(r);
-  const rtxt=RS.complete?'de exposición anual bruta. Conciliada: <b>'+m7P1Eur(RS.consolidated)+'</b> consolidados'+(RS.recoverable!=null?' y <b>'+m7P1Eur(RS.recoverable)+'</b> recuperables documentados.':'; falta documentar la recuperabilidad.')+((RS.solid+RS.declared)?' Fuentes: '+RS.solid+' con registro o medición, '+RS.declared+' declaradas.':'')
-   :(RS.done>0?'de exposición anual bruta. Conciliación parcial: '+RS.done+' de '+RS.total+' partidas. No es un ahorro garantizado.':'de exposición anual bruta. Orientativa y sin conciliar: no es un ahorro garantizado.');
+  const rtxt=RS.complete?'al año en ineficiencias detectadas, sumado en bruto. Conciliado: <b>'+m7P1Eur(RS.consolidated)+'</b> consolidados'+(RS.recoverable!=null?' y <b>'+m7P1Eur(RS.recoverable)+'</b> recuperables documentados.':'; falta documentar la recuperabilidad.')+((RS.solid+RS.declared)?' Fuentes: '+RS.solid+' con registro o medición, '+RS.declared+' declaradas.':'')
+   :(RS.done>0?'al año en ineficiencias detectadas, sumado en bruto. Conciliación parcial: '+RS.done+' de '+RS.total+' partidas. No es un ahorro garantizado.':'al año en ineficiencias detectadas (merma, paradas, retrabajo…), sumado en bruto. Orientativo y sin conciliar: no es un ahorro garantizado.');
   a2={k:'Cuánto está en juego',big:m7P1Eur(F.gross).replace(' €','<small> €</small>'),txt:rtxt};
  }else a2={k:'Cuánto está en juego',big:'—',txt:'Aún no hay una cifra económica calculada; falta completar los datos de Fábrica.'};
  // Acto 3 · qué hacer primero
@@ -3786,6 +3786,103 @@ function m7ApprovedPage0(r,c){
   +'<p class="sm-foot">'+pend+' Cifras declaradas en entrevistas y cálculos DIOP; no sustituyen una auditoría técnica o financiera.</p>';
  root.appendChild(wrap);
  return root;
+}
+// ── Lenguaje de cliente: el informe no exige conocer la metodología interna (módulos, siglas, marcas). ──
+const M7_CLIENT_LANG=[
+ // cabeceras y epígrafes
+ [/DIOP NEXT · INFORME M7/g,'INFORME DE DIAGNÓSTICO'],
+ [/^(\d\d) \/ VSM$/,'$1 / FLUJO'],
+ [/ · M1 \/ M2 \/ M3 \/ M4$/,''],[/ · M1–M6$/,''],
+ [/^07 · ECONOMIC BRIDGE™ · EXPOSICIÓN Y CARTERA M6$/,'07 · IMPACTO ECONÓMICO · COSTE Y CARTERA DE INICIATIVAS'],
+ [/^08 · PORTFOLIO DE INICIATIVAS \/ TTL™ \/ RIM™$/,'08 · INICIATIVAS Y PRIORIDADES'],
+ [/^DIAGNÓSTICO DIGITAL · M3$/,'DIAGNÓSTICO DIGITAL'],
+ [/^(HIPÓTESIS FUERTE|INVESTIGACIÓN REQUERIDA|CONFIRMADO) · M1$/,'$1 · OPERACIONES'],
+ [/^(HIPÓTESIS FUERTE|INVESTIGACIÓN REQUERIDA|CONFIRMADO) · M2$/,'$1 · PLANTA'],
+ [/^(HIPÓTESIS FUERTE|INVESTIGACIÓN REQUERIDA|CONFIRMADO) · M3$/,'$1 · SISTEMAS'],
+ [/^(HIPÓTESIS FUERTE|INVESTIGACIÓN REQUERIDA|CONFIRMADO) · M4$/,'$1 · ORGANIZACIÓN'],
+ // coste anual de ineficiencias (antes «exposición bruta»)
+ [/^Exposición anual estimada · bruta$/,'Coste anual estimado de ineficiencias'],
+ [/^EXPOSICIÓN ANUAL ESTIMADA · BRUTA$/i,'Coste anual estimado de ineficiencias'],
+ [/^EXPOSICIÓN OPERATIVA ANUAL$/i,'Coste anual estimado de ineficiencias'],
+ [/De una exposición orientativa/,'De un coste orientativo'],[/notas de M2\/M3/,'notas de planta y sistemas'],
+ [/cruzar M1–M4/,'cruzar las sesiones del diagnóstico'],[/datos de M(\d)/,'datos del diagnóstico'],[/registradas en M3/,'registradas en el diagnóstico de sistemas'],[/clasificado en M2/,'clasificado en planta'],[/capa de confianza \(M5\)/,'matriz de confianza'],
+ [/^(?:Bruta · orientativa|Con supuestos) · (.*?) · No auditada$/,(m,t)=>'Lo que cuestan al año las ineficiencias detectadas (merma, paradas, retrabajo…), sumadas en bruto. '+t+'. No es un ahorro garantizado.'],
+ [/^Bruta · orientativa · (sin conciliar|conciliada)$/i,(m,t)=>'Suma bruta de ineficiencias · '+t.toLowerCase()],
+ [/Composición de la exposición bruta/,'Composición del coste anual estimado'],
+ [/Cómo se compone la exposición bruta/,'Cómo se compone el coste anual estimado'],
+ [/de exposición anual bruta/g,'de coste anual bruto estimado'],
+ [/exposición bruta orientativa/g,'coste anual bruto orientativo'],
+ [/exposición bruta/g,'coste anual bruto estimado'],
+ [/exposición económica/g,'impacto económico'],[/Exposición económica/g,'Impacto económico'],
+ [/exposición operativa/g,'coste anual de ineficiencias'],
+ // módulos → lenguaje llano
+ [/al cruzar M1–M4/,'al cruzar las cuatro sesiones del diagnóstico'],
+ [/cruces M1–M4, entrevistas/,'cruces entre sesiones, entrevistas'],
+ [/módulos M1–M4 y cartera M6/,'sesiones del diagnóstico y cartera de iniciativas'],
+ [/Informe DIOP (.*?) · M3, M4, M6 y M7;/,'Informe de diagnóstico $1 · sesiones de sistemas y organización, cartera de iniciativas y revisión económica;'],
+ [/Baseline y revisión M7 de/,'Datos base y revisión económica de'],
+ [/Estimaciones de M7/,'Estimaciones de este informe'],
+ [/Valores declarados en M3/,'Valores declarados'],
+ [/^M3, entrevistas y notas/,'Cuestionario de sistemas, entrevistas y notas'],
+ [/Evaluación general M4/,'Evaluación general de organización'],
+ [/Dimensiones evaluadas en M4/,'Dimensiones evaluadas'],[/Puntuaciones declaradas en M4/,'Puntuaciones declaradas'],
+ [/Desglose avanzado de M4/,'Desglose avanzado'],[/Señal transversal M3/,'Señal transversal de sistemas'],
+ [/^M2 · /,''],
+ [/^M1: /,'Operaciones: '],[/^M2: /,'Planta: '],[/^M3: /,'Sistemas: '],[/^M4: /,'Organización: '],[/^M7: /,'Economía: '],
+ [/confirmada en M2/,'confirmada en planta'],
+ [/datos declarados de (.*?) en M2 y cálculos DIOP/,'datos declarados por $1 en planta y cálculos de Tecno-Fab'],
+ [/Confidence Layer™ \(M5\)/g,'Matriz de confianza'],
+ [/Field Intelligence™ · /,''],[/Field Intelligence™ de /,'El análisis de campo de '],[/Field Intelligence™/g,'Análisis de campo'],
+ [/Puntuaciones metodológicas de DIOP/,'Puntuaciones metodológicas'],[/cálculos DIOP/g,'cálculos de Tecno-Fab'],
+ // M6 / M7
+ [/Escenario base de iniciativas M6/,'Escenario base de iniciativas'],[/Escenario base M6/,'Escenario base de iniciativas'],
+ [/Escenario de iniciativas M6/,'Escenario de iniciativas'],
+ [/escenarios M6/g,'escenarios de iniciativas'],[/escenario M6/g,'escenario de iniciativas'],
+ [/Business case M6/,'Caso de negocio de iniciativas'],[/business case/g,'caso de negocio'],
+ [/Iniciativas M6/g,'Iniciativas'],[/iniciativas M6/g,'iniciativas'],
+ [/Implicación para M6/,'Implicación para las iniciativas'],[/prerrequisitos de M6/,'prerrequisitos de las iniciativas'],
+ [/evaluadas en M6/,'evaluadas'],[/prioridad M6/,'prioridad de iniciativas'],
+ [/Mantener M6 como escenario separado/,'Mantener las iniciativas como escenario separado'],
+ [/El estado procede de M6, no es una decisión de la IA/,'El estado procede de la cartera de iniciativas, no de una decisión automática'],
+ [/cartera M6/g,'cartera de iniciativas'],
+ [/de M6\b/g,'de la cartera de iniciativas'],[/en M6\b/g,'en la cartera de iniciativas'],[/\bM6\b/g,'cartera de iniciativas'],
+ // OFI / TTL / RIM / Quick Win
+ [/^OFI™$/,'ÍNDICE'],[/^OFI™ (\d+\/100)(.*)$/,'Fricción operativa $1$2'],
+ [/^OFI™ \+ TTL™$/,'Índice de fricción + nivel tecnológico'],[/^RIM™ \+ Confidence Layer™$/,'Prioridad + matriz de confianza'],
+ [/^Economic Bridge™$/,'Impacto económico'],
+ [/OFI™/g,'índice de fricción operativa'],
+ [/^POSICIÓN TECNOLÓGICA TTL™$/,'NIVEL TECNOLÓGICO DE PARTIDA'],
+ [/^L(\d) incompleta: (.*?) por debajo del mínimo provisional \d+\/\d+\.?$/,(m,l,d)=>'Nivel '+l+' incompleto: '+d.split(/\s*,\s*|\s+y\s+/).map(x=>({D1:'rendimiento',D2:'datos',D3:'herramientas digitales',D4:'organización'}[x.trim()]||x)).join(', ')+' por debajo del mínimo exigido.'],
+ [/^L(\d)$/,'Nivel $1'],[/^L(\d) · /,'NIVEL $1 · '],[/L(\d)\/L(\d)/,'niveles $1 y $2'],
+ [/posición TTL orientativa/g,'posición tecnológica orientativa'],
+ [/posición TTL L(\d)/,'nivel tecnológico de partida: $1'],[/TTL L(\d)/g,'Nivel $1'],
+ [/TTL™/g,'nivel tecnológico'],[/\bTTL\b/g,'nivel tecnológico'],
+ [/RIM™ «Lanzar ahora»/,'prioridad «Lanzar ahora»'],[/RIM · /g,'Prioridad · '],[/^RIM™$/,'Prioridad'],[/RIM™?/g,'prioridad'],
+ [/readiness/g,'grado de preparación'],
+ [/orden de prioridad por impacto y/,'orden por impacto y'],
+ [/Las categorías Quick Win/,'Las mejoras rápidas'],[/^Quick Wins sugeridos$/,'Mejoras rápidas sugeridas'],
+ [/Quick Wins/g,'mejoras rápidas'],[/Quick Win/g,'mejora rápida'],
+ // siglas técnicas
+ [/base COGS/g,'base de coste de producción'],[/\bCOGS\b/g,'coste de producción'],
+ [/\bVSM\b/g,'mapa de flujo'],
+ [/\bDIOP\b/g,'Tecno-Fab'],
+ [/\bM1–M4\b/g,'las sesiones del diagnóstico'],[/\bM1\b/g,'operaciones'],[/\bM2\b/g,'planta'],[/\bM3\b/g,'sistemas'],[/\bM4\b/g,'organización'],[/\bM5\b/g,'matriz de confianza']
+];
+function m7ClientLanguage(html){
+ const box=document.createElement('div');box.innerHTML=html;
+ box.querySelectorAll('.ap-page').forEach(pg=>{
+  let taktSeen=false;
+  const w=document.createTreeWalker(pg,NodeFilter.SHOW_TEXT);const nodes=[];
+  while(w.nextNode()){const n=w.currentNode,tag=n.parentNode&&n.parentNode.nodeName;if(tag!=='STYLE'&&tag!=='SCRIPT')nodes.push(n);}
+  nodes.forEach(n=>{
+   const raw=n.nodeValue;if(!raw.trim())return;
+   const lead=raw.match(/^\s*/)[0],trail=raw.match(/\s*$/)[0];let t=raw.trim();
+   M7_CLIENT_LANG.forEach(([re,rep])=>{t=t.replace(re,rep);});
+   t=t.replace(/\btakt\b/g,()=>{if(!taktSeen){taktSeen=true;return 'ritmo de demanda (takt)';}return 'ritmo de demanda';});
+   n.nodeValue=lead+t+trail;
+  });
+ });
+ return box.innerHTML;
 }
 function buildApprovedM7(r,c){
  const name=m7ApprovedClientName();
@@ -3819,7 +3916,7 @@ function buildApprovedM7(r,c){
   html+='<div class="ap-page ap-p'+String(n).padStart(2,'0')+'">'+root.outerHTML+'</div>';
  }
  html+='</div>';
- return html;
+ return m7ClientLanguage(html);
 }
 const M7_APPROVED_EXTRA_CSS=`
 .ap-report{max-width:1100px;margin:0 auto 20px!important;background:transparent!important}
